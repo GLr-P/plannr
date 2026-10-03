@@ -1,13 +1,29 @@
+import { useEffect, useState } from 'react'
 import { FileText, Pin, Plus } from 'lucide-react'
+import { formatTicketNumber, type TicketSummary } from '../../../shared/api'
+import { api } from '../api'
+import { StatusPill } from '../components/common'
+import { NewTicketButton } from './TicketsView'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { newNote } from '../actions'
-import { greeting, noteTitle, relativeTime } from '../lib/format'
+import { formatDay, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
+
+/** Ready-for-pickup first, then by pickup date (soonest first), then newest. */
+function byUrgency(a: TicketSummary, b: TicketSummary): number {
+  if ((a.status === 'ready') !== (b.status === 'ready')) return a.status === 'ready' ? -1 : 1
+  if (a.pickupOn !== b.pickupOn) return !a.pickupOn ? 1 : !b.pickupOn ? -1 : a.pickupOn.localeCompare(b.pickupOn)
+  return b.number - a.number
+}
 
 export function HomeView() {
   const notes = useData((s) => s.notes)
   const pinned = notes.filter((n) => n.pinned)
   const recent = [...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 8)
+  const [tickets, setTickets] = useState<TicketSummary[]>([])
+  useEffect(() => {
+    void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
+  }, [])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
@@ -17,10 +33,43 @@ export function HomeView() {
           <h1>{greeting()}</h1>
           <p className="muted">{today}</p>
         </div>
-        <button type="button" className="btn primary" onClick={() => void newNote()}>
-          <Plus /> New note
-        </button>
+        <div className="header-actions">
+          <button type="button" className="btn" onClick={() => void newNote()}>
+            <Plus /> New note
+          </button>
+          <NewTicketButton />
+        </div>
       </header>
+
+      {tickets.length > 0 && (
+        <section>
+          <h2 className="section-title">
+            Open tickets <span className="muted">{tickets.length}</span>
+          </h2>
+          <ul className="ticket-history">
+            {tickets.slice(0, 8).map((t) => (
+              <li key={t.id}>
+                <button type="button" className="history-row" onClick={() => go({ view: 'ticket', id: t.id })}>
+                  <span className="mono">{formatTicketNumber(t.number)}</span>
+                  <span className="history-main">
+                    {t.customerName || 'No customer'}
+                    <span className="muted"> · {t.device || 'No device'}</span>
+                  </span>
+                  <StatusPill status={t.status} />
+                  <span className={`history-date ${t.pickupOn && t.pickupOn < todayISO() ? 'overdue' : ''}`}>
+                    {t.pickupOn ? `Pickup ${formatDay(t.pickupOn)}` : ''}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {tickets.length > 8 && (
+            <button type="button" className="link-btn" onClick={() => go({ view: 'tickets' })}>
+              See all {tickets.length} open tickets
+            </button>
+          )}
+        </section>
+      )}
 
       {pinned.length > 0 && (
         <section>

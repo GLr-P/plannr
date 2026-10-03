@@ -839,9 +839,9 @@ kbd {
   font-family: var(--font-display);
   font-size: 34px;
   font-weight: 700;
-  line-height: 1.2;
-  padding: 0;
-  margin-bottom: 8px;
+  line-height: 1.35; /* room for descenders (g, y, p) — inputs clip anything outside the line box */
+  padding: 2px 0 4px;
+  margin-bottom: 4px;
 }
 .doc-title::placeholder {
   color: var(--text-faint);

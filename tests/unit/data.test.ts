@@ -7,6 +7,7 @@ import { migrate, type Db } from '../../src/main/db'
 import * as notes from '../../src/main/services/notes'
 import * as folders from '../../src/main/services/folders'
 import { buildFtsQuery, search } from '../../src/main/services/search'
+import { backlinks } from '../../src/main/services/links'
 import { resolveFilePath, saveFile } from '../../src/main/services/files'
 import { getSetting, setSetting } from '../../src/main/services/settings'
 import type { DocJSON } from '../../src/shared/api'
@@ -30,7 +31,7 @@ describe('migrations', () => {
   it('are idempotent', () => {
     migrate(db)
     const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
-    expect(user_version).toBe(1)
+    expect(user_version).toBe(3)
   })
 })
 
@@ -94,10 +95,10 @@ describe('mentions and backlinks', () => {
     const target = notes.createNote(db, { title: 'Supplier list' })
     const src = notes.createNote(db, { title: 'Order parts' })
     notes.updateNote(db, src.id, { content: doc('See ', mention(target.id, 'Supplier list')) })
-    expect(notes.noteBacklinks(db, target.id)).toEqual([{ type: 'note', id: src.id, title: 'Order parts' }])
+    expect(backlinks(db, target.id)).toEqual([{ type: 'note', id: src.id, title: 'Order parts' }])
     // Removing the mention removes the link
     notes.updateNote(db, src.id, { content: doc('nothing here') })
-    expect(notes.noteBacklinks(db, target.id)).toEqual([])
+    expect(backlinks(db, target.id)).toEqual([])
   })
 
   it('hides backlinks from trashed notes and drops them when destroyed', () => {
@@ -105,7 +106,7 @@ describe('mentions and backlinks', () => {
     const src = notes.createNote(db, { title: 'S' })
     notes.updateNote(db, src.id, { content: doc(mention(target.id, 'T')) })
     notes.trashNote(db, src.id)
-    expect(notes.noteBacklinks(db, target.id)).toEqual([])
+    expect(backlinks(db, target.id)).toEqual([])
     notes.destroyNote(db, src.id)
     const { c } = db.prepare('SELECT COUNT(*) AS c FROM links').get() as { c: number }
     expect(c).toBe(0)

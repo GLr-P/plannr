@@ -5,6 +5,11 @@ import { HomeView } from './views/HomeView'
 import { NotesView } from './views/NotesView'
 import { NoteView } from './views/NoteView'
 import { SettingsView } from './views/SettingsView'
+import { TicketsView } from './views/TicketsView'
+import { TicketView } from './views/TicketView'
+import { CustomersView } from './views/CustomersView'
+import { CustomerView } from './views/CustomerView'
+import { TemplatesView, TemplateView } from './views/TemplatesView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote } from './actions'
@@ -47,6 +52,18 @@ function MainView() {
       return <NotesView filter={route.filter} />
     case 'note':
       return <NoteView id={route.id} />
+    case 'tickets':
+      return <TicketsView />
+    case 'ticket':
+      return <TicketView id={route.id} />
+    case 'customers':
+      return <CustomersView />
+    case 'customer':
+      return <CustomerView id={route.id} />
+    case 'templates':
+      return <TemplatesView />
+    case 'template':
+      return <TemplateView id={route.id} />
     case 'settings':
       return <SettingsView />
   }

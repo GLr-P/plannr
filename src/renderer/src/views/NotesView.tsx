@@ -6,6 +6,7 @@ import { useData } from '../store/data'
 import { go, type NotesFilter } from '../store/nav'
 import { DRAG_MIME, newNote, togglePin, trashNote } from '../actions'
 import { noteTitle, relativeTime } from '../lib/format'
+import { ConfirmButton } from '../components/common'
 
 export function NotesView({ filter }: { filter: NotesFilter }) {
   const allNotes = useData((s) => s.notes)
@@ -150,28 +151,6 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
         </ul>
       )}
     </div>
-  )
-}
-
-/** Click once to arm, click again within 3 seconds to confirm. */
-function ConfirmButton({ title, onConfirm, label }: { title: string; onConfirm: () => void | Promise<void>; label?: string }) {
-  const [armed, setArmed] = useState(false)
-  useEffect(() => {
-    if (!armed) return
-    const t = setTimeout(() => setArmed(false), 3000)
-    return () => clearTimeout(t)
-  }, [armed])
-  return (
-    <button
-      type="button"
-      className={`${label ? 'btn' : 'icon-btn sm'} ${armed ? 'danger armed' : ''}`}
-      title={armed ? 'Click again to confirm' : title}
-      aria-label={title}
-      onClick={() => (armed ? void onConfirm() : setArmed(true))}
-    >
-      <Trash2 />
-      {label && <span>{armed ? 'Click again to confirm' : label}</span>}
-    </button>
   )
 }
 

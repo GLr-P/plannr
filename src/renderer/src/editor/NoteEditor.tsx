@@ -2,28 +2,27 @@ import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline } from 'lucide-react'
-import type { DocJSON } from '../../../shared/api'
+import type { DocJSON, EntityType } from '../../../shared/api'
+import { openEntity } from '../actions'
 import { buildExtensions } from './extensions'
 import { imageFiles, insertImages } from './upload'
 
 interface Props {
-  noteId: string
+  /** Id of the note/ticket/template being edited (excluded from its own @-mentions) */
+  docId: string
   content: DocJSON | null
   editable: boolean
   onChange: (doc: DocJSON) => void
-  onOpenMention: (kind: string, id: string) => void
   onReady?: (editor: Editor) => void
 }
 
-export function NoteEditor({ noteId, content, editable, onChange, onOpenMention, onReady }: Props) {
+export function NoteEditor({ docId, content, editable, onChange, onReady }: Props) {
   // Latest callbacks without re-creating the editor.
   const onChangeRef = useRef(onChange)
-  const onOpenRef = useRef(onOpenMention)
   onChangeRef.current = onChange
-  onOpenRef.current = onOpenMention
 
   const editor = useEditor({
-    extensions: buildExtensions(noteId),
+    extensions: buildExtensions(docId),
     content: content ?? '',
     editable,
     editorProps: {
@@ -47,7 +46,7 @@ export function NoteEditor({ noteId, content, editable, onChange, onOpenMention,
         const target = event.target as HTMLElement
         const mention = target.closest<HTMLElement>('[data-type="mention"]')
         if (mention?.dataset.id) {
-          onOpenRef.current(mention.dataset.kind ?? 'note', mention.dataset.id)
+          openEntity((mention.dataset.kind ?? 'note') as EntityType, mention.dataset.id)
           return true
         }
         const link = target.closest<HTMLAnchorElement>('a[href]')

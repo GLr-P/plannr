@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, Pin, Plus, Settings, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go, useNav, type Route } from '../store/nav'
 import { useUi } from '../store/ui'
-import { DRAG_MIME, moveNote, newNote, readDrag, type DragItem } from '../actions'
+import { DRAG_MIME, moveNote, newNote, newTicket, readDrag, type DragItem } from '../actions'
 import { noteTitle } from '../lib/format'
 import type { Folder as FolderT, NoteSummary } from '../../../shared/api'
 
@@ -155,6 +155,7 @@ function NewFolderInput({ onDone }: { onDone: () => void }) {
 export function Sidebar() {
   const notes = useData((s) => s.notes)
   const folders = useData((s) => s.folders)
+  const openTickets = useData((s) => s.counts.open)
   const notesCollapsed = useUi((s) => s.collapsed['section:notes'] ?? false)
   const toggle = useUi((s) => s.toggle)
   const [addingFolder, setAddingFolder] = useState(false)
@@ -167,6 +168,18 @@ export function Sidebar() {
   return (
     <nav className="sidebar" aria-label="Main">
       <NavItem icon={<Home />} label="Home" target={{ view: 'home' }} />
+      <NavItem
+        icon={<Wrench />}
+        label="Tickets"
+        target={{ view: 'tickets' }}
+        count={openTickets || undefined}
+        actions={
+          <button type="button" className="icon-btn sm" title="New ticket" aria-label="New ticket" onClick={() => void newTicket()}>
+            <Plus />
+          </button>
+        }
+      />
+      <NavItem icon={<Users />} label="Customers" target={{ view: 'customers' }} />
 
       <div className="section-header">
         <button type="button" className="section-toggle" onClick={() => toggle('section:notes')}>
@@ -218,6 +231,7 @@ export function Sidebar() {
       )}
 
       <div className="sidebar-spacer" />
+      <NavItem icon={<LayoutTemplate />} label="Templates" target={{ view: 'templates' }} />
       <NavItem icon={<Settings />} label="Settings" target={{ view: 'settings' }} />
     </nav>
   )

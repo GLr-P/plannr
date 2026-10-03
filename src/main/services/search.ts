@@ -1,9 +1,10 @@
 import type { Db } from '../db'
 import type { EntityType, SearchResult } from '../../shared/api'
 
-export function indexEntity(db: Db, type: EntityType, id: string, title: string, body: string, updatedAt: number): void {
+/**  is shown in result snippets;  is matched but never shown (e.g. digits-only phone). */
+export function indexEntity(db: Db, type: EntityType, id: string, title: string, body: string, updatedAt: number, extra = ''): void {
   db.prepare('DELETE FROM search_index WHERE id = ?').run(id)
-  db.prepare('INSERT INTO search_index (type, id, title, body, updated_at) VALUES (?, ?, ?, ?, ?)').run(type, id, title, body, updatedAt)
+  db.prepare('INSERT INTO search_index (type, id, title, body, extra, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(type, id, title, body, extra, updatedAt)
 }
 
 export function unindexEntity(db: Db, id: string): void {
@@ -41,7 +42,7 @@ export function search(db: Db, q: string, opts: { limit?: number; types?: Entity
               snippet(search_index, 3, char(1), char(2), '…', 12) AS snippet
        FROM search_index
        WHERE search_index MATCH ?${typeFilter}
-       ORDER BY bm25(search_index, 0, 0, 8, 1, 0)
+       ORDER BY bm25(search_index, 0, 0, 8, 1, 1, 0)
        LIMIT ?`
     )
     .all(...params) as { type: EntityType; id: string; title: string; updated_at: number; snippet: string }[]

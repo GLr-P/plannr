@@ -64,5 +64,78 @@ export const migrations: string[] = [
     tokenize = 'unicode61 remove_diacritics 2',
     prefix = '2 3'
   );
+  `,
+
+  /* 2: customers, tickets, ticket photos, templates */ `
+  CREATE TABLE customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    phone TEXT NOT NULL DEFAULT '',
+    phone_digits TEXT NOT NULL DEFAULT '', -- phone with only digits, for format-agnostic search
+    email TEXT NOT NULL DEFAULT '',
+    address TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX customers_name ON customers(name COLLATE NOCASE);
+
+  CREATE TABLE templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    content_json TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+
+  CREATE TABLE tickets (
+    id TEXT PRIMARY KEY,
+    number INTEGER NOT NULL UNIQUE,
+    customer_id TEXT REFERENCES customers(id),
+    status TEXT NOT NULL DEFAULT 'intake',
+    device TEXT NOT NULL DEFAULT '',
+    issue TEXT NOT NULL DEFAULT '',
+    price_cents INTEGER,
+    received_on TEXT, -- YYYY-MM-DD (date only, no timezone surprises)
+    pickup_on TEXT,   -- YYYY-MM-DD
+    closed_at INTEGER,
+    template_id TEXT,
+    content_json TEXT,
+    content_text TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX tickets_customer ON tickets(customer_id);
+  CREATE INDEX tickets_status ON tickets(status);
+
+  CREATE TABLE ticket_photos (
+    id TEXT PRIMARY KEY,
+    ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    file_id TEXT NOT NULL REFERENCES files(id),
+    kind TEXT NOT NULL CHECK (kind IN ('before', 'after')),
+    sort REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX ticket_photos_ticket ON ticket_photos(ticket_id);
+  `,
+
+  /* 3: search index gets an `extra` column for match-only terms (digits-only phone, status…) kept out of snippets.
+        The index is derived data: rebuildSearchIndex() refills it on next start (see services/reindex.ts). */ `
+  DROP TABLE search_index;
+  CREATE VIRTUAL TABLE search_index USING fts5(
+    type UNINDEXED,
+    id UNINDEXED,
+    title,
+    body,
+    extra,
+    updated_at UNINDEXED,
+    tokenize = 'unicode61 remove_diacritics 2',
+    prefix = '2 3'
+  );
   `
 ]

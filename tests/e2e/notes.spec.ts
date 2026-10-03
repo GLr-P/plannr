@@ -133,15 +133,15 @@ test('tags a note and filters by tag', async () => {
 
 test('creates a folder and moves a note into it by drag and drop', async () => {
   await page.getByRole('button', { name: 'New folder' }).click()
-  await page.keyboard.type('Customers')
+  await page.keyboard.type('Clients')
   await page.keyboard.press('Enter')
-  const folder = page.locator('.sidebar .nav-item', { hasText: 'Customers' })
+  const folder = page.locator('.sidebar .nav-item', { hasText: 'Clients' })
   await expect(folder).toBeVisible()
 
   await page.locator('.sidebar .nav-item', { hasText: 'All notes' }).click()
   const row = page.locator('.note-row', { hasText: 'Supplier list' })
   await row.dragTo(folder)
-  await expect(row.locator('.chip')).toHaveText('Customers')
+  await expect(row.locator('.chip')).toHaveText('Clients')
 
   await folder.locator('.chevron').click()
   await expect(page.locator('.sidebar')).toContainText('Supplier list')

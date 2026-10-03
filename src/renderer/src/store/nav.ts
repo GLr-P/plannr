@@ -6,6 +6,12 @@ export type Route =
   | { view: 'home' }
   | { view: 'notes'; filter: NotesFilter }
   | { view: 'note'; id: string }
+  | { view: 'tickets' }
+  | { view: 'ticket'; id: string }
+  | { view: 'customers' }
+  | { view: 'customer'; id: string }
+  | { view: 'templates' }
+  | { view: 'template'; id: string }
   | { view: 'settings' }
 
 interface NavState {

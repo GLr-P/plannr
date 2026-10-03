@@ -72,7 +72,15 @@ Personal all-in-one organizer and business tool for Nano Tech Services (a small 
 Each phase ends with Claude running the app, testing it automatically, taking screenshots and checking the result before moving on.
 
 1. **Foundation:** project setup, app window, sidebar layout, themes, database, instant search, and Notes with the block editor. **Done (2026-10-03).** Includes `/` blocks, toggles, to-dos, image paste/drop/upload, a selection toolbar, `@` links with backlinks, tags, folders with drag-and-drop, pinning, trash/restore, light/dark themes, Ctrl+K search, back/forward, and a Desktop shortcut. Not done yet: tables and callout blocks (add when needed).
-2. **Customers & Tickets:** customers, tickets, templates, photos, search and filters
+2. **Customers & Tickets:** customers, tickets, templates, photos, search and filters. **Done (2026-10-03).** Includes:
+   - Auto-numbered tickets (NT-0001) with statuses, device, issue, received and pickup dates, and price
+   - Pick or create a customer inline, with phone and email edited right on the ticket
+   - Templates with fill-in form fields, plus a starter "Repair intake" template and a default-template choice
+   - Before/after photo galleries (collapsible, drag between sides, full-screen viewer)
+   - Ticket filters (status, date range, search by name, email, phone in any format, repair # or ticket text)
+   - Customer pages with repair history
+   - `@`-links and backlinks across notes, tickets and customers; open tickets on Home
+   - The Zoho emails section waits for phase 6.
 3. **Calendar:** views, drag-and-drop linking, reminders, tray and notifications
 4. **Vault**
 5. **Money**

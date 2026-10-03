@@ -1,10 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, Plus, Search } from 'lucide-react'
+import { EntityIcon, ENTITY_LABEL } from './EntityIcon'
 import type { SearchResult } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
-import { go } from '../store/nav'
-import { newNote } from '../actions'
+
+import { newNote, openEntity } from '../actions'
 import { noteTitle, relativeTime } from '../lib/format'
 
 type Row =
@@ -91,7 +92,8 @@ export function SearchBox() {
 
   const choose = (row: Row): void => {
     if (row.kind === 'create') void newNote(null, row.title)
-    else go({ view: 'note', id: row.kind === 'result' ? row.result.id : row.id })
+    else if (row.kind === 'result') openEntity(row.result.type, row.result.id)
+    else openEntity('note', row.id)
     close()
   }
 
@@ -122,7 +124,7 @@ export function SearchBox() {
         <input
           ref={inputRef}
           value={query}
-          placeholder="Search everything…"
+          placeholder="Search notes, customers, tickets…"
           spellCheck={false}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
@@ -137,7 +139,7 @@ export function SearchBox() {
       {open && rows.length > 0 && (
         <div className="search-results" role="listbox">
           {!query.trim() && <div className="search-group">Recent</div>}
-          {query.trim() && results.length > 0 && <div className="search-group">Notes</div>}
+          {query.trim() && results.length > 0 && <div className="search-group">Results</div>}
           {query.trim() && results.length === 0 && <div className="search-empty">No matches for “{query.trim()}”</div>}
           {rows.map((row, i) => (
             <button
@@ -160,7 +162,7 @@ export function SearchBox() {
                 </>
               ) : (
                 <>
-                  <FileText className="row-icon" />
+                  {row.kind === 'result' ? <EntityIcon type={row.result.type} className="row-icon" /> : <FileText className="row-icon" />}
                   <span className="row-main">
                     <span className="row-title">{noteTitle(row.kind === 'result' ? row.result.title : row.title)}</span>
                     {row.kind === 'result' && row.result.snippet && (
@@ -170,6 +172,7 @@ export function SearchBox() {
                     )}
                   </span>
                   <span className="row-meta">
+                    {row.kind === 'result' && row.result.type !== 'note' && <span className="row-type">{ENTITY_LABEL[row.result.type]}</span>}
                     {relativeTime(row.kind === 'result' ? row.result.updatedAt : row.updatedAt)}
                   </span>
                 </>

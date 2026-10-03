@@ -3,8 +3,13 @@ import type { Db } from './db'
 import { API_SHAPE, type PlannrApi, type Theme } from '../shared/api'
 import * as notes from './services/notes'
 import * as folders from './services/folders'
+import * as customers from './services/customers'
+import * as tickets from './services/tickets'
+import * as photos from './services/photos'
+import * as templates from './services/templates'
+import { backlinks } from './services/links'
 import { search } from './services/search'
-import { saveFile } from './services/files'
+import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
 
 export const TITLEBAR_HEIGHT = 44
@@ -23,8 +28,39 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       trash: async (id) => notes.trashNote(db, id),
       restore: async (id) => notes.restoreNote(db, id),
       destroy: async (id) => notes.destroyNote(db, id),
-      backlinks: async (id) => notes.noteBacklinks(db, id),
       tags: async () => notes.allTags(db)
+    },
+    customers: {
+      list: async (opts) => customers.listCustomers(db, opts),
+      get: async (id) => customers.getCustomer(db, id),
+      create: async (input) => customers.createCustomer(db, input),
+      update: async (id, patch) => customers.updateCustomer(db, id, patch),
+      trash: async (id) => customers.trashCustomer(db, id)
+    },
+    tickets: {
+      list: async (filter) => tickets.listTickets(db, filter),
+      get: async (id) => tickets.getTicket(db, id),
+      create: async (input) => tickets.createTicket(db, input),
+      update: async (id, patch) => tickets.updateTicket(db, id, patch),
+      trash: async (id) => tickets.trashTicket(db, id),
+      restore: async (id) => tickets.restoreTicket(db, id),
+      counts: async () => tickets.ticketCounts(db)
+    },
+    photos: {
+      list: async (ticketId) => photos.listPhotos(db, ticketId),
+      add: async (ticketId, fileIds, kind) => photos.addPhotos(db, ticketId, fileIds, kind),
+      remove: async (id) => photos.removePhoto(db, id),
+      setKind: async (id, kind) => photos.setPhotoKind(db, id, kind)
+    },
+    templates: {
+      list: async () => templates.listTemplates(db),
+      get: async (id) => templates.getTemplate(db, id),
+      create: async (input) => templates.createTemplate(db, input),
+      update: async (id, patch) => templates.updateTemplate(db, id, patch),
+      remove: async (id) => templates.removeTemplate(db, id)
+    },
+    links: {
+      backlinks: async (id) => backlinks(db, id)
     },
     folders: {
       list: async () => folders.listFolders(db),
@@ -36,7 +72,11 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       query: async (q, opts) => search(db, q, opts)
     },
     files: {
-      save: async (input) => saveFile(db, dataDir, input)
+      save: async (input) => saveFile(db, dataDir, input),
+      open: async (id) => {
+        const file = resolveFilePath(db, dataDir, id)
+        if (file) await shell.openPath(file.path)
+      }
     },
     settings: {
       get: async (key) => getSetting(db, key),

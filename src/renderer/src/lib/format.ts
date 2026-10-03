@@ -19,3 +19,30 @@ export function greeting(date = new Date()): string {
   const h = date.getHours()
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
+
+export function formatMoney(cents: number | null): string {
+  if (cents === null) return ''
+  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+}
+
+/** "$1,299.50" / "1299.5" / "" → cents (or null when empty/invalid). */
+export function parseMoney(input: string): number | null {
+  const cleaned = input.replace(/[^0-9.-]/g, '')
+  if (!cleaned) return null
+  const value = Number(cleaned)
+  return Number.isFinite(value) ? Math.round(value * 100) : null
+}
+
+/** "2026-10-09" → "Fri, Oct 9" (adds the year when it isn't this year). */
+export function formatDay(date: string | null): string {
+  if (!date) return ''
+  const [y, m, d] = date.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  const sameYear = y === new Date().getFullYear()
+  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
+}
+
+export function todayISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}

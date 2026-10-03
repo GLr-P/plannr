@@ -7,6 +7,8 @@ interface DataState {
   notes: NoteSummary[]
   folders: Folder[]
   loaded: boolean
+  counts: { open: number; ready: number }
+  refreshCounts: () => Promise<void>
   refresh: () => Promise<void>
   upsertNote: (note: NoteSummary) => void
 }
@@ -15,9 +17,11 @@ export const useData = create<DataState>((set, get) => ({
   notes: [],
   folders: [],
   loaded: false,
+  counts: { open: 0, ready: 0 },
+  refreshCounts: async () => set({ counts: await api.tickets.counts() }),
   refresh: async () => {
-    const [notes, folders] = await Promise.all([api.notes.list(), api.folders.list()])
-    set({ notes, folders, loaded: true })
+    const [notes, folders, counts] = await Promise.all([api.notes.list(), api.folders.list(), api.tickets.counts()])
+    set({ notes, folders, counts, loaded: true })
   },
   upsertNote: (note) => {
     const others = get().notes.filter((n) => n.id !== note.id)

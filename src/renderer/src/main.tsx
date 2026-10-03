@@ -4,6 +4,7 @@ import { App } from './App'
 import { initTheme } from './theme'
 import './styles/global.css'
 import './styles/editor.css'
+import './styles/business.css'
 
 // The main process passes the starting theme so the first paint has the right colors.
 const initial = new URLSearchParams(location.search).get('theme')

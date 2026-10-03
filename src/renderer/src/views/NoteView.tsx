@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { FileText, Pin, PinOff, RotateCcw, Trash2, X } from 'lucide-react'
-import type { Backlink, DocJSON, Note, NoteUpdate } from '../../../shared/api'
+import { Pin, PinOff, RotateCcw, Trash2, X } from 'lucide-react'
+import type { DocJSON, Note, NoteUpdate } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { moveNote, togglePin, trashNote } from '../actions'
-import { noteTitle, relativeTime } from '../lib/format'
+import { useAutosave } from '../lib/useAutosave'
+import { SaveIndicator } from '../components/common'
+import { Backlinks } from '../components/Backlinks'
 import { NoteEditor } from '../editor/NoteEditor'
 
 export function NoteView({ id }: { id: string }) {
@@ -34,64 +36,20 @@ export function NoteView({ id }: { id: string }) {
   return <NotePage key={`${note.id}:${note.deletedAt}`} note={note} reload={reload} />
 }
 
-type SaveStatus = 'saved' | 'pending' | 'saving'
-
-/** Batches edits and saves them shortly after typing stops; flushes when leaving the note. */
-function useAutosave(id: string) {
-  const pending = useRef<NoteUpdate>({})
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const [status, setStatus] = useState<SaveStatus>('saved')
-
-  const flush = useCallback(async () => {
-    clearTimeout(timer.current)
-    const patch = pending.current
-    if (Object.keys(patch).length === 0) return
-    pending.current = {}
-    setStatus('saving')
-    const summary = await api.notes.update(id, patch)
-    useData.getState().upsertNote(summary)
-    setStatus(Object.keys(pending.current).length ? 'pending' : 'saved')
-  }, [id])
-
-  const queue = useCallback(
-    (patch: NoteUpdate) => {
-      Object.assign(pending.current, patch)
-      setStatus('pending')
-      clearTimeout(timer.current)
-      timer.current = setTimeout(() => void flush(), 350)
-    },
-    [flush]
-  )
-
-  useEffect(() => {
-    const onUnload = (): void => void flush()
-    window.addEventListener('beforeunload', onUnload)
-    return () => {
-      window.removeEventListener('beforeunload', onUnload)
-      void flush()
-    }
-  }, [flush])
-
-  return { queue, status }
-}
-
 function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> }) {
   const folders = useData((s) => s.folders)
   const live = useData((s) => s.notes.find((n) => n.id === note.id))
   const [title, setTitle] = useState(note.title)
   const [tags, setTags] = useState(note.tags)
   const [tagInput, setTagInput] = useState('')
-  const [backlinks, setBacklinks] = useState<Backlink[]>([])
   const editorRef = useRef<Editor | null>(null)
-  const { queue, status } = useAutosave(note.id)
+  const { queue, status } = useAutosave<NoteUpdate>(async (patch) => {
+    useData.getState().upsertNote(await api.notes.update(note.id, patch))
+  })
   const trashed = note.deletedAt !== null
   const pinned = live?.pinned ?? note.pinned
   const folderId = live ? live.folderId : note.folderId
   const updatedAt = live?.updatedAt ?? note.updatedAt
-
-  useEffect(() => {
-    void api.notes.backlinks(note.id).then(setBacklinks)
-  }, [note.id])
 
   const onTitle = (value: string): void => {
     setTitle(value)
@@ -118,7 +76,6 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
   const onReady = useCallback((editor: Editor) => {
     editorRef.current = editor
   }, [])
-  const onOpenMention = useCallback((_kind: string, id: string) => go({ view: 'note', id }), [])
 
   const restore = async (): Promise<void> => {
     await api.notes.restore(note.id)
@@ -155,9 +112,7 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
           )}
         </div>
         <div className="toolbar-right">
-          <span className="save-status" data-status={status}>
-            {status === 'saved' ? `Saved · ${relativeTime(updatedAt)}` : 'Saving…'}
-          </span>
+          <SaveIndicator status={status} updatedAt={updatedAt} />
           {!trashed && (
             <>
               <button
@@ -243,24 +198,14 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
         </div>
 
         <NoteEditor
-          noteId={note.id}
+          docId={note.id}
           content={note.content}
           editable={!trashed}
           onChange={onChange}
           onReady={onReady}
-          onOpenMention={onOpenMention}
         />
 
-        {backlinks.length > 0 && (
-          <section className="backlinks">
-            <h3>Linked from</h3>
-            {backlinks.map((b) => (
-              <button key={b.id} type="button" className="backlink" onClick={() => go({ view: 'note', id: b.id })}>
-                <FileText /> {noteTitle(b.title)}
-              </button>
-            ))}
-          </section>
-        )}
+        <Backlinks id={note.id} />
       </div>
     </div>
   )

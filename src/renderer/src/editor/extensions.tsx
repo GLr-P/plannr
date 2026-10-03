@@ -11,7 +11,7 @@ import Suggestion from '@tiptap/suggestion'
 import {
   ChevronRight,
   Code,
-  FileText,
+  FormInput,
   Heading1,
   Heading2,
   Heading3,
@@ -28,6 +28,9 @@ import type { ReactNode } from 'react'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { noteTitle } from '../lib/format'
+import type { EntityType } from '../../../shared/api'
+import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
+import { FormField } from './FormField'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
 import { insertImages, pickImages } from './upload'
 
@@ -100,6 +103,8 @@ const SLASH_COMMANDS: SlashCommand[] = [
         if (files.length) return insertImages(e.view, files)
       })
     } },
+  { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
+      e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },
   { label: 'Quote', hint: 'Quoted text', icon: <Quote />, keywords: 'blockquote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
   { label: 'Code', hint: 'Code or command block', icon: <Code />, keywords: 'codeblock pre', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
   { label: 'Divider', hint: 'Horizontal line', icon: <Minus />, keywords: 'hr line separator rule', run: (e, r) => e.chain().focus().deleteRange(r).setHorizontalRule().run() }
@@ -133,10 +138,10 @@ const SlashCommands = Extension.create({
 interface MentionValue {
   id: string
   label: string
-  kind: 'note'
+  kind: EntityType
 }
 
-function noteMention(currentNoteId: string) {
+function mention(currentDocId: string) {
   return Mention.extend({
     addAttributes() {
       return {
@@ -153,25 +158,25 @@ function noteMention(currentNoteId: string) {
     suggestion: {
       char: '@',
       items: async ({ query }): Promise<MenuItem<MentionValue>[]> => {
-        const found = query.trim()
-          ? (await api.search.query(query, { types: ['note'], limit: 8 })).map((r) => ({ id: r.id, title: r.title }))
-          : useData.getState().notes.slice(0, 8)
+        const found: { id: string; title: string; type: EntityType }[] = query.trim()
+          ? (await api.search.query(query, { limit: 10 })).map((r) => ({ id: r.id, title: r.title, type: r.type }))
+          : useData.getState().notes.slice(0, 8).map((n) => ({ id: n.id, title: n.title, type: 'note' as const }))
         return found
-          .filter((n) => n.id !== currentNoteId)
+          .filter((n) => n.id !== currentDocId)
           .map((n) => ({
             key: n.id,
             label: noteTitle(n.title),
-            hint: 'Note',
-            icon: <FileText />,
-            value: { id: n.id, label: noteTitle(n.title), kind: 'note' as const }
+            hint: ENTITY_LABEL[n.type],
+            icon: <EntityIcon type={n.type} />,
+            value: { id: n.id, label: noteTitle(n.title), kind: n.type }
           }))
       },
-      render: popupRenderer<MentionValue>('No matching notes')
+      render: popupRenderer<MentionValue>('No matches')
     }
   })
 }
 
-export function buildExtensions(noteId: string) {
+export function buildExtensions(docId: string) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -181,7 +186,7 @@ export function buildExtensions(noteId: string) {
       placeholder: ({ node }) => {
         if (node.type.name === 'heading') return 'Heading'
         if (node.type.name === 'detailsSummary') return 'Toggle title'
-        return "Type '/' for blocks, '@' to link a note"
+        return "Type '/' for blocks, '@' to link a note, ticket or customer"
       }
     }),
     TaskList,
@@ -192,7 +197,8 @@ export function buildExtensions(noteId: string) {
     DetailsContent,
     ToggleKeys,
     Highlight,
+    FormField,
     SlashCommands,
-    noteMention(noteId)
+    mention(docId)
   ]
 }

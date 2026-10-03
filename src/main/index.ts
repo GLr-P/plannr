@@ -6,6 +6,8 @@ import { openDb, type Db } from './db'
 import { createApi, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { getSetting } from './services/settings'
 import { resolveFilePath } from './services/files'
+import { ensureStarterTemplate } from './services/templates'
+import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
@@ -78,6 +80,8 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
+    ensureStarterTemplate(db)
+    ensureSearchIndex(db)
 
     // plannr://file/<id> serves stored attachments (images in notes, ticket photos…).
     protocol.handle('plannr', (request) => {

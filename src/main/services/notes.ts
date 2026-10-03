@@ -1,8 +1,11 @@
 import type { Db } from '../db'
 import { newId, now, tx } from '../db'
-import type { Backlink, DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate } from '../../shared/api'
+import type { DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate } from '../../shared/api'
 import { indexEntity, unindexEntity } from './search'
-import { deleteLinksOf, setLinks, type LinkTarget } from './links'
+import { deleteLinksOf, setLinks } from './links'
+import { extractMentions, extractText } from './doc'
+
+export { extractMentions, extractText }
 
 interface NoteRow {
   id: string
@@ -35,39 +38,6 @@ function toSummary(r: NoteRow): NoteSummary {
   }
 }
 
-/** Plain text of a document, one line per block; used for search and previews. */
-export function extractText(doc: DocJSON | null | undefined): string {
-  if (!doc) return ''
-  const lines: string[] = []
-  let line = ''
-  const walk = (node: DocJSON): void => {
-    if (node.type === 'text') line += node.text ?? ''
-    else if (node.type === 'mention') line += `@${String(node.attrs?.label ?? '')}`
-    else if (node.type === 'hardBreak') line += ' '
-    node.content?.forEach(walk)
-    if (node.type === 'paragraph' || node.type === 'heading' || node.type === 'codeBlock' || node.type === 'detailsSummary') {
-      if (line.trim()) lines.push(line.trim())
-      line = ''
-    }
-  }
-  walk(doc)
-  if (line.trim()) lines.push(line.trim())
-  return lines.join('\n')
-}
-
-export function extractMentions(doc: DocJSON | null | undefined): LinkTarget[] {
-  const found = new Map<string, LinkTarget>()
-  const walk = (node: DocJSON): void => {
-    if (node.type === 'mention' && typeof node.attrs?.id === 'string') {
-      const kind = (node.attrs.kind as LinkTarget['type'] | undefined) ?? 'note'
-      found.set(node.attrs.id, { type: kind, id: node.attrs.id })
-    }
-    node.content?.forEach(walk)
-  }
-  if (doc) walk(doc)
-  return [...found.values()]
-}
-
 export function normalizeTags(tags: string[]): string[] {
   const seen = new Map<string, string>()
   for (const raw of tags) {
@@ -77,7 +47,7 @@ export function normalizeTags(tags: string[]): string[] {
   return [...seen.values()]
 }
 
-function reindex(db: Db, id: string): void {
+export function reindex(db: Db, id: string): void {
   const row = db.prepare('SELECT title, content_text, tags, updated_at, deleted_at FROM notes WHERE id = ?').get(id) as
     | { title: string; content_text: string; tags: string; updated_at: number; deleted_at: number | null }
     | undefined
@@ -86,7 +56,7 @@ function reindex(db: Db, id: string): void {
     return
   }
   const tags = (JSON.parse(row.tags) as string[]).map((t) => `#${t}`).join(' ')
-  indexEntity(db, 'note', id, row.title || 'Untitled', `${row.content_text}\n${tags}`, row.updated_at)
+  indexEntity(db, 'note', id, row.title || 'Untitled', row.content_text, row.updated_at, tags)
 }
 
 export function listNotes(db: Db, opts: NoteListOptions = {}): NoteSummary[] {
@@ -188,18 +158,6 @@ export function destroyNote(db: Db, id: string): void {
     deleteLinksOf(db, id)
     unindexEntity(db, id)
   })
-}
-
-export function noteBacklinks(db: Db, id: string): Backlink[] {
-  const rows = db
-    .prepare(
-      `SELECT n.id, n.title FROM links l
-       JOIN notes n ON n.id = l.src_id
-       WHERE l.dst_id = ? AND l.src_type = 'note' AND n.deleted_at IS NULL
-       ORDER BY n.updated_at DESC`
-    )
-    .all(id) as { id: string; title: string }[]
-  return rows.map((r) => ({ type: 'note', id: r.id, title: r.title }))
 }
 
 export function allTags(db: Db): string[] {

@@ -1,6 +1,7 @@
 import { api } from './api'
 import { useData } from './store/data'
-import { go, useNav } from './store/nav'
+import { go, useNav, type Route } from './store/nav'
+import type { EntityType } from '../../shared/api'
 
 export async function newNote(folderId: string | null = null, title?: string): Promise<void> {
   // Leave the current note right away so keys typed while the new one opens can't land in it.
@@ -30,7 +31,7 @@ export async function togglePin(id: string, pinned: boolean): Promise<void> {
 /** Drag-and-drop payload shared by every draggable item (notes now; customers/tickets later). */
 export const DRAG_MIME = 'application/x-plannr-item'
 export interface DragItem {
-  type: 'note'
+  type: EntityType
   id: string
 }
 export function readDrag(e: { dataTransfer: DataTransfer }): DragItem | null {
@@ -39,4 +40,25 @@ export function readDrag(e: { dataTransfer: DataTransfer }): DragItem | null {
   } catch {
     return null
   }
+}
+
+export function routeFor(type: EntityType, id: string): Route {
+  if (type === 'ticket') return { view: 'ticket', id }
+  if (type === 'customer') return { view: 'customer', id }
+  return { view: 'note', id }
+}
+
+export const openEntity = (type: EntityType, id: string): void => go(routeFor(type, id))
+
+export async function newTicket(input: { templateId?: string | null; customerId?: string | null } = {}): Promise<void> {
+  ;(document.activeElement as HTMLElement | null)?.blur()
+  const ticket = await api.tickets.create(input)
+  void useData.getState().refreshCounts()
+  go({ view: 'ticket', id: ticket.id })
+}
+
+export async function newCustomer(name = ''): Promise<string> {
+  const customer = await api.customers.create({ name })
+  go({ view: 'customer', id: customer.id })
+  return customer.id
 }

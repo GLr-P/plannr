@@ -1,8 +1,8 @@
 // Contract between the main process (data, files, OS) and the renderer (UI).
 // Every method is exposed over IPC as `${namespace}:${method}`; see API_SHAPE.
 
-/** Kinds of things that can be searched and linked. Grows with each phase (customer, ticket, event…). */
-export type EntityType = 'note'
+/** Kinds of things that can be searched and linked. Grows with each phase (event…). */
+export type EntityType = 'note' | 'customer' | 'ticket'
 
 /** TipTap/ProseMirror document JSON. */
 export type DocJSON = {
@@ -80,6 +80,115 @@ export interface AppInfo {
   dataDir: string
 }
 
+// ---------- Customers & tickets ----------
+
+export interface CustomerInput {
+  name?: string
+  phone?: string
+  email?: string
+  address?: string
+  notes?: string
+}
+
+export interface Customer {
+  id: string
+  name: string
+  phone: string
+  email: string
+  address: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
+}
+
+export interface CustomerSummary extends Customer {
+  ticketCount: number
+  /** YYYY-MM-DD of their most recent ticket */
+  lastVisit: string | null
+}
+
+export const TICKET_STATUSES = [
+  { id: 'intake', label: 'Intake' },
+  { id: 'diagnosing', label: 'Diagnosing' },
+  { id: 'waiting_parts', label: 'Waiting on parts' },
+  { id: 'ready', label: 'Ready for pickup' },
+  { id: 'picked_up', label: 'Picked up' }
+] as const
+export type TicketStatus = (typeof TICKET_STATUSES)[number]['id']
+export const statusLabel = (s: TicketStatus): string => TICKET_STATUSES.find((x) => x.id === s)?.label ?? s
+
+export const formatTicketNumber = (n: number): string => `NT-${String(n).padStart(4, '0')}`
+
+export interface TicketSummary {
+  id: string
+  number: number
+  customerId: string | null
+  customerName: string
+  customerPhone: string
+  customerEmail: string
+  status: TicketStatus
+  device: string
+  issue: string
+  priceCents: number | null
+  receivedOn: string | null
+  pickupOn: string | null
+  closedAt: number | null
+  createdAt: number
+  updatedAt: number
+  deletedAt: number | null
+}
+
+export interface Ticket extends TicketSummary {
+  content: DocJSON | null
+  templateId: string | null
+}
+
+export interface TicketFilter {
+  /** Matches customer name/email/phone (any format), repair number, device, issue and ticket text */
+  query?: string
+  /** 'open' = everything not picked up */
+  status?: TicketStatus | 'open' | 'all'
+  customerId?: string
+  /** YYYY-MM-DD, inclusive, on the received date */
+  from?: string
+  to?: string
+  trashed?: boolean
+  limit?: number
+}
+
+export interface TicketUpdate {
+  customerId?: string | null
+  status?: TicketStatus
+  device?: string
+  issue?: string
+  priceCents?: number | null
+  receivedOn?: string | null
+  pickupOn?: string | null
+  content?: DocJSON
+}
+
+export type PhotoKind = 'before' | 'after'
+
+export interface TicketPhoto {
+  id: string
+  ticketId: string
+  fileId: string
+  kind: PhotoKind
+  name: string
+  url: string
+}
+
+export interface TemplateSummary {
+  id: string
+  name: string
+  updatedAt: number
+}
+
+export interface Template extends TemplateSummary {
+  content: DocJSON | null
+}
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -92,8 +201,40 @@ export interface PlannrApi {
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
     destroy(id: string): Promise<void>
-    backlinks(id: string): Promise<Backlink[]>
     tags(): Promise<string[]>
+  }
+  customers: {
+    list(opts?: { query?: string; limit?: number }): Promise<CustomerSummary[]>
+    get(id: string): Promise<Customer | null>
+    create(input?: CustomerInput): Promise<Customer>
+    update(id: string, patch: CustomerInput): Promise<Customer>
+    trash(id: string): Promise<void>
+  }
+  tickets: {
+    list(filter?: TicketFilter): Promise<TicketSummary[]>
+    get(id: string): Promise<Ticket | null>
+    create(input?: { templateId?: string | null; customerId?: string | null }): Promise<Ticket>
+    update(id: string, patch: TicketUpdate): Promise<TicketSummary>
+    trash(id: string): Promise<void>
+    restore(id: string): Promise<void>
+    counts(): Promise<{ open: number; ready: number }>
+  }
+  photos: {
+    list(ticketId: string): Promise<TicketPhoto[]>
+    add(ticketId: string, fileIds: string[], kind: PhotoKind): Promise<TicketPhoto[]>
+    remove(id: string): Promise<void>
+    setKind(id: string, kind: PhotoKind): Promise<void>
+  }
+  templates: {
+    list(): Promise<TemplateSummary[]>
+    get(id: string): Promise<Template | null>
+    create(input?: { name?: string; content?: DocJSON | null }): Promise<Template>
+    update(id: string, patch: { name?: string; content?: DocJSON }): Promise<void>
+    remove(id: string): Promise<void>
+  }
+  links: {
+    /** Notes/tickets that @-mention the given entity */
+    backlinks(id: string): Promise<Backlink[]>
   }
   folders: {
     list(): Promise<Folder[]>
@@ -106,6 +247,8 @@ export interface PlannrApi {
   }
   files: {
     save(input: { name: string; mime: string; data: Uint8Array }): Promise<StoredFile>
+    /** Opens the file in its default Windows app (e.g. Photos, to zoom) */
+    open(id: string): Promise<void>
   }
   settings: {
     get(key: string): Promise<unknown>
@@ -119,10 +262,15 @@ export interface PlannrApi {
 }
 
 export const API_SHAPE = {
-  notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'backlinks', 'tags'],
+  notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags'],
+  customers: ['list', 'get', 'create', 'update', 'trash'],
+  tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts'],
+  photos: ['list', 'add', 'remove', 'setKind'],
+  templates: ['list', 'get', 'create', 'update', 'remove'],
+  links: ['backlinks'],
   folders: ['list', 'create', 'rename', 'remove'],
   search: ['query'],
-  files: ['save'],
+  files: ['save', 'open'],
   settings: ['get', 'set'],
   app: ['info', 'openDataFolder', 'setTheme']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
