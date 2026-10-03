@@ -1,5 +1,5 @@
 import { Extension, type Editor, type Range } from '@tiptap/core'
-import { PluginKey } from '@tiptap/pm/state'
+import { PluginKey, Selection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Placeholder } from '@tiptap/extensions'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
@@ -16,6 +16,7 @@ import {
   Heading2,
   Heading3,
   ImageIcon,
+  Images,
   List,
   ListChecks,
   ListOrdered,
@@ -38,6 +39,45 @@ interface SlashCommand {
   run: (editor: Editor, range: Range) => void
 }
 
+/**
+ * With the cursor in a toggle's title: opens the toggle (if closed) and moves the cursor into its body.
+ * Without this, Enter on a closed toggle jumps *out* of it, so photos/text land below instead of inside.
+ */
+function enterToggleBody(editor: Editor): boolean {
+  const { state } = editor
+  const { $head } = state.selection
+  if ($head.parent.type.name !== 'detailsSummary') return false
+  const details = $head.node(-1)
+  const detailsPos = $head.before(-1)
+  // Open first, in its own step: the browser can't put the cursor inside content that is still hidden.
+  if (!details.attrs.open) editor.view.dispatch(state.tr.setNodeMarkup(detailsPos, undefined, { ...details.attrs, open: true }))
+  const { tr, schema } = editor.state
+  const bodyStart = detailsPos + 1 + details.child(0).nodeSize + 1 // inside detailsContent, before its first block
+  const first = tr.doc.resolve(bodyStart).nodeAfter
+  // Like a normal Enter: start on an empty line at the top instead of joining existing text.
+  if (!first || !first.isTextblock || first.content.size > 0) tr.insert(bodyStart, schema.nodes.paragraph.create())
+  editor.view.dispatch(tr.setSelection(Selection.near(tr.doc.resolve(bodyStart + 1), 1)).scrollIntoView())
+  return true
+}
+
+/** Inserts an open toggle; the cursor ends in its title. */
+function insertToggle(editor: Editor, range: Range, title = ''): void {
+  editor.chain().focus().deleteRange(range).setDetails().insertContent(title).run()
+  const { $head } = editor.state.selection
+  if ($head.parent.type.name === 'detailsSummary') {
+    const pos = $head.before(-1)
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...$head.node(-1).attrs, open: true }))
+  }
+}
+
+const ToggleKeys = Extension.create({
+  name: 'toggleKeys',
+  priority: 1000, // before the Details extension's own Enter handling
+  addKeyboardShortcuts() {
+    return { Enter: ({ editor }) => enterToggleBody(editor) }
+  }
+})
+
 const SLASH_COMMANDS: SlashCommand[] = [
   { label: 'Text', hint: 'Plain paragraph', icon: <Type />, keywords: 'paragraph p', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
   { label: 'Heading 1', hint: 'Large section title', icon: <Heading1 />, keywords: 'h1 title', run: (e, r) => e.chain().focus().deleteRange(r).setHeading({ level: 1 }).run() },
@@ -46,7 +86,14 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { label: 'Bulleted list', hint: 'Simple list', icon: <List />, keywords: 'ul unordered bullet', run: (e, r) => e.chain().focus().deleteRange(r).toggleBulletList().run() },
   { label: 'Numbered list', hint: 'List with numbers', icon: <ListOrdered />, keywords: 'ol ordered number', run: (e, r) => e.chain().focus().deleteRange(r).toggleOrderedList().run() },
   { label: 'To-do list', hint: 'Checkboxes', icon: <ListChecks />, keywords: 'todo task check checkbox', run: (e, r) => e.chain().focus().deleteRange(r).toggleTaskList().run() },
-  { label: 'Toggle section', hint: 'Collapsible dropdown', icon: <ChevronRight />, keywords: 'toggle dropdown collapse details fold', run: (e, r) => e.chain().focus().deleteRange(r).setDetails().run() },
+  { label: 'Toggle section', hint: 'Collapsible dropdown', icon: <ChevronRight />, keywords: 'toggle dropdown collapse details fold', run: (e, r) => insertToggle(e, r) },
+  { label: 'Photo dropdown', hint: 'Collapsible photos', icon: <Images />, keywords: 'photos pictures images gallery toggle dropdown before after', run: (e, r) => {
+      insertToggle(e, r, 'Photos')
+      enterToggleBody(e)
+      void pickImages().then((files) => {
+        if (files.length) return insertImages(e.view, files)
+      })
+    } },
   { label: 'Image', hint: 'Upload photos', icon: <ImageIcon />, keywords: 'photo picture img upload', run: (e, r) => {
       e.chain().focus().deleteRange(r).run()
       void pickImages().then((files) => {
@@ -143,6 +190,7 @@ export function buildExtensions(noteId: string) {
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,
+    ToggleKeys,
     Highlight,
     SlashCommands,
     noteMention(noteId)

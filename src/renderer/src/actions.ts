@@ -3,6 +3,8 @@ import { useData } from './store/data'
 import { go, useNav } from './store/nav'
 
 export async function newNote(folderId: string | null = null, title?: string): Promise<void> {
+  // Leave the current note right away so keys typed while the new one opens can't land in it.
+  ;(document.activeElement as HTMLElement | null)?.blur()
   const note = await api.notes.create({ folderId, title })
   useData.getState().upsertNote(note)
   go({ view: 'note', id: note.id })

@@ -55,4 +55,6 @@ Data lives in `%APPDATA%\Plannr\data` (`plannr.db` and `attachments/`).
 ## TipTap pitfalls already hit
 
 - `editor.commands.focus()` is deferred by one frame. When moving focus programmatically before the user types, call `editor.view.focus()` first.
+- Toggles (`details`, with `persist: true`, so the `open` attr is saved): a closed toggle's body is `hidden`. Setting the open attr and moving the selection into the body in one transaction leaves the browser cursor in the title. Dispatch the open first, then the selection (see `enterToggleBody` in `extensions.tsx`).
+- After inserting a block image, move the cursor to a paragraph after it (`upload.ts`). Leaving the image node selected makes the next paste replace it.
 - `editor.setEditable(x)` emits an `update` event by default. Pass `false` as the second argument, and only save on `transaction.docChanged`; otherwise just opening a note re-saves it and bumps `updated_at`.
