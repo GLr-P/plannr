@@ -28,6 +28,11 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/interaction": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
     "@tiptap/core": "^3.31.4",
     "@tiptap/extension-details": "^3.31.4",
     "@tiptap/extension-highlight": "^3.31.4",

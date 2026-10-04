@@ -18,6 +18,7 @@ import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
+import { LinkedEvents } from '../components/LinkedEvents'
 
 export function TicketView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined)
@@ -271,6 +272,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} />
         </div>
 
+        <LinkedEvents id={ticket.id} refreshKey={fields.pickupOn} />
         <Backlinks id={ticket.id} />
       </div>
     </div>

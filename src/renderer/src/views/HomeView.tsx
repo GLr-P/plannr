@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FileText, Pin, Plus } from 'lucide-react'
-import { formatTicketNumber, type TicketSummary } from '../../../shared/api'
+import { CalendarDays, FileText, Pin, Plus, Wrench } from 'lucide-react'
+import { formatTicketNumber, type CalendarEvent, type TicketSummary } from '../../../shared/api'
+import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
 import { StatusPill } from '../components/common'
 import { NewTicketButton } from './TicketsView'
@@ -8,6 +9,12 @@ import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { newNote } from '../actions'
 import { formatDay, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
+
+function dayLabel(date: string): string {
+  if (date === todayISO()) return 'Today'
+  if (date === addDays(todayISO(), 1)) return 'Tomorrow'
+  return formatDay(date)
+}
 
 /** Ready-for-pickup first, then by pickup date (soonest first), then newest. */
 function byUrgency(a: TicketSummary, b: TicketSummary): number {
@@ -21,7 +28,9 @@ export function HomeView() {
   const pinned = notes.filter((n) => n.pinned)
   const recent = [...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 8)
   const [tickets, setTickets] = useState<TicketSummary[]>([])
+  const [upcoming, setUpcoming] = useState<CalendarEvent[]>([])
   useEffect(() => {
+    void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
   }, [])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
@@ -40,6 +49,27 @@ export function HomeView() {
           <NewTicketButton />
         </div>
       </header>
+
+      {upcoming.length > 0 && (
+        <section>
+          <h2 className="section-title">Coming up</h2>
+          <ul className="ticket-history">
+            {upcoming.map((e) => (
+              <li key={e.id}>
+                <button type="button" className="history-row" onClick={() => go({ view: 'calendar', date: e.date, eventId: e.id })}>
+                  {e.kind === 'pickup' ? <Wrench className="row-lead" /> : <CalendarDays className="row-lead" />}
+                  <span className="upcoming-day">{dayLabel(e.date)}</span>
+                  <span className="history-main">
+                    {e.title || '(untitled)'}
+                    {e.linkTitle && e.linkTitle !== e.title && <span className="muted"> · {e.linkTitle}</span>}
+                  </span>
+                  <span className="history-date">{e.startTime ? formatTime(e.startTime) : 'All day'}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {tickets.length > 0 && (
         <section>

@@ -29,6 +29,8 @@ npx vitest run -t "search"          # single unit test by name
 npx playwright test -g "drag"       # single e2e test (run `npm run build` first; e2e uses out/)
 ```
 
+`tests/e2e/background.spec.ts` is skipped unless `PLANNR_SLOW=1`. It shows a real Windows notification, checks close-to-tray, and waits about a minute for the reminder scheduler. Normal test runs (`PLANNR_DATA_DIR` set) disable the tray, close-to-tray, reminders and the Start-menu shortcut; `PLANNR_BACKGROUND=1` turns them back on. App icons come from `node scripts/make-icon.mjs` (writes `resources/`).
+
 E2E tests run serially in one app session with an isolated temp data dir (`PLANNR_DATA_DIR`), and save screenshots to `test-results/screens/`. **Open the screenshots and look at them**; several real bugs were caught only that way. The Desktop shortcut `Plannr.lnk` runs `node_modules/electron/dist/electron.exe` on this folder (the built `out/`), so rebuild after changes for the shortcut to pick them up.
 
 ## Architecture
@@ -47,7 +49,17 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
 - **Customers, tickets and templates:** ticket numbers are `MAX(number)+1`, displayed with `formatTicketNumber`. Statuses come from `TICKET_STATUSES` in `shared/api.ts`. Date-only fields are `YYYY-MM-DD` strings and money is integer cents. A new ticket deep-copies a template's content (the default comes from the `defaultTemplateId` setting, and `ensureStarterTemplate` seeds "Repair intake" once). Template fill-ins are the `formField` inline atom node (`editor/FormField.tsx`); its value lives in the node attrs, and `extractText` renders it as `Label: value`. Ticket photos live in `ticket_photos` (before/after) and point at `files`.
 - **Links:** the `links(src_type, src_id, dst_type, dst_id)` table holds "A references B" relationships. It's recomputed from note content on save (`@`-mentions are `mention` nodes with `id` and `kind` attrs) and powers backlinks. Calendar and ticket links should use it too.
 - **Files:** `saveFile` copies bytes into `<dataDir>/attachments/xx/<uuid>.<ext>` and records them in `files`. The UI references files as `plannr://file/<uuid>`, served by the privileged protocol in `main/index.ts`, which only resolves known UUIDs.
-- **Drag and drop:** draggable items set `DRAG_MIME` with a `{type, id}` payload (`actions.ts`). Drop targets read it with `readDrag`. The calendar should accept the same payload.
+- **Drag and drop:** draggable items set `DRAG_MIME` with a `{type, id}` payload (`actions.ts`), and drop targets read it with `readDrag`. Drop targets must not set `dropEffect`: sources use different `effectAllowed` values, and a mismatch silently blocks the drop.
+- **Calendar** (`services/calendar.ts`, `views/CalendarView.tsx`, FullCalendar v6):
+  - An event has a date-only `date` plus optional `start_time`/`end_time` (null = all day) and an optional link (`link_type`/`link_id`).
+  - `kind = 'pickup'` events mirror a ticket's `pickup_on` both ways: `updateTicket` calls `syncPickupFromTicket`, and moving, converting or deleting a pickup event updates the ticket. A ticket has at most one pickup event, and it's hidden while the ticket is trashed.
+  - Native drops onto the calendar find their date and time with `document.elementsFromPoint` (`[data-date]`, `.fc-timegrid-slot[data-time]`), because FullCalendar's own external-drag API doesn't handle HTML5 drag.
+  - `calendar.drop` applies the rules: a ticket becomes or moves its pickup; a customer or note becomes a linked event.
+- **Background** (`main/background.ts`):
+  - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
+  - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.
+  - Windows only shows toasts for an app with a Start-menu shortcut carrying its AppUserModelID, so `ensureStartMenuShortcut` writes one (unpackaged builds only).
+  - Notification clicks send a `navigate` IPC event, which the renderer receives through `window.plannrEvents.onNavigate`.
 - **Editor:** TipTap v3 (`renderer/src/editor/`). `extensions.tsx` defines the slash commands and the `@`-mention, `SuggestionPopup.tsx` is the shared popup, and `upload.ts` handles image paste and drop. Note pages autosave with a debounce through `useAutosave` in `NoteView.tsx`.
 - **Theme:** CSS custom properties in `styles/global.css` (`:root` and `[data-theme='dark']`). Main passes the initial theme as `?theme=` to avoid a flash, and `api.app.setTheme` recolors the native title-bar overlay. The window uses `titleBarStyle: 'hidden'`, so the custom title bar is a drag region, and interactive elements in it need `-webkit-app-region: no-drag`.
 

@@ -1,18 +1,25 @@
-import { app, BrowserWindow, nativeTheme, net, protocol, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, net, Notification, protocol, shell } from 'electron'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
 import { createApi, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
-import { getSetting } from './services/settings'
+import { getSetting, setSetting } from './services/settings'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
 import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
+import { APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
 const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
-if (process.env.PLANNR_DATA_DIR) app.setPath('userData', join(dataDir, '.electron'))
+const isTest = Boolean(process.env.PLANNR_DATA_DIR)
+// Tray, close-to-tray and reminders. Off in tests; PLANNR_BACKGROUND=1 turns them on to verify real notifications.
+const background = !isTest || process.env.PLANNR_BACKGROUND === '1'
+if (isTest) app.setPath('userData', join(dataDir, '.electron'))
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
+// Started with Windows (login item): stay in the tray until opened.
+const startHidden = process.argv.includes('--hidden')
 mkdirSync(dataDir, { recursive: true })
 
 protocol.registerSchemesAsPrivileged([
@@ -21,6 +28,13 @@ protocol.registerSchemesAsPrivileged([
 
 let db: Db
 let mainWindow: BrowserWindow | null = null
+let quitting = false
+const getWindow = (): BrowserWindow | null => mainWindow
+
+function quit(): void {
+  quitting = true
+  app.quit()
+}
 
 function effectiveTheme(): Theme {
   const pref = (getSetting(db, 'theme') as ThemePref | null) ?? 'system'
@@ -38,6 +52,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     title: 'Plannr',
+    icon: resourcePath('icon.png'),
     backgroundColor: colors.bg,
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: colors.titlebar, symbolColor: colors.symbol, height: TITLEBAR_HEIGHT },
@@ -49,7 +64,19 @@ function createWindow(): void {
       spellcheck: true
     }
   })
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.once('ready-to-show', () => {
+    if (!startHidden) mainWindow?.show()
+  })
+  // Closing the window keeps Plannr running in the tray so reminders still fire (unless turned off in Settings).
+  mainWindow.on('close', (event) => {
+    if (quitting || !background || getSetting(db, 'runInBackground') === false) return
+    event.preventDefault()
+    mainWindow?.hide()
+    if (!getSetting(db, 'trayHintShown') && Notification.isSupported()) {
+      new Notification({ title: 'Plannr is still running', body: 'It stays in the tray so reminders can pop up. Right-click the tray icon to quit.', icon: resourcePath('icon.png') }).show()
+      setSetting(db, 'trayHintShown', true)
+    }
+  })
   mainWindow.on('closed', () => (mainWindow = null))
 
   // Keep the app on its own page; open web links in the default browser.
@@ -72,11 +99,8 @@ function createWindow(): void {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    if (!mainWindow) return
-    if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.focus()
-  })
+  app.on('second-instance', () => showWindow(getWindow))
+  app.on('before-quit', () => (quitting = true))
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
@@ -91,8 +115,13 @@ if (!app.requestSingleInstanceLock()) {
       return net.fetch(pathToFileURL(file.path).toString())
     })
 
-    registerIpc(createApi(db, dataDir, () => mainWindow))
+    registerIpc(createApi(db, dataDir, getWindow))
     createWindow()
+    if (background) {
+      createTray(getWindow, quit)
+      startReminders(db, getWindow)
+      ensureStartMenuShortcut()
+    }
   })
 
   app.on('window-all-closed', () => app.quit())

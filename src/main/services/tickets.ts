@@ -15,6 +15,7 @@ import { indexEntity, unindexEntity } from './search'
 import { setLinks } from './links'
 import { digitsOnly, extractMentions, extractText, isDate, likeTerm, localDate } from './doc'
 import { getTemplate, getDefaultTemplateId } from './templates'
+import { syncPickupFromTicket } from './calendar'
 
 interface TicketRow {
   id: string
@@ -184,7 +185,11 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
     if (patch.issue !== undefined) set('issue', patch.issue.slice(0, 500))
     if (patch.priceCents !== undefined) set('price_cents', patch.priceCents === null ? null : Math.round(patch.priceCents))
     if (patch.receivedOn !== undefined) set('received_on', isDate(patch.receivedOn) ? patch.receivedOn : null)
-    if (patch.pickupOn !== undefined) set('pickup_on', isDate(patch.pickupOn) ? patch.pickupOn : null)
+    if (patch.pickupOn !== undefined) {
+      const pickup = isDate(patch.pickupOn) ? patch.pickupOn : null
+      set('pickup_on', pickup)
+      syncPickupFromTicket(db, id, pickup) // the pickup shows on the calendar
+    }
     if (patch.content !== undefined) {
       set('content_json', JSON.stringify(patch.content))
       set('content_text', extractText(patch.content))

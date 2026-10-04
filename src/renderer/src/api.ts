@@ -1,8 +1,11 @@
-import type { PlannrApi } from '../../shared/api'
+import type { EntityType, PlannrApi } from '../../shared/api'
+
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string }
 
 declare global {
   interface Window {
     plannr: PlannrApi
+    plannrEvents: { onNavigate: (callback: (target: NavigateTarget) => void) => () => void }
   }
 }
 

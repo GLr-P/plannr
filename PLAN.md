@@ -81,7 +81,13 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Customer pages with repair history
    - `@`-links and backlinks across notes, tickets and customers; open tickets on Home
    - The Zoho emails section waits for phase 6.
-3. **Calendar:** views, drag-and-drop linking, reminders, tray and notifications
+3. **Calendar:** views, drag-and-drop linking, reminders, tray and notifications. **Done (2026-10-04).** Includes:
+   - Month, week and day views, with drag-and-drop from a ticket tray, the sidebar and the lists
+   - A ticket dropped on a day becomes its pickup, synced both ways with the ticket's Pickup field
+   - An event popover with a link to the item, reminder choices and notes; drag to move, double-click to open
+   - "On the calendar" on linked pages and "Coming up" on Home
+   - Windows notifications (day before at 9 AM, day of at 8 AM), close-to-tray, and a Start-with-Windows option
+   - An app icon and a Start menu shortcut
 4. **Vault**
 5. **Money**
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.

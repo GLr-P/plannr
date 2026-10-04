@@ -7,8 +7,12 @@ import { useTheme } from '../theme'
 export function SettingsView() {
   const { pref, setPref } = useTheme()
   const [info, setInfo] = useState<AppInfo | null>(null)
+  const [background, setBackground] = useState(true)
+  const [atLogin, setAtLogin] = useState(false)
   useEffect(() => {
     void api.app.info().then(setInfo)
+    void api.settings.get('runInBackground').then((v) => setBackground(v !== false))
+    void api.app.getOpenAtLogin().then(setAtLogin)
   }, [])
 
   const options: { value: ThemePref; label: string; icon: React.ReactNode }[] = [
@@ -44,6 +48,36 @@ export function SettingsView() {
 
       <section className="setting">
         <div>
+          <h3>Keep running in the tray</h3>
+          <p className="muted">Closing the window keeps Plannr in the system tray so calendar reminders still pop up.</p>
+        </div>
+        <Switch
+          label="Keep running in the tray"
+          checked={background}
+          onChange={(v) => {
+            setBackground(v)
+            void api.settings.set('runInBackground', v)
+          }}
+        />
+      </section>
+
+      <section className="setting">
+        <div>
+          <h3>Start with Windows</h3>
+          <p className="muted">Opens Plannr quietly in the tray when you sign in, so reminders work even if you forget to open it.</p>
+        </div>
+        <Switch
+          label="Start with Windows"
+          checked={atLogin}
+          onChange={(v) => {
+            setAtLogin(v)
+            void api.app.setOpenAtLogin(v)
+          }}
+        />
+      </section>
+
+      <section className="setting">
+        <div>
           <h3>Your data</h3>
           <p className="muted">Everything is stored on this computer in:</p>
           <code className="path">{info?.dataDir}</code>
@@ -55,5 +89,13 @@ export function SettingsView() {
 
       <p className="muted version">Plannr {info?.version}</p>
     </div>
+  )
+}
+
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} className={`switch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}>
+      <span className="switch-knob" />
+    </button>
   )
 }

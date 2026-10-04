@@ -189,6 +189,59 @@ export interface Template extends TemplateSummary {
   content: DocJSON | null
 }
 
+// ---------- Calendar ----------
+
+export type ReminderKind = 'day_before' | 'day_of'
+export const REMINDER_SCHEDULE: Record<ReminderKind, { daysBefore: number; time: string; label: string }> = {
+  day_before: { daysBefore: 1, time: '09:00', label: 'Day before (9 AM)' },
+  day_of: { daysBefore: 0, time: '08:00', label: 'Day of (8 AM)' }
+}
+
+export type EventKind = 'event' | 'pickup'
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  notes: string
+  /** YYYY-MM-DD */
+  date: string
+  /** HH:MM, null = all day */
+  startTime: string | null
+  endTime: string | null
+  /** 'pickup' events are the pickup date of their linked ticket (kept in sync both ways) */
+  kind: EventKind
+  linkType: EntityType | null
+  linkId: string | null
+  linkTitle: string
+  /** Linked ticket is picked up (pickup reminders stop) */
+  linkDone: boolean
+  /** Linked item was deleted */
+  linkDeleted: boolean
+  reminders: ReminderKind[]
+  updatedAt: number
+}
+
+export interface EventInput {
+  title?: string
+  notes?: string
+  date: string
+  startTime?: string | null
+  endTime?: string | null
+  linkType?: EntityType | null
+  linkId?: string | null
+  reminders?: ReminderKind[]
+}
+
+export interface EventUpdate {
+  title?: string
+  notes?: string
+  date?: string
+  startTime?: string | null
+  endTime?: string | null
+  reminders?: ReminderKind[]
+  kind?: EventKind
+}
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -236,6 +289,18 @@ export interface PlannrApi {
     /** Notes/tickets that @-mention the given entity */
     backlinks(id: string): Promise<Backlink[]>
   }
+  calendar: {
+    /** Events with date in [from, to] (YYYY-MM-DD, inclusive) */
+    range(from: string, to: string): Promise<CalendarEvent[]>
+    get(id: string): Promise<CalendarEvent | null>
+    create(input: EventInput): Promise<CalendarEvent>
+    update(id: string, patch: EventUpdate): Promise<CalendarEvent>
+    remove(id: string): Promise<void>
+    /** Events linked to a ticket/customer/note */
+    forLink(id: string): Promise<CalendarEvent[]>
+    /** Something was dragged onto a day: a ticket becomes (or moves) its pickup; others make a linked event */
+    drop(item: { type: EntityType; id: string }, date: string, startTime?: string | null): Promise<CalendarEvent>
+  }
   folders: {
     list(): Promise<Folder[]>
     create(name: string): Promise<Folder>
@@ -258,6 +323,9 @@ export interface PlannrApi {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
     setTheme(theme: Theme): Promise<void>
+    getOpenAtLogin(): Promise<boolean>
+    /** Start Plannr (in the tray) when Windows starts, so reminders always work */
+    setOpenAtLogin(enabled: boolean): Promise<void>
   }
 }
 
@@ -268,11 +336,12 @@ export const API_SHAPE = {
   photos: ['list', 'add', 'remove', 'setKind'],
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],
+  calendar: ['range', 'get', 'create', 'update', 'remove', 'forLink', 'drop'],
   folders: ['list', 'create', 'rename', 'remove'],
   search: ['query'],
   files: ['save', 'open'],
   settings: ['get', 'set'],
-  app: ['info', 'openDataFolder', 'setTheme']
+  app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

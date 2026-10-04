@@ -8,6 +8,8 @@ import * as tickets from './services/tickets'
 import * as photos from './services/photos'
 import * as templates from './services/templates'
 import { backlinks } from './services/links'
+import * as calendar from './services/calendar'
+import { getOpenAtLogin, setOpenAtLogin } from './background'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -62,6 +64,15 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     links: {
       backlinks: async (id) => backlinks(db, id)
     },
+    calendar: {
+      range: async (from, to) => calendar.listEvents(db, from, to),
+      get: async (id) => calendar.getEvent(db, id),
+      create: async (input) => calendar.createEvent(db, input),
+      update: async (id, patch) => calendar.updateEvent(db, id, patch),
+      remove: async (id) => calendar.removeEvent(db, id),
+      forLink: async (id) => calendar.eventsForLink(db, id),
+      drop: async (item, date, startTime) => calendar.dropItem(db, item, date, startTime ?? null)
+    },
     folders: {
       list: async () => folders.listFolders(db),
       create: async (name) => folders.createFolder(db, name),
@@ -93,7 +104,9 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         const c = themeColors[theme]
         win.setBackgroundColor(c.bg)
         win.setTitleBarOverlay({ color: c.titlebar, symbolColor: c.symbol, height: TITLEBAR_HEIGHT })
-      }
+      },
+      getOpenAtLogin: async () => getOpenAtLogin(),
+      setOpenAtLogin: async (enabled) => setOpenAtLogin(enabled)
     }
   }
 }

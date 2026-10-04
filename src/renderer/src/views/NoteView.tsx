@@ -9,6 +9,7 @@ import { moveNote, togglePin, trashNote } from '../actions'
 import { useAutosave } from '../lib/useAutosave'
 import { SaveIndicator } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
+import { LinkedEvents } from '../components/LinkedEvents'
 import { NoteEditor } from '../editor/NoteEditor'
 
 export function NoteView({ id }: { id: string }) {
@@ -205,6 +206,7 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
           onReady={onReady}
         />
 
+        <LinkedEvents id={note.id} />
         <Backlinks id={note.id} />
       </div>
     </div>

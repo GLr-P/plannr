@@ -1,0 +1,423 @@
+/* ---------- Calendar page ---------- */
+.calendar-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 24px 20px;
+  min-height: 0;
+}
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.cal-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+.cal-spacer {
+  flex: 1;
+}
+.cal-toolbar .segmented button {
+  height: 26px;
+}
+.btn.active-btn {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cal-body {
+  display: flex;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+.cal-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Open-tickets tray */
+.ticket-tray {
+  width: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  min-height: 0;
+}
+.tray-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 12px 0;
+}
+.filter-field.tray-search {
+  margin: 8px 10px;
+  height: 30px;
+  background: var(--bg);
+}
+.tray-list {
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tray-empty {
+  padding: 8px 4px;
+}
+.tray-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  cursor: grab;
+}
+.tray-item:hover {
+  border-color: var(--accent);
+}
+.tray-item:active {
+  cursor: grabbing;
+}
+.tray-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.tray-pickup {
+  font-size: 11.5px;
+  color: rgb(22, 150, 70);
+}
+.tray-item-main {
+  font-weight: 500;
+  font-size: 13px;
+}
+.tray-item-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* FullCalendar theming */
+.fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--bg);
+  --fc-neutral-bg-color: var(--bg-subtle);
+  --fc-today-bg-color: var(--accent-soft);
+  --fc-now-indicator-color: var(--danger);
+  --fc-event-bg-color: var(--accent);
+  --fc-event-border-color: transparent;
+  --fc-event-text-color: #fff;
+  --fc-highlight-color: var(--accent-soft);
+  --fc-more-link-bg-color: transparent;
+  --fc-more-link-text-color: var(--text-muted);
+  font-size: 13px;
+}
+.fc .fc-scrollgrid {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.fc .fc-col-header-cell {
+  padding: 6px 0;
+  background: var(--bg-subtle);
+}
+.fc .fc-col-header-cell-cushion {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+.fc .fc-daygrid-day-number {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 6px 8px;
+  text-decoration: none;
+}
+.fc .fc-day-today .fc-daygrid-day-number {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 10px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  margin: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.fc .fc-day-other .fc-daygrid-day-number {
+  opacity: 0.45;
+}
+.fc .fc-daygrid-day,
+.fc .fc-timegrid-col {
+  cursor: pointer;
+}
+.fc .fc-daygrid-day:hover {
+  background: var(--hover);
+}
+.fc .drop-target,
+.fc .fc-daygrid-day.drop-target {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.fc .fc-timegrid-slot {
+  height: 2.2em;
+}
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-timegrid-axis-cushion {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.fc .fc-daygrid-more-link {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Event chips */
+.fc .fc-event {
+  border-radius: 5px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.fc .fc-daygrid-event {
+  margin: 1px 4px;
+}
+.fc .fc-daygrid-dot-event,
+.fc .fc-daygrid-block-event {
+  background: var(--accent);
+}
+.fc .fc-daygrid-dot-event:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.fc .ev-pickup,
+.fc .ev-pickup.fc-daygrid-dot-event {
+  background: rgb(22, 150, 70);
+}
+.fc .ev-done {
+  opacity: 0.5;
+}
+.ev-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  color: #fff;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.35;
+  width: 100%;
+}
+.fc-timegrid-event .ev-chip {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.ev-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.ev-time {
+  opacity: 0.85;
+  font-size: 11px;
+}
+.ev-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc .fc-popover {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.fc .fc-popover-header {
+  background: var(--bg-subtle);
+}
+
+/* ---------- Event popover ---------- */
+.popover {
+  position: fixed;
+  z-index: 150;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.event-popover {
+  width: 320px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.popover-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.popover-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 4px 6px;
+  margin-left: -6px;
+  outline: none;
+}
+.popover-title:focus {
+  border-color: var(--accent);
+}
+.popover-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  text-align: left;
+  font-weight: 500;
+}
+.popover-link:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+.popover-link:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.popover-link-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popover-link-go {
+  width: 14px;
+  height: 14px;
+}
+.popover-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.popover-row input[type='date'],
+.popover-row input[type='time'] {
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 0 8px;
+  outline: none;
+}
+.popover-row input:focus {
+  border-color: var(--accent);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+.popover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.popover-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.popover-label svg {
+  width: 13px;
+  height: 13px;
+}
+.popover-notes {
+  min-height: 56px;
+  field-sizing: content;
+  max-height: 200px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 6px 8px;
+  resize: none;
+  outline: none;
+}
+.popover-notes:focus {
+  border-color: var(--accent);
+}
+.popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.small {
+  font-size: 12px;
+}
+
+/* Home: coming up */
+.row-lead {
+  color: var(--text-faint);
+}
+.upcoming-day {
+  min-width: 86px;
+  font-weight: 500;
+  font-size: 13px;
+}
+.backlink-date {
+  font-weight: 500;
+  min-width: 96px;
+}
+
+/* Settings switch */
+.switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--border-strong);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.switch.on {
+  background: var(--accent);
+}
+.switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+.switch.on .switch-knob {
+  transform: translateX(18px);
+}

@@ -198,14 +198,14 @@ test('a note can @-link a ticket, and the ticket shows it', async () => {
   await saved()
   await page.locator('.prose .mention').click()
   await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
-  await expect(page.locator('.backlinks')).toContainText('Screen supplier')
+  await expect(page.locator('.backlinks', { hasText: 'Linked from' })).toContainText('Screen supplier')
 })
 
 test('everything is still there after restarting', async () => {
   await app.close()
   ;({ app, page } = await launch(dataDir))
-  await expect(page.locator('.history-row', { hasText: 'NT-0001' })).toBeVisible() // Home: open tickets
-  await page.locator('.history-row', { hasText: 'NT-0001' }).click()
+  await expect(page.locator('.history-row:has(.mono)', { hasText: 'NT-0001' })).toBeVisible() // Home: open tickets
+  await page.locator('.history-row:has(.mono)', { hasText: 'NT-0001' }).click()
   await expect(page.getByLabel('Device')).toHaveValue('iPhone 13 Pro')
   await expect(page.getByLabel('Customer phone')).toHaveValue('(555) 123-4567')
   await expect(page.getByLabel('Pickup date')).toHaveValue('2026-10-10')

@@ -10,9 +10,10 @@ import { TicketView } from './views/TicketView'
 import { CustomersView } from './views/CustomersView'
 import { CustomerView } from './views/CustomerView'
 import { TemplatesView, TemplateView } from './views/TemplatesView'
+import { CalendarView } from './views/CalendarView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
-import { newNote } from './actions'
+import { newNote, openEntity } from './actions'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -64,6 +65,8 @@ function MainView() {
       return <TemplatesView />
     case 'template':
       return <TemplateView id={route.id} />
+    case 'calendar':
+      return <CalendarView date={route.date} eventId={route.eventId} />
     case 'settings':
       return <SettingsView />
   }
@@ -74,6 +77,11 @@ export function App() {
   useGlobalShortcuts()
   useEffect(() => {
     void useData.getState().refresh()
+    // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
+    return window.plannrEvents.onNavigate((target) => {
+      if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
+      else openEntity(target.type, target.id)
+    })
   }, [])
 
   return (

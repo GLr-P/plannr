@@ -11,3 +11,12 @@ for (const [ns, methods] of Object.entries(API_SHAPE)) {
 }
 
 contextBridge.exposeInMainWorld('plannr', api)
+
+// Messages from the main process (e.g. a clicked reminder asks to open a ticket).
+contextBridge.exposeInMainWorld('plannrEvents', {
+  onNavigate: (callback: (target: unknown) => void): (() => void) => {
+    const listener = (_event: unknown, target: unknown): void => callback(target)
+    ipcRenderer.on('navigate', listener)
+    return () => ipcRenderer.removeListener('navigate', listener)
+  }
+})

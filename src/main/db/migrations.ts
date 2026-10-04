@@ -137,5 +137,42 @@ export const migrations: string[] = [
     tokenize = 'unicode61 remove_diacritics 2',
     prefix = '2 3'
   );
+  `,
+
+  /* 4: calendar events and reminder bookkeeping */ `
+  CREATE TABLE events (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    date TEXT NOT NULL,       -- YYYY-MM-DD
+    start_time TEXT,          -- HH:MM, NULL = all day
+    end_time TEXT,            -- HH:MM
+    kind TEXT NOT NULL DEFAULT 'event' CHECK (kind IN ('event', 'pickup')),
+    link_type TEXT,           -- 'ticket' | 'customer' | 'note'
+    link_id TEXT,
+    reminders TEXT NOT NULL DEFAULT '["day_before","day_of"]',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX events_date ON events(date);
+  CREATE INDEX events_link ON events(link_id);
+
+  -- One row per reminder already shown, so each fires once. The key includes the date, so moving an event re-arms it.
+  CREATE TABLE reminder_log (
+    event_id TEXT NOT NULL,
+    reminder_key TEXT NOT NULL,
+    fired_at INTEGER NOT NULL,
+    PRIMARY KEY (event_id, reminder_key)
+  );
+
+  -- Existing ticket pickup dates become pickup events.
+  INSERT INTO events (id, title, date, kind, link_type, link_id, created_at, updated_at)
+  SELECT lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)), 2) || '-' ||
+           substr('89ab', 1 + (abs(random()) % 4), 1) || substr(hex(randomblob(2)), 2) || '-' || hex(randomblob(6))),
+         COALESCE(NULLIF(c.name, ''), printf('NT-%04d', t.number)) || ' pickup',
+         t.pickup_on, 'pickup', 'ticket', t.id, t.updated_at, t.updated_at
+  FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id
+  WHERE t.pickup_on IS NOT NULL AND t.deleted_at IS NULL;
   `
 ]

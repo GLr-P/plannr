@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, CalendarDays, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go, useNav, type Route } from '../store/nav'
@@ -8,7 +8,11 @@ import { DRAG_MIME, moveNote, newNote, newTicket, readDrag, type DragItem } from
 import { noteTitle } from '../lib/format'
 import type { Folder as FolderT, NoteSummary } from '../../../shared/api'
 
+/** Section of a detail page, so e.g. "Tickets" stays highlighted while a ticket is open. */
+const SECTION: Partial<Record<Route['view'], Route['view']>> = { ticket: 'tickets', customer: 'customers', template: 'templates' }
+
 function isActive(route: Route, target: Route): boolean {
+  if (Object.keys(target).length === 1) return (SECTION[route.view] ?? route.view) === target.view
   return JSON.stringify(route) === JSON.stringify(target)
 }
 
@@ -180,6 +184,7 @@ export function Sidebar() {
         }
       />
       <NavItem icon={<Users />} label="Customers" target={{ view: 'customers' }} />
+      <NavItem icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} />
 
       <div className="section-header">
         <button type="button" className="section-toggle" onClick={() => toggle('section:notes')}>

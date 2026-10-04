@@ -7,6 +7,7 @@ import { useAutosave } from '../lib/useAutosave'
 import { formatDay, formatMoney } from '../lib/format'
 import { ConfirmButton, SaveIndicator, StatusPill } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
+import { LinkedEvents } from '../components/LinkedEvents'
 import { NewTicketButton } from './TicketsView'
 
 export function CustomerView({ id }: { id: string }) {
@@ -135,6 +136,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
           </ul>
         )}
 
+        <LinkedEvents id={customer.id} />
         <Backlinks id={customer.id} />
       </div>
     </div>
