@@ -1,7 +1,7 @@
 import { app, net, type BrowserWindow } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createWriteStream, rmSync, writeFileSync } from 'node:fs'
+import { createWriteStream, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { UpdateStatus } from '../shared/api'
 import type { Db } from './db'
@@ -63,12 +63,23 @@ export class Updater {
 
   /** Checks shortly after start and every 6 hours, unless turned off in Settings. */
   start(db: Db): void {
+    this.cleanDownloads()
     const auto = (): void => {
       if (getSetting(db, 'autoUpdateCheck') === false || this.busy()) return
       void this.check().catch(() => undefined)
     }
     setTimeout(auto, 15_000)
     this.timer = setInterval(auto, 6 * 60 * 60 * 1000)
+  }
+
+  /** Installers downloaded for earlier updates aren't needed once Plannr is running again. */
+  private cleanDownloads(): void {
+    try {
+      const temp = app.getPath('temp')
+      for (const f of readdirSync(temp)) if (/^Plannr-Setup-.*\.exe$/i.test(f)) rmSync(join(temp, f), { force: true })
+    } catch {
+      // temp folder unreadable: nothing to tidy
+    }
   }
 
   stop(): void {
@@ -141,7 +152,10 @@ export class Updater {
         writeFileSync(this.testOut, JSON.stringify({ file, sha256: actual }))
         return this.status
       }
-      spawn(file, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref()
+      // The installer starts Plannr again afterwards; don't pass on the test-only "pretend to be older" setting.
+      const env = { ...process.env }
+      delete env.PLANNR_UPDATE_PRETEND_VERSION
+      spawn(file, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore', env }).unref()
       setTimeout(() => this.quit(), 800) // let the installer start, then get out of its way
     } catch (err) {
       this.set({ state: 'error', error: friendly(err) })

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, shell, Tray } from 'electron'
 import { join } from 'node:path'
 import type { Db } from './db'
@@ -115,6 +116,12 @@ export function setOpenAtLogin(enabled: boolean): void {
  */
 export function adoptLoginItem(): void {
   if (process.platform !== 'win32' || !app.isPackaged) return
-  const s = app.getLoginItemSettings(loginItem())
-  if (!s.openAtLogin && s.launchItems?.some((i) => i.name === APP_ID)) setOpenAtLogin(true)
+  if (app.getLoginItemSettings(loginItem()).openAtLogin) return
+  // Electron only reports entries that point at this exe, so look in the Run key directly.
+  try {
+    const out = execFileSync('reg', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', '/v', APP_ID], { encoding: 'utf8', windowsHide: true })
+    if (out.includes(APP_ID)) setOpenAtLogin(true)
+  } catch {
+    // no entry: this PC isn't set to start Plannr with Windows
+  }
 }
