@@ -71,6 +71,11 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - `recurring` holds bills and subscriptions, with `anchor_day` for month-safe advancing. `transactions` holds income and expenses; ticket payments are income rows with `ticket_id`, and `TicketSummary.paidCents` sums them.
   - `processAutopay` charges occurrences with `next_due < today` and `>= due_set_on`. It runs every minute in the background and before the money list and summary calls.
   - `dueMoneyReminders` shares `reminder_log`, keyed by recurring id. Money due dates are virtual calendar events (`money.occurrences`), not rows in `events`.
+- **Google Calendar** (`services/google.ts` holds the sync logic and is tested against a fake API; `main/google-client.ts` handles OAuth and HTTP; `main/google-sync.ts` schedules it):
+  - OAuth uses PKCE with a loopback redirect on 127.0.0.1. The "Desktop app" client key and the tokens are stored with `safeStorage` (DPAPI) in settings `google.client` and `google.tokens`.
+  - Plannr events mirror to a "Plannr" Google calendar via `events.google_id` and `google_synced_at`. The pull cursor (`google.lastPull`) uses Google's `updated` timestamps, and the newest edit wins.
+  - Other calendars are cached in `google_events`.
+  - Local event or pickup changes call `hooks.googleSync.schedule()`; a sync that brings changes sends a `calendar-changed` event to the renderer.
 - **Backups** (`services/backup.ts`):
   - `node:sqlite` `backup()` writes snapshots to `<backupDir>/snapshots/plannr-<stamp>.db`; each is integrity-checked and the newest 30 are kept.
   - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
