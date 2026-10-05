@@ -14,7 +14,10 @@ export async function launch(dataDir: string, extraEnv: Record<string, string> =
   delete env.ELECTRON_RUN_AS_NODE // set by VS Code; would make Electron act as plain Node
   env.PLANNR_DATA_DIR = dataDir
   Object.assign(env, extraEnv)
-  const app = await electron.launch({ args: [root], env })
+  // PLANNR_EXE runs the tests against a packaged build (release/win-unpacked/Plannr.exe) instead of out/.
+  const app = process.env.PLANNR_EXE
+    ? await electron.launch({ executablePath: process.env.PLANNR_EXE, args: [], env })
+    : await electron.launch({ args: [root], env })
   const page = await app.firstWindow()
   await page.waitForSelector('.sidebar')
   await page.setViewportSize({ width: 1320, height: 820 })

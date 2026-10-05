@@ -12,27 +12,17 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:e2e": "electron-vite build && playwright test",
-    "check": "npm run typecheck && npm run test && npm run test:e2e"
+    "check": "npm run typecheck && npm run test && npm run test:e2e",
+    "dist": "electron-vite build && electron-builder --win"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^24.19.1",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "5.2",
-    "electron": "^44.5.1",
-    "electron-vite": "^5.0.0",
-    "typescript": "^7.0.2",
-    "vite": "^7.3.6",
-    "vitest": "^5.0.3"
-  },
-  "dependencies": {
     "@floating-ui/dom": "^1.8.0",
     "@fullcalendar/core": "^6.1.21",
     "@fullcalendar/daygrid": "^6.1.21",
     "@fullcalendar/interaction": "^6.1.21",
     "@fullcalendar/react": "^6.1.21",
     "@fullcalendar/timegrid": "^6.1.21",
+    "@playwright/test": "^1.63.0",
     "@tiptap/core": "^3.31.4",
     "@tiptap/extension-details": "^3.31.4",
     "@tiptap/extension-highlight": "^3.31.4",
@@ -44,13 +34,68 @@
     "@tiptap/react": "^3.31.4",
     "@tiptap/starter-kit": "^3.31.4",
     "@tiptap/suggestion": "^3.31.4",
+    "@types/node": "^24.19.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "5.2",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
     "lucide-react": "^1.51.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.3",
     "zustand": "^5.0.15"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "electron-winstaller": false
+  },
+  "author": "Nano Tech Services",
+  "build": {
+    "appId": "com.nanotechservices.plannr",
+    "productName": "Plannr",
+    "copyright": "Nano Tech Services",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Plannr",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico",
+      "artifactName": "Plannr-Setup-${version}.exe"
+    }
   }
 }

@@ -107,7 +107,11 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Overview: income, expenses, profit, subscription cost per month and year, coming up, customers who owe
    - Transactions with filters and search, plus CSV export
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.
-7. **Polish & install:** backups, installer, start-with-Windows option
+7. **Polish & install:** backups, installer, start-with-Windows option. **Done (2026-10-04).** Includes:
+   - Daily verified backups (keeps 30; files mirrored; folder changeable; restore that saves the current data first)
+   - NSIS installer (`npm run dist` builds `release/Plannr-Setup-<version>.exe`) with Start menu and desktop shortcuts and an uninstaller that keeps the data
+   - The whole e2e suite also passes against the packaged exe
+   - Not code-signed yet, so Windows SmartScreen will warn on first install
 
 **Later:** cloud sync to the desktop PC, a phone app, and ChatGPT/Claude integration (summarize a ticket, draft customer emails, ask questions about your notes).
 

@@ -27,6 +27,8 @@ npm run test:e2e    # build, then Playwright drives the real Electron app (tests
 npm run check       # all of the above; run before calling work done
 npx vitest run -t "search"          # single unit test by name
 npx playwright test -g "drag"       # single e2e test (run `npm run build` first; e2e uses out/)
+npm run dist        # build + Windows installer → release/Plannr-Setup-<version>.exe (set CSC_IDENTITY_AUTO_DISCOVERY=false; unset ELECTRON_RUN_AS_NODE)
+PLANNR_EXE=release/win-unpacked/Plannr.exe npx playwright test   # run the e2e suite against the packaged app
 ```
 
 `tests/e2e/background.spec.ts` is skipped unless `PLANNR_SLOW=1`. It shows a real Windows notification, checks close-to-tray, and waits about a minute for the reminder scheduler. Normal test runs (`PLANNR_DATA_DIR` set) disable the tray, close-to-tray, reminders and the Start-menu shortcut; `PLANNR_BACKGROUND=1` turns them back on. App icons come from `node scripts/make-icon.mjs` (writes `resources/`).
@@ -69,6 +71,12 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - `recurring` holds bills and subscriptions, with `anchor_day` for month-safe advancing. `transactions` holds income and expenses; ticket payments are income rows with `ticket_id`, and `TicketSummary.paidCents` sums them.
   - `processAutopay` charges occurrences with `next_due < today` and `>= due_set_on`. It runs every minute in the background and before the money list and summary calls.
   - `dueMoneyReminders` shares `reminder_log`, keyed by recurring id. Money due dates are virtual calendar events (`money.occurrences`), not rows in `events`.
+- **Backups** (`services/backup.ts`):
+  - `node:sqlite` `backup()` writes snapshots to `<backupDir>/snapshots/plannr-<stamp>.db`; each is integrity-checked and the newest 30 are kept.
+  - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
+  - Restore closes the database, saves a `-before-restore` copy of the current one, swaps the files, then relaunches the app. Tests exit instead of relaunching.
+  - Default folder: `Documents/Plannr Backups` (inside the data dir in tests).
+- **Packaging:** all runtime code is bundled into `out/` by Vite, so every npm package is a devDependency and no node_modules ship. `resources/` is copied as extraResources (see `resourcePath`). The installer's shortcuts carry `appId` = `APP_ID`, which keeps notifications working.
 - **Background** (`main/background.ts`):
   - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
   - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.
