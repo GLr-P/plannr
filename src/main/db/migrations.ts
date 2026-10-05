@@ -261,5 +261,25 @@ export const migrations: string[] = [
   /* 9: when a bill's due date was set; earlier due dates count as already paid (no auto-pay backfill) */ `
   ALTER TABLE recurring ADD COLUMN due_set_on TEXT;
   UPDATE recurring SET due_set_on = date(created_at / 1000, 'unixepoch', 'localtime');
+  `,
+
+  /* 10: Google Calendar sync. Plannr events mirror to a 'Plannr' Google calendar (two-way); other Google calendars
+         are cached read-only in google_events for display. */ `
+  ALTER TABLE events ADD COLUMN google_id TEXT;
+  ALTER TABLE events ADD COLUMN google_synced_at INTEGER; -- events.updated_at as of the last push/pull
+  CREATE INDEX events_google ON events(google_id);
+
+  CREATE TABLE google_events (
+    calendar_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    date TEXT NOT NULL,      -- YYYY-MM-DD (local)
+    end_date TEXT,           -- last day for multi-day all-day events
+    start_time TEXT,         -- HH:MM local; NULL = all day
+    end_time TEXT,
+    html_link TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (calendar_id, event_id)
+  );
+  CREATE INDEX google_events_date ON google_events(date);
   `
 ]

@@ -19,6 +19,11 @@ contextBridge.exposeInMainWorld('plannrEvents', {
     ipcRenderer.on('navigate', listener)
     return () => ipcRenderer.removeListener('navigate', listener)
   },
+  onCalendarChanged: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('calendar-changed', listener)
+    return () => ipcRenderer.removeListener('calendar-changed', listener)
+  },
   onVaultLocked: (callback: () => void): (() => void) => {
     const listener = (): void => callback()
     ipcRenderer.on('vault-locked', listener)

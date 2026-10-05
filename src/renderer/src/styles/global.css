@@ -1011,3 +1011,68 @@ kbd {
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
+
+/* Settings: groups and connected accounts */
+.settings-group {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 28px 0 0;
+}
+.integration {
+  align-items: flex-start;
+}
+.integration-main {
+  flex: 1;
+  min-width: 0;
+}
+.integration-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.integration-step > span:nth-child(2) {
+  flex: 1;
+}
+.step-no {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.integration-status {
+  margin: 8px 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dot-ok {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(22, 163, 74);
+}
+.calendar-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.cal-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}

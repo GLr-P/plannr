@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
-import { API_SHAPE, type BackupStatus, type PlannrApi, type Theme } from '../shared/api'
+import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type Theme } from '../shared/api'
 import * as notes from './services/notes'
 import * as folders from './services/folders'
 import * as customers from './services/customers'
@@ -15,6 +15,9 @@ import * as holidays from './services/holidays'
 import * as money from './services/money'
 import { getOpenAtLogin, setOpenAtLogin } from './background'
 import * as backups from './services/backup'
+import * as google from './services/google'
+import * as googleClient from './google-client'
+import type { GoogleSync } from './google-sync'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -26,12 +29,30 @@ export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: 
 }
 
 export interface ApiHooks {
+  googleSync: GoogleSync
   backupDir: () => string
   /** Closes the database, puts the snapshot back and restarts Plannr */
   restoreAndRestart: (file: string) => Promise<void>
 }
 
 export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
+  const googleStatus = (): GoogleStatus => {
+    const calendars = (getSetting(db, 'google.calendarList') as GoogleCalendarInfo[] | null) ?? []
+    return {
+      configured: googleClient.isConfigured(db),
+      connected: googleClient.isConnected(db),
+      email: googleClient.connectedEmail(db),
+      lastSyncAt: (getSetting(db, 'google.lastSyncAt') as number | null) ?? null,
+      error: (getSetting(db, 'google.error') as string | null) ?? null,
+      calendars,
+      selected: google.selectedCalendarIds(db) ?? calendars.filter((c) => c.primary).map((c) => c.id)
+    }
+  }
+  /** Calendar data changed locally: let Google know soon. */
+  const changed = <T>(value: T): T => {
+    hooks.googleSync.schedule()
+    return value
+  }
   const backupStatus = (): BackupStatus => ({
     dir: hooks.backupDir(),
     lastAt: (getSetting(db, 'lastBackupAt') as number | null) ?? null,
@@ -60,9 +81,9 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       list: async (filter) => tickets.listTickets(db, filter),
       get: async (id) => tickets.getTicket(db, id),
       create: async (input) => tickets.createTicket(db, input),
-      update: async (id, patch) => tickets.updateTicket(db, id, patch),
-      trash: async (id) => tickets.trashTicket(db, id),
-      restore: async (id) => tickets.restoreTicket(db, id),
+      update: async (id, patch) => (patch.pickupOn !== undefined ? changed(tickets.updateTicket(db, id, patch)) : tickets.updateTicket(db, id, patch)),
+      trash: async (id) => changed(tickets.trashTicket(db, id)),
+      restore: async (id) => changed(tickets.restoreTicket(db, id)),
       counts: async () => tickets.ticketCounts(db)
     },
     photos: {
@@ -84,11 +105,11 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     calendar: {
       range: async (from, to) => calendar.listEvents(db, from, to),
       get: async (id) => calendar.getEvent(db, id),
-      create: async (input) => calendar.createEvent(db, input),
-      update: async (id, patch) => calendar.updateEvent(db, id, patch),
-      remove: async (id) => calendar.removeEvent(db, id),
+      create: async (input) => changed(calendar.createEvent(db, input)),
+      update: async (id, patch) => changed(calendar.updateEvent(db, id, patch)),
+      remove: async (id) => changed(calendar.removeEvent(db, id)),
       forLink: async (id) => calendar.eventsForLink(db, id),
-      drop: async (item, date, startTime) => calendar.dropItem(db, item, date, startTime ?? null)
+      drop: async (item, date, startTime) => changed(calendar.dropItem(db, item, date, startTime ?? null))
     },
     holidays: {
       range: async (from, to) => holidays.listHolidays(db, from, to),
@@ -190,6 +211,33 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         writeFileSync(result.filePath, '﻿' + money.transactionsCsv(db, from, to)) // BOM so Excel reads it as UTF-8
         return true
       }
+    },
+    google: {
+      status: async () => googleStatus(),
+      importClient: async () => {
+        await googleClient.importClientFile(db, getWindow())
+        return googleStatus()
+      },
+      connect: async () => {
+        await googleClient.connect(db)
+        await hooks.googleSync.run().catch(() => undefined) // first sync right away; problems show in status.error
+        return googleStatus()
+      },
+      disconnect: async () => {
+        await googleClient.disconnect(db)
+        google.clearGoogleData(db)
+        return googleStatus()
+      },
+      syncNow: async () => {
+        await hooks.googleSync.run().catch(() => undefined)
+        return googleStatus()
+      },
+      setCalendars: async (ids) => {
+        google.setSelectedCalendars(db, ids)
+        await hooks.googleSync.run().catch(() => undefined)
+        return googleStatus()
+      },
+      events: async (from, to) => google.listGoogleEvents(db, from, to)
     },
     backup: {
       status: async () => backupStatus(),

@@ -482,6 +482,42 @@ export interface MoneySummary {
 export const PAYMENT_METHODS = ['Cash', 'Card', 'Zelle', 'Venmo', 'Cash App', 'PayPal', 'Check', 'Bank transfer', 'Other']
 export const DEFAULT_CATEGORIES = ['Parts', 'Software', 'Rent', 'Utilities', 'Phone & internet', 'Insurance', 'Marketing', 'Fuel', 'Tools', 'Other']
 
+// ---------- Google Calendar ----------
+
+export interface GoogleCalendarInfo {
+  id: string
+  name: string
+  color: string
+  primary: boolean
+}
+
+/** An event from one of the user's other Google calendars (read-only in Plannr). */
+export interface GoogleEvent {
+  id: string
+  calendarName: string
+  color: string
+  title: string
+  date: string
+  /** Last day of a multi-day all-day event */
+  endDate: string | null
+  startTime: string | null
+  endTime: string | null
+  htmlLink: string
+}
+
+export interface GoogleStatus {
+  /** The Google "Desktop app" key file has been imported */
+  configured: boolean
+  connected: boolean
+  email: string | null
+  lastSyncAt: number | null
+  error: string | null
+  /** Other calendars in the account (not the Plannr one) */
+  calendars: GoogleCalendarInfo[]
+  /** Which of them show in Plannr (default: the main calendar) */
+  selected: string[]
+}
+
 // ---------- Backups ----------
 
 export interface BackupInfo {
@@ -633,6 +669,18 @@ export interface PlannrApi {
     /** Save-file dialog: transactions in [from, to] as CSV */
     exportCsv(from: string, to: string): Promise<boolean>
   }
+  google: {
+    status(): Promise<GoogleStatus>
+    /** Imports the "Desktop app" key file downloaded from Google Cloud (file picker opens in Downloads) */
+    importClient(): Promise<GoogleStatus>
+    /** Opens Google sign-in in the browser; resolves when done */
+    connect(): Promise<GoogleStatus>
+    disconnect(): Promise<GoogleStatus>
+    syncNow(): Promise<GoogleStatus>
+    setCalendars(ids: string[]): Promise<GoogleStatus>
+    /** Events from the chosen Google calendars in [from, to] */
+    events(from: string, to: string): Promise<GoogleEvent[]>
+  }
   backup: {
     status(): Promise<BackupStatus>
     runNow(): Promise<BackupStatus>
@@ -703,6 +751,7 @@ export const API_SHAPE = {
     'categories',
     'exportCsv'
   ],
+  google: ['status', 'importClient', 'connect', 'disconnect', 'syncNow', 'setCalendars', 'events'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

@@ -8,6 +8,7 @@ declare global {
     plannrEvents: {
       onNavigate: (callback: (target: NavigateTarget) => void) => () => void
       onVaultLocked: (callback: () => void) => () => void
+      onCalendarChanged: (callback: () => void) => () => void
     }
   }
 }

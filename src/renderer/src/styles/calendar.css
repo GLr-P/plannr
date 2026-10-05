@@ -471,3 +471,11 @@
 .holiday-status {
   margin-top: 6px !important;
 }
+
+/* Other Google calendars (read-only; colored by their Google color) */
+.fc .ev-google {
+  opacity: 0.92;
+}
+.fc .ev-google .ev-chip {
+  color: #fff;
+}

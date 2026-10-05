@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
 import { ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { formatTicketNumber, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -26,6 +26,12 @@ const pad = (n: number): string => String(n).padStart(2, '0')
 const isoDate = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const hhmm = (d: Date): string => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
+/** FullCalendar all-day ends are exclusive. */
+const addDay = (date: string): string => {
+  const [y, m, d] = date.split('-').map(Number)
+  return isoDate(new Date(y, m - 1, d + 1))
+}
+
 /** The date being viewed, so leaving the calendar and coming back keeps your place. */
 let lastViewed: string | undefined
 
@@ -45,25 +51,30 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
+  const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
 
   const reload = useCallback(async () => {
     if (!range) return
-    const [evs, hols, due] = await Promise.all([
+    const [evs, hols, due, gev] = await Promise.all([
       api.calendar.range(range.from, range.to),
       api.holidays.range(range.from, range.to),
-      api.money.occurrences(range.from, range.to)
+      api.money.occurrences(range.from, range.to),
+      api.google.events(range.from, range.to)
     ])
     setEvents(evs)
     setHolidays(hols)
     setBills(due)
+    setGoogleEvents(gev)
     setVersion((v) => v + 1)
   }, [range])
   useEffect(() => {
     void reload()
   }, [reload])
+  // A Google sync brought changes: show them
+  useEffect(() => window.plannrEvents.onCalendarChanged(() => void reload()), [reload])
 
   // Arriving from a link ("On the calendar", Home): jump to the date and open the event.
   useEffect(() => {
@@ -98,6 +109,19 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-money', b.overdue ? 'ev-overdue' : ''],
         extendedProps: { bill: b }
       })),
+      // Other Google calendars (read-only here; click opens Google Calendar)
+      ...googleEvents.map((g) => ({
+        id: g.id,
+        title: g.title,
+        start: g.startTime ? `${g.date}T${g.startTime}` : g.date,
+        end: g.startTime && g.endTime ? `${g.date}T${g.endTime}` : g.endDate ? addDay(g.endDate) : undefined,
+        allDay: !g.startTime,
+        editable: false,
+        order: 2,
+        classNames: ['ev-google'],
+        backgroundColor: g.color || undefined,
+        extendedProps: { google: g }
+      })),
       ...events.map((e) => ({
         order: 1,
         id: e.id,
@@ -109,7 +133,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills]
+    [events, holidays, bills, googleEvents]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -149,6 +173,15 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         <div className="ev-chip" title={`${holiday.title}${holiday.observance ? ' (observance)' : ' (holiday)'}`}>
           <Flag className="ev-icon" />
           <span className="ev-title">{holiday.title}</span>
+        </div>
+      )
+    const google = arg.event.extendedProps.google as GoogleEvent | undefined
+    if (google)
+      return (
+        <div className="ev-chip" title={`${google.title}
+${google.calendarName} (Google)`}>
+          {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
+          <span className="ev-title">{google.title}</span>
         </div>
       )
     const bill = arg.event.extendedProps.bill as MoneyOccurrence | undefined
@@ -260,6 +293,8 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
             eventClick={(info) => {
               info.jsEvent.preventDefault()
               if (info.event.extendedProps.holiday) return // holidays are read-only
+              const google = info.event.extendedProps.google as GoogleEvent | undefined
+              if (google) return void (google.htmlLink && window.open(google.htmlLink, '_blank'))
               const bill = info.event.extendedProps.bill as MoneyOccurrence | undefined
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
               const r = info.el.getBoundingClientRect()
