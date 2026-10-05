@@ -1,0 +1,105 @@
+# Builds Plannr on GitHub's Windows machines.
+# - Every push and pull request: typecheck, unit tests, and an (unsigned) installer you can download from the run.
+# - A pushed version tag (v1.2.3), once SignPath is set up: the app and installer are code-signed by SignPath
+#   (free for open source, certificate by SignPath Foundation) and a draft release is created with the signed installer.
+#
+# SignPath setup (repository Settings → Secrets and variables → Actions):
+#   variable SIGNPATH_ORGANIZATION_ID, secret SIGNPATH_API_TOKEN. Artifact configurations: .github/signpath/
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the draft release
+  actions: read # SignPath reads the uploaded build artifacts
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # signing is done by SignPath, not electron-builder
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Build the app
+        run: |
+          npx electron-vite build
+          npx electron-builder --win --dir --publish never
+
+      - name: Upload the app for signing
+        id: app
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: release/win-unpacked/
+          if-no-files-found: error
+
+      - name: Sign the app (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: plannr
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 86400 # the signing request waits for the project owner's approval
+          output-artifact-directory: signed-app
+
+      - name: Use the signed app
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force release/win-unpacked
+          Move-Item signed-app release/win-unpacked
+
+      - name: Build the installer
+        run: npx electron-builder --win nsis --prepackaged release/win-unpacked --publish never
+
+      - name: Upload the installer for signing
+        id: installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: release/Plannr-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Sign the installer (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: plannr
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 86400
+          output-artifact-directory: signed-installer
+
+      - name: Draft the release with the signed installer
+        if: env.SIGN == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $exe = Get-ChildItem signed-installer -Filter 'Plannr-Setup-*.exe' | Select-Object -First 1
+          gh release create $env:GITHUB_REF_NAME $exe.FullName --draft --title "Plannr $env:GITHUB_REF_NAME" --generate-notes

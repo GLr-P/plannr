@@ -44,7 +44,7 @@ Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu 
 ## Install
 
 1. Download **Plannr-Setup-x.y.z.exe** from the [latest release](https://github.com/GLr-P/plannr/releases/latest).
-2. Run it. Windows may say *"Windows protected your PC"* because the installer isn't code-signed yet: click **More info → Run anyway**.
+2. Run it. Windows may say *"Windows protected your PC"* because the installer isn't code-signed yet: click **More info → Run anyway**. On PCs where Windows **Smart App Control** is on, unsigned apps are blocked entirely. Signed releases are on the way (see [Code signing policy](#code-signing-policy)).
 3. Plannr opens with a one-minute welcome tour.
 
 Plannr updates itself: when a new version is out, an **Update** button appears at the top of the window (or use Settings → General → Check for updates).
@@ -53,7 +53,23 @@ Works on Windows 10 and 11 (64-bit). Your data lives in `%APPDATA%\Plannr\data`,
 
 ## Privacy
 
-Plannr has no account, no server and no tracking. Nothing leaves your computer unless you connect Google, Zoho or QuickBooks, and then only to that service. The only other thing it contacts is GitHub, to check for updates (you can turn that off). Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
+Plannr has no account, no server and no tracking, and it never sends your notes, contacts or other data anywhere unless you ask it to. Your data stays in `%APPDATA%Plannrdata` on your computer.
+
+It makes two automatic connections, neither of which sends any of your data, and you can turn both off:
+
+- **Update check:** it asks GitHub whether a newer version of Plannr has been released (Settings → General → Updates).
+- **Public holidays:** it downloads your country's public holiday calendar from Google (Settings → General → Holidays → Off).
+
+If you connect **Google Calendar**, **Zoho Mail** or **QuickBooks Online**, Plannr exchanges data with that service only, and only what Settings describes. Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+
+- Committers and reviewers: [GLr-P](https://github.com/GLr-P)
+- Approvers: [GLr-P](https://github.com/GLr-P)
+
+Every release is built from this repository's source code by GitHub Actions ([workflow](.github/workflows/build.yml)) and signed only after an approver reviews the signing request. Releases published before signing was in place (0.9.0 and 0.9.1) are unsigned.
 
 ## For developers
 
