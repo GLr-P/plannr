@@ -17,15 +17,35 @@ import { VaultView } from './views/VaultView'
 import { MoneyView } from './views/MoneyView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
-import { newNote, openEntity } from './actions'
+import { newNote, newTicket, openEntity } from './actions'
+import { ShortcutsDialog, useShortcutsOpen } from './components/Shortcuts'
+import { NAV_ROUTES, navOrder } from './lib/navOrder'
+import { useUi } from './store/ui'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const { back, forward } = useNav.getState()
-      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'n') {
+      const key = e.key.toLowerCase()
+      const plainCtrl = e.ctrlKey && !e.shiftKey && !e.altKey
+      if (plainCtrl && key === 'n') {
         e.preventDefault()
         void newNote()
+      } else if (plainCtrl && key === 't') {
+        e.preventDefault()
+        void newTicket()
+      } else if (plainCtrl && key === ',') {
+        e.preventDefault()
+        useNav.getState().go({ view: 'settings' })
+      } else if (plainCtrl && key === '/') {
+        e.preventDefault()
+        useShortcutsOpen.getState().set(!useShortcutsOpen.getState().open)
+      } else if (plainCtrl && /^[1-9]$/.test(key)) {
+        const id = navOrder(useUi.getState().prefs.navOrder)[Number(key) - 1]
+        if (id) {
+          e.preventDefault()
+          useNav.getState().go(NAV_ROUTES[id])
+        }
       } else if (e.altKey && e.key === 'ArrowLeft') {
         e.preventDefault()
         back()
@@ -100,6 +120,7 @@ export function App() {
       <main className="main">{loaded && <MainView />}</main>
       <ContextMenuHost />
       <ToastHost />
+      <ShortcutsDialog />
     </div>
   )
 }

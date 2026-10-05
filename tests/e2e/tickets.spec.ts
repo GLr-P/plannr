@@ -203,6 +203,7 @@ test('a note can @-link a ticket, and the ticket shows it', async () => {
 
 test('business details print on the intake slip and receipt; the passcode is left off', async () => {
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
+  await page.getByRole('tab', { name: 'Business' }).click()
   await page.getByLabel('Business name').fill('Nano Tech Services')
   await page.getByLabel('Tax name').fill('GST')
   await page.getByLabel('Tax rate (%)').fill('5')
@@ -258,6 +259,7 @@ test('everything is still there after restarting', async () => {
   await expect(page.locator('.photos-header')).toContainText('1 before · 2 after')
 
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
+  await page.getByRole('tab', { name: 'General' }).click()
   await page.getByRole('radio', { name: 'Dark' }).click()
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.locator('.photos-header').click()

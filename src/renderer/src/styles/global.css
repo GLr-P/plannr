@@ -1480,3 +1480,67 @@ kbd {
   margin: 6px 8px;
   background: var(--border);
 }
+
+.settings-tabs {
+  margin-bottom: 6px;
+}
+
+/* ---------- Dialogs (keyboard shortcuts) ---------- */
+.dialog-backdrop {
+  -webkit-app-region: no-drag; /* it covers the title bar drag strip */
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+}
+.dialog {
+  width: min(720px, calc(100vw - 48px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 18px 22px 22px;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dialog-head h2 {
+  font-size: 17px;
+}
+.shortcut-groups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 32px;
+}
+.shortcut-groups section:first-child {
+  grid-row: span 2;
+}
+.shortcut-groups h3 {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 10px 0 6px;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.keys {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}

@@ -10,8 +10,19 @@ import { GoogleSettings } from '../components/GoogleSettings'
 import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
+import { useShortcutsOpen } from '../components/Shortcuts'
+import { Keyboard } from 'lucide-react'
+
+const TABS = [
+  { id: 'general', label: 'General' },
+  { id: 'business', label: 'Business' },
+  { id: 'accounts', label: 'Connected accounts' },
+  { id: 'data', label: 'Backups & data' }
+] as const
+type Tab = (typeof TABS)[number]['id']
 
 export function SettingsView() {
+  const tab = (useUi((s) => s.prefs.settingsTab) as Tab | undefined) ?? 'general'
   const { pref, setPref } = useTheme()
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [background, setBackground] = useState(true)
@@ -33,89 +44,124 @@ export function SettingsView() {
   return (
     <div className="page settings">
       <h1>Settings</h1>
+      <div className="segmented settings-tabs" role="tablist" aria-label="Settings sections">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={tab === t.id ? 'active' : ''}
+            onClick={() => setUiPref('settingsTab', t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <section className="setting">
-        <div>
-          <h3>Appearance</h3>
-          <p className="muted">Follow Windows, or always use light or dark.</p>
-        </div>
-        <div className="segmented" role="radiogroup" aria-label="Theme">
-          {options.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={pref === o.value}
-              className={pref === o.value ? 'active' : ''}
-              onClick={() => setPref(o.value)}
-            >
-              {o.icon} {o.label}
+      {tab === 'general' && (
+        <>
+          <section className="setting">
+            <div>
+              <h3>Appearance</h3>
+              <p className="muted">Follow Windows, or always use light or dark.</p>
+            </div>
+            <div className="segmented" role="radiogroup" aria-label="Theme">
+              {options.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={pref === o.value}
+                  className={pref === o.value ? 'active' : ''}
+                  onClick={() => setPref(o.value)}
+                >
+                  {o.icon} {o.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="setting">
+            <div>
+              <h3>Keyboard shortcuts</h3>
+              <p className="muted">
+                Press <kbd>Ctrl</kbd> + <kbd>/</kbd> anywhere to see them.
+              </p>
+            </div>
+            <button type="button" className="btn" onClick={() => useShortcutsOpen.getState().set(true)}>
+              <Keyboard /> Show shortcuts
             </button>
-          ))}
-        </div>
-      </section>
+          </section>
 
-      <BusinessSettings />
+          <section className="setting">
+            <div>
+              <h3>Recent notes in the sidebar</h3>
+              <p className="muted">Show your 5 most recently edited notes under the main menu. Home always shows them.</p>
+            </div>
+            <Switch label="Recent notes in the sidebar" checked={showRecent} onChange={(v) => setUiPref('sidebarRecent', v ? '1' : '0')} />
+          </section>
 
-      <section className="setting">
-        <div>
-          <h3>Recent notes in the sidebar</h3>
-          <p className="muted">Show your 5 most recently edited notes under the main menu. Home always shows them.</p>
-        </div>
-        <Switch label="Recent notes in the sidebar" checked={showRecent} onChange={(v) => setUiPref('sidebarRecent', v ? '1' : '0')} />
-      </section>
+          <section className="setting">
+            <div>
+              <h3>Keep running in the tray</h3>
+              <p className="muted">Closing the window keeps Plannr in the system tray so calendar reminders still pop up.</p>
+            </div>
+            <Switch
+              label="Keep running in the tray"
+              checked={background}
+              onChange={(v) => {
+                setBackground(v)
+                void api.settings.set('runInBackground', v)
+              }}
+            />
+          </section>
 
-      <section className="setting">
-        <div>
-          <h3>Keep running in the tray</h3>
-          <p className="muted">Closing the window keeps Plannr in the system tray so calendar reminders still pop up.</p>
-        </div>
-        <Switch
-          label="Keep running in the tray"
-          checked={background}
-          onChange={(v) => {
-            setBackground(v)
-            void api.settings.set('runInBackground', v)
-          }}
-        />
-      </section>
+          <section className="setting">
+            <div>
+              <h3>Start with Windows</h3>
+              <p className="muted">Opens Plannr quietly in the tray when you sign in, so reminders work even if you forget to open it.</p>
+            </div>
+            <Switch
+              label="Start with Windows"
+              checked={atLogin}
+              onChange={(v) => {
+                setAtLogin(v)
+                void api.app.setOpenAtLogin(v)
+              }}
+            />
+          </section>
 
-      <section className="setting">
-        <div>
-          <h3>Start with Windows</h3>
-          <p className="muted">Opens Plannr quietly in the tray when you sign in, so reminders work even if you forget to open it.</p>
-        </div>
-        <Switch
-          label="Start with Windows"
-          checked={atLogin}
-          onChange={(v) => {
-            setAtLogin(v)
-            void api.app.setOpenAtLogin(v)
-          }}
-        />
-      </section>
+          <HolidaySettings />
+        </>
+      )}
 
-      <HolidaySettings />
+      {tab === 'business' && <BusinessSettings />}
 
-      <h2 className="settings-group">Connected accounts</h2>
-      <GoogleSettings />
-      <ZohoSettings />
-      <QuickBooksSettings />
+      {tab === 'accounts' && (
+        <>
+          <GoogleSettings />
+          <ZohoSettings />
+          <QuickBooksSettings />
+        </>
+      )}
 
-      <h2 className="settings-group">Safety</h2>
+      {tab === 'data' && (
+        <>
+          <BackupSettings />
 
-      <BackupSettings />
-
-      <section className="setting">
-        <div>
-          <h3>Your data</h3>
-          <p className="muted">Everything is stored on this computer in:</p>
-          <code className="path">{info?.dataDir}</code>
-        </div>
-        <button type="button" className="btn" onClick={() => void api.app.openDataFolder()}>
-          <FolderOpen /> Open folder
-        </button>
-      </section>
+          <section className="setting">
+            <div>
+              <h3>Your data</h3>
+              <p className="muted">Everything is stored on this computer in:</p>
+              <code className="path">{info?.dataDir}</code>
+            </div>
+            <button type="button" className="btn" onClick={() => void api.app.openDataFolder()}>
+              <FolderOpen /> Open folder
+            </button>
+          </section>
+        </>
+      )}
 
       <p className="muted version">Plannr {info?.version}</p>
     </div>
@@ -124,7 +170,14 @@ export function SettingsView() {
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} className={`switch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={`switch ${checked ? 'on' : ''}`}
+      onClick={() => onChange(!checked)}
+    >
       <span className="switch-knob" />
     </button>
   )

@@ -216,6 +216,20 @@ test('moves a note to trash and restores it', async () => {
   await expect(page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).locator('.nav-count')).toHaveText('2')
 })
 
+test('keyboard shortcuts: Ctrl+/ lists them; Ctrl+number follows the menu order', async () => {
+  await page.keyboard.press('Control+/')
+  const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' })
+  await expect(dialog).toContainText('Go to Calendar') // the menu was reordered: Calendar is 2nd
+  await expect(dialog.locator('.shortcut-row', { hasText: 'Go to Calendar' })).toContainText('2')
+  await shot(page, '09-shortcuts')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await page.keyboard.press('Control+2')
+  await expect(page.locator('.cal-title')).toBeVisible()
+  await page.keyboard.press('Control+1')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good (morning|afternoon|evening)/)
+})
+
 test('switches to dark theme', async () => {
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
   await page.getByRole('radio', { name: 'Dark' }).click()

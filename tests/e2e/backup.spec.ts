@@ -11,6 +11,7 @@ test('back up, lose a note for good, restore it from the backup', async () => {
 
   await page.evaluate(() => window.plannr.notes.create({ title: 'Important customer list' }))
   await nav('Settings').click()
+  await page.getByRole('tab', { name: 'Backups & data' }).click()
   await expect(page.locator('.backup-status')).toContainText('No backup yet')
   await page.getByRole('button', { name: 'Back up now' }).click()
   await expect(page.locator('.backup-status')).toHaveText('Last backup just now')
@@ -39,6 +40,7 @@ test('back up, lose a note for good, restore it from the backup', async () => {
   await expect(page.locator('.note-row', { hasText: 'Important customer list' })).toBeVisible()
   // What was there before the restore was saved as a backup too, so the restore can be undone
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
+  await page.getByRole('tab', { name: 'Backups & data' }).click()
   await expect(page.locator('.backup-row')).toHaveCount(2)
   await app.close()
 })

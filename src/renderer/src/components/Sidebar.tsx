@@ -28,6 +28,7 @@ import { noteTitle } from '../lib/format'
 import { ItemIcon } from '../lib/icons'
 import { childrenOf, isWithin, placeItem, placeNextTo, useAddingFolder, useSidebarDrag, type Dragging, type Entry } from '../lib/sidebarTree'
 import { openMenu } from './ContextMenu'
+import { navOrder, type NavId } from '../lib/navOrder'
 import { folderMenu, newSection, noteMenu, renameFolder, renameNote, sectionMenu, sidebarMenu, useRenaming } from '../menus'
 
 /** Section of a detail page, so e.g. "Tickets" stays highlighted while a ticket is open. */
@@ -388,14 +389,6 @@ async function newNoteIn(dest: SidebarDest): Promise<void> {
 }
 
 // ---------- Main menu (drag to reorder; order remembered) ----------
-
-const NAV_IDS = ['home', 'tickets', 'customers', 'calendar', 'money', 'notes'] as const
-type NavId = (typeof NAV_IDS)[number]
-
-function navOrder(pref: string | undefined): NavId[] {
-  const saved = (pref ?? '').split(',').filter((id): id is NavId => (NAV_IDS as readonly string[]).includes(id))
-  return [...new Set([...saved, ...NAV_IDS])]
-}
 
 export function Sidebar() {
   const notes = useData((s) => s.notes)
