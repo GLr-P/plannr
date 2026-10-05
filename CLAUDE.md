@@ -76,6 +76,11 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - Plannr events mirror to a "Plannr" Google calendar via `events.google_id` and `google_synced_at`. The pull cursor (`google.lastPull`) uses Google's `updated` timestamps, and the newest edit wins.
   - Other calendars are cached in `google_events`.
   - Local event or pickup changes call `hooks.googleSync.schedule()`; a sync that brings changes sends a `calendar-changed` event to the renderer.
+- **Zoho Mail** (`services/zoho.ts` holds the pure helpers; `main/zoho-client.ts` handles OAuth and the Mail API):
+  - The "Server-based" client uses the fixed redirect `http://localhost:53682/callback`. The token exchange uses the callback's `accounts-server` (the account's data centre: .com, .eu, zohocloud.ca and so on); the mail base is derived from it.
+  - Scopes are read-only. Messages are searched live with `entire:<email>` and then filtered to mail to, from or cc the customer, and nothing is stored.
+  - Email HTML is shown in a sandboxed `srcdoc` iframe (no scripts) whose CSP blocks remote loads.
+  - Keys and tokens live in `main/secrets.ts`.
 - **Backups** (`services/backup.ts`):
   - `node:sqlite` `backup()` writes snapshots to `<backupDir>/snapshots/plannr-<stamp>.db`; each is integrity-checked and the newest 30 are kept.
   - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
