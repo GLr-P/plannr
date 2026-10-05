@@ -7,6 +7,7 @@ import { useAutosave } from '../lib/useAutosave'
 import { formatDay, formatMoney } from '../lib/format'
 import { ConfirmButton, SaveIndicator, StatusPill } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
+import { CustomerEmails } from '../components/CustomerEmails'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { NewTicketButton } from './TicketsView'
 
@@ -136,6 +137,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
           </ul>
         )}
 
+        <CustomerEmails email={c.email} name={c.name} />
         <LinkedEvents id={customer.id} />
         <Backlinks id={customer.id} />
       </div>

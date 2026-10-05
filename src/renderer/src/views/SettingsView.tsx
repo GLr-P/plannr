@@ -6,6 +6,7 @@ import { useTheme } from '../theme'
 import { HolidaySettings } from '../components/HolidaySettings'
 import { BackupSettings } from '../components/BackupSettings'
 import { GoogleSettings } from '../components/GoogleSettings'
+import { ZohoSettings } from '../components/ZohoSettings'
 
 export function SettingsView() {
   const { pref, setPref } = useTheme()
@@ -83,6 +84,7 @@ export function SettingsView() {
 
       <h2 className="settings-group">Connected accounts</h2>
       <GoogleSettings />
+      <ZohoSettings />
 
       <h2 className="settings-group">Safety</h2>
 

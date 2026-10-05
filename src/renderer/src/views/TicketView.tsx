@@ -18,6 +18,7 @@ import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
+import { CustomerEmails } from '../components/CustomerEmails'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { TicketPayments } from './MoneyView'
 
@@ -275,6 +276,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} />
         </div>
 
+        {customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}
         <LinkedEvents id={ticket.id} refreshKey={fields.pickupOn} />
         <Backlinks id={ticket.id} />
       </div>

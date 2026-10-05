@@ -1076,3 +1076,22 @@ kbd {
   height: 10px;
   border-radius: 3px;
 }
+
+.integration-form {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.integration-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  max-width: 460px;
+}
+.integration-fields .btn {
+  align-self: flex-start;
+}

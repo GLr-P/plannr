@@ -518,6 +518,51 @@ export interface GoogleStatus {
   selected: string[]
 }
 
+// ---------- Zoho Mail ----------
+
+export type ZohoRegion = 'com' | 'eu' | 'in' | 'com.au' | 'jp' | 'ca' | 'sa'
+export const ZOHO_REGIONS: { id: ZohoRegion; label: string }[] = [
+  { id: 'com', label: 'zoho.com (US / global)' },
+  { id: 'eu', label: 'zoho.eu (Europe)' },
+  { id: 'in', label: 'zoho.in (India)' },
+  { id: 'com.au', label: 'zoho.com.au (Australia)' },
+  { id: 'jp', label: 'zoho.jp (Japan)' },
+  { id: 'ca', label: 'zohocloud.ca (Canada)' },
+  { id: 'sa', label: 'zoho.sa (Saudi Arabia)' }
+]
+
+export interface ZohoStatus {
+  configured: boolean
+  connected: boolean
+  email: string | null
+  region: ZohoRegion | null
+  error: string | null
+}
+
+export interface ZohoMessage {
+  id: string
+  folderId: string
+  subject: string
+  summary: string
+  from: string
+  /** From the customer (vs. sent by you) */
+  incoming: boolean
+  date: number
+  hasAttachment: boolean
+  /** Opens the message in Zoho Mail on the web */
+  link: string
+}
+
+export interface ZohoMessageContent {
+  subject: string
+  from: string
+  to: string
+  date: number
+  /** A complete, locked-down HTML document for a sandboxed frame */
+  html: string
+  link: string
+}
+
 // ---------- Backups ----------
 
 export interface BackupInfo {
@@ -681,6 +726,16 @@ export interface PlannrApi {
     /** Events from the chosen Google calendars in [from, to] */
     events(from: string, to: string): Promise<GoogleEvent[]>
   }
+  zoho: {
+    status(): Promise<ZohoStatus>
+    /** Saves the API key from api-console.zoho.com (stored encrypted) */
+    configure(input: { region: ZohoRegion; clientId: string; clientSecret: string }): Promise<ZohoStatus>
+    connect(): Promise<ZohoStatus>
+    disconnect(): Promise<ZohoStatus>
+    /** Recent emails to/from this address (newest first) */
+    search(email: string): Promise<ZohoMessage[]>
+    message(folderId: string, messageId: string): Promise<ZohoMessageContent>
+  }
   backup: {
     status(): Promise<BackupStatus>
     runNow(): Promise<BackupStatus>
@@ -752,6 +807,7 @@ export const API_SHAPE = {
     'exportCsv'
   ],
   google: ['status', 'importClient', 'connect', 'disconnect', 'syncNow', 'setCalendars', 'events'],
+  zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

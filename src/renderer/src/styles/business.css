@@ -748,3 +748,103 @@ input[type='date']::-webkit-calendar-picker-indicator {
 .prose p:has(.ff-textarea) > br.ProseMirror-trailingBreak {
   display: none !important; /* TipTap's base CSS forces separators inline with !important */
 }
+
+/* Customer emails (Zoho Mail) */
+.emails-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.email-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.email-row:hover {
+  background: var(--hover);
+}
+.email-dir {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.email-dir.in {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.email-dir.out {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+.email-dir svg {
+  width: 14px;
+  height: 14px;
+}
+.email-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.email-subject {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.email-clip {
+  width: 12px;
+  height: 12px;
+  color: var(--text-faint);
+}
+.email-summary {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.email-date {
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.email-sheet {
+  width: min(900px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #222;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.email-meta {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.email-frame {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}
+.email-viewer .file-preview-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

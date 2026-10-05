@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, net, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, net, shell } from 'electron'
 import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Db } from './db'
-import { getSetting, setSetting } from './services/settings'
+import { getSecret, putSecret } from './secrets'
 import { GoogleHttpError, type GCalendar, type GEvent, type GoogleApi } from './services/google'
 
 /*
@@ -29,24 +29,6 @@ interface Tokens {
   accessToken: string
   expiresAt: number
   email: string | null
-}
-
-// ---------- Encrypted settings ----------
-
-function putSecret(db: Db, key: string, value: unknown): void {
-  if (value === null) return setSetting(db, key, null)
-  if (!safeStorage.isEncryptionAvailable()) throw new Error('Windows encryption is not available on this account')
-  setSetting(db, key, safeStorage.encryptString(JSON.stringify(value)).toString('base64'))
-}
-
-function getSecret<T>(db: Db, key: string): T | null {
-  const v = getSetting(db, key)
-  if (typeof v !== 'string') return null
-  try {
-    return JSON.parse(safeStorage.decryptString(Buffer.from(v, 'base64'))) as T
-  } catch {
-    return null // e.g. data copied from another Windows account
-  }
 }
 
 export const isConfigured = (db: Db): boolean => getSecret<ClientKey>(db, 'google.client') !== null

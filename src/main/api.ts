@@ -17,6 +17,7 @@ import { getOpenAtLogin, setOpenAtLogin } from './background'
 import * as backups from './services/backup'
 import * as google from './services/google'
 import * as googleClient from './google-client'
+import * as zoho from './zoho-client'
 import type { GoogleSync } from './google-sync'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
@@ -238,6 +239,23 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         return googleStatus()
       },
       events: async (from, to) => google.listGoogleEvents(db, from, to)
+    },
+    zoho: {
+      status: async () => zoho.zohoStatus(db),
+      configure: async (input) => {
+        zoho.configure(db, input)
+        return zoho.zohoStatus(db)
+      },
+      connect: async () => {
+        await zoho.connect(db)
+        return zoho.zohoStatus(db)
+      },
+      disconnect: async () => {
+        await zoho.disconnect(db)
+        return zoho.zohoStatus(db)
+      },
+      search: async (email) => zoho.search(db, email),
+      message: async (folderId, messageId) => zoho.message(db, folderId, messageId)
     },
     backup: {
       status: async () => backupStatus(),
