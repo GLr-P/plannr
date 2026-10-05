@@ -144,7 +144,7 @@ describe('transactions → QuickBooks', () => {
     const c = customers.createCustomer(db, { name: 'Jane Doe' })
     const t = tickets.createTicket(db, { customerId: c.id, templateId: null })
     tickets.updateTicket(db, t.id, { device: 'iPhone 13', issue: 'Cracked screen', priceCents: 15000 })
-    money.addTransaction(db, { type: 'income', amountCents: 15000, ticketId: t.id, method: 'Cash', date: '2026-10-04', description: 'Payment · NT-0001' })
+    money.addTransaction(db, { type: 'income', amountCents: 15000, ticketId: t.id, method: 'Cash', date: '2026-10-04', description: 'Payment · T-0001' })
     await syncQuickBooks(db, qbo)
     const [sr] = qbo.store.SalesReceipt
     expect(sr).toMatchObject({
@@ -157,7 +157,7 @@ describe('transactions → QuickBooks', () => {
     expect((sr.Line as Record<string, unknown>[])[0]).toEqual({
       DetailType: 'SalesItemLineDetail',
       Amount: 132.74,
-      Description: 'NT-0001 · iPhone 13 · Cracked screen',
+      Description: 'T-0001 · iPhone 13 · Cracked screen',
       SalesItemLineDetail: { ItemRef: { value: 'i-repair' }, TaxCodeRef: { value: 't-hst' }, TaxInclusiveAmt: 150 }
     })
   })

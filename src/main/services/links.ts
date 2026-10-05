@@ -29,7 +29,7 @@ export function backlinks(db: Db, id: string): Backlink[] {
        FROM links l JOIN notes n ON n.id = l.src_id
        WHERE l.dst_id = ? AND l.src_type = 'note' AND n.deleted_at IS NULL
        UNION ALL
-       SELECT 'ticket', t.id, printf('NT-%04d', t.number) || CASE WHEN t.device <> '' THEN ' · ' || t.device ELSE '' END, t.updated_at
+       SELECT 'ticket', t.id, ticket_no(t.number) || CASE WHEN t.device <> '' THEN ' · ' || t.device ELSE '' END, t.updated_at
        FROM links l JOIN tickets t ON t.id = l.src_id
        WHERE l.dst_id = ? AND l.src_type = 'ticket' AND t.deleted_at IS NULL
        ORDER BY updated_at DESC`

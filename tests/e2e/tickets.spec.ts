@@ -32,7 +32,7 @@ test('creates a ticket from the starter template with a new customer', async () 
   await expect(page.locator('.empty-state')).toHaveText('No open tickets.')
   await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
 
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0001')
   await expect(page.getByLabel('Device')).toBeFocused()
   await page.keyboard.type('iPhone 13 Pro')
   await page.getByLabel('Issue').fill('Cracked screen, touch not working')
@@ -109,7 +109,7 @@ test('ticket list filters by status, phone in any format, repair number and date
   await expect(rows.first()).toContainText('Diagnosing')
 
   const search = page.getByLabel('Search tickets')
-  for (const q of ['5551234567', '123-4567', 'NT-0001', 'jane@example', 'iphone', '1234']) {
+  for (const q of ['5551234567', '123-4567', 'T-0001', 'jane@example', 'iphone', '1234']) {
     await search.fill(q)
     await expect(rows, `search "${q}"`).toHaveCount(1)
   }
@@ -136,12 +136,12 @@ test('customer page shows details and repair history; new ticket from there keep
   await expect(page.getByLabel('Customer name')).toHaveValue('Jane Doe')
   await page.getByLabel('Address').fill('12 Main St, Springfield')
   await expect(page.locator('.history-row')).toHaveCount(1)
-  await expect(page.locator('.history-row')).toContainText('NT-0001')
+  await expect(page.locator('.history-row')).toContainText('T-0001')
   await saved()
   await shot(page, 'b5-customer')
 
   await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0002')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0002')
   await expect(page.getByLabel('Customer name')).toHaveValue('Jane Doe')
   await page.keyboard.type('MacBook Air')
   await saved()
@@ -152,10 +152,10 @@ test('global search finds customers and tickets', async () => {
   await page.keyboard.type('jane')
   const results = page.locator('.search-row')
   await expect(results.filter({ hasText: 'Customer' })).toHaveCount(1)
-  await expect(results.filter({ hasText: 'NT-0001 · iPhone 13 Pro' })).toHaveCount(1)
+  await expect(results.filter({ hasText: 'T-0001 · iPhone 13 Pro' })).toHaveCount(1)
   await shot(page, 'b6-search')
-  await results.filter({ hasText: 'NT-0001' }).click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
+  await results.filter({ hasText: 'T-0001' }).click()
+  await expect(page.locator('.ticket-no')).toHaveText('T-0001')
 })
 
 test('edits the template with a new form field; new tickets get it', async () => {
@@ -176,13 +176,13 @@ test('edits the template with a new form field; new tickets get it', async () =>
 
   await nav('Tickets').click()
   await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0003')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0003')
   await expect(field('Screen protector')).toBeVisible()
   // Blank ticket via the arrow menu
   await nav('Tickets').click()
   await page.getByRole('button', { name: 'Choose template' }).click()
   await page.locator('.dropdown-menu .menu-item', { hasText: 'Blank ticket' }).click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0004')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0004')
   await expect(page.locator('.prose .ff')).toHaveCount(0)
 })
 
@@ -193,11 +193,11 @@ test('a note can @-link a ticket, and the ticket shows it', async () => {
   await page.keyboard.press('Enter')
   await page.keyboard.type('Ordered for ')
   await page.keyboard.type('@iphone')
-  await expect(page.locator('.menu-item').first()).toContainText('NT-0001 · iPhone 13 Pro')
+  await expect(page.locator('.menu-item').first()).toContainText('T-0001 · iPhone 13 Pro')
   await page.keyboard.press('Enter')
   await saved()
   await page.locator('.prose .mention').click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0001')
   await expect(page.locator('.backlinks', { hasText: 'Linked from' })).toContainText('Screen supplier')
 })
 
@@ -212,12 +212,12 @@ test('business details print on the intake slip and receipt; the passcode is lef
   await shot(page, 'b10-business')
 
   await nav('Tickets').click()
-  await page.locator('.ticket-row', { hasText: 'NT-0001' }).click()
+  await page.locator('.ticket-row', { hasText: 'T-0001' }).click()
   const out = join(dataDir, 'last-print.html')
   const printed = async (kind: string): Promise<string> => {
     await page.getByRole('button', { name: 'Print', exact: true }).click()
     await page.getByRole('menuitem', { name: kind }).click()
-    await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Device label' ? '@page { size: 62mm 29mm' : 'Repair ticket NT-0001')
+    await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Device label' ? '@page { size: 62mm 29mm' : 'Repair ticket T-0001')
     return readFileSync(out, 'utf8')
   }
 
@@ -239,7 +239,7 @@ test('business details print on the intake slip and receipt; the passcode is lef
   await slipPage.close()
 
   const label = await printed('Device label')
-  expect(label).toContain('NT-0001')
+  expect(label).toContain('T-0001')
   const receipt = await printed('Receipt')
   expect(receipt).toContain('No payments recorded yet')
   expect(receipt).toContain('Balance owing')
@@ -248,8 +248,8 @@ test('business details print on the intake slip and receipt; the passcode is lef
 test('everything is still there after restarting', async () => {
   await app.close()
   ;({ app, page } = await launch(dataDir))
-  await expect(page.locator('.history-row:has(.mono)', { hasText: 'NT-0001' })).toBeVisible() // Home: open tickets
-  await page.locator('.history-row:has(.mono)', { hasText: 'NT-0001' }).click()
+  await expect(page.locator('.history-row:has(.mono)', { hasText: 'T-0001' })).toBeVisible() // Home: open tickets
+  await page.locator('.history-row:has(.mono)', { hasText: 'T-0001' }).click()
   await expect(page.getByLabel('Device')).toHaveValue('iPhone 13 Pro')
   await expect(page.getByLabel('Customer phone')).toHaveValue('(555) 123-4567')
   await expect(page.getByLabel('Pickup date')).toHaveValue('2026-10-10')

@@ -42,7 +42,7 @@ describe('ticket pickups', () => {
     const t = ticketFor('Jane Doe')
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-10' })
     let [ev] = cal.eventsForLink(db, t.id)
-    expect(ev).toMatchObject({ kind: 'pickup', date: '2026-10-10', title: 'Jane Doe pickup', linkType: 'ticket', linkTitle: 'NT-0001 (Jane Doe)' })
+    expect(ev).toMatchObject({ kind: 'pickup', date: '2026-10-10', title: 'Jane Doe pickup', linkType: 'ticket', linkTitle: 'T-0001 (Jane Doe)' })
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-12' })
     expect(cal.eventsForLink(db, t.id).map((e) => e.date)).toEqual(['2026-10-12'])
     tickets.updateTicket(db, t.id, { pickupOn: null })
@@ -117,11 +117,11 @@ describe('reminders', () => {
     expect(dueReminders(db, at('2026-10-09T08:59:00'))).toHaveLength(0)
     const due = dueReminders(db, at('2026-10-09T09:01:00'))
     expect(due).toHaveLength(1)
-    expect(due[0]).toMatchObject({ title: 'Jane Doe pickup', body: 'Tomorrow · NT-0001 · iPhone 13 (Jane Doe)', linkType: 'ticket', linkId: t.id })
+    expect(due[0]).toMatchObject({ title: 'Jane Doe pickup', body: 'Tomorrow · T-0001 · iPhone 13 (Jane Doe)', linkType: 'ticket', linkId: t.id })
     markReminderFired(db, due[0].eventId, due[0].key)
     expect(dueReminders(db, at('2026-10-09T09:02:00'))).toHaveLength(0)
     const dayOf = dueReminders(db, at('2026-10-10T08:00:00'))
-    expect(dayOf.map((d) => d.body)).toEqual(['Today · NT-0001 · iPhone 13 (Jane Doe)'])
+    expect(dayOf.map((d) => d.body)).toEqual(['Today · T-0001 · iPhone 13 (Jane Doe)'])
   })
 
   it('catches up on recently missed reminders but not stale ones', () => {

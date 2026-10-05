@@ -12,7 +12,8 @@ import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
 import { HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
-import { Keyboard } from 'lucide-react'
+import { useOnboarding } from '../components/Onboarding'
+import { Keyboard, Sparkles } from 'lucide-react'
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -86,6 +87,16 @@ export function SettingsView() {
           </section>
 
           <LookSettings />
+
+          <section className="setting">
+            <div>
+              <h3>Welcome tour</h3>
+              <p className="muted">The quick introduction from the first time you opened Plannr.</p>
+            </div>
+            <button type="button" className="btn" onClick={() => useOnboarding.getState().set(true)}>
+              <Sparkles /> Show the tour
+            </button>
+          </section>
 
           <section className="setting">
             <div>

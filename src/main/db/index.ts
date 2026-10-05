@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { randomUUID } from 'node:crypto'
 import { migrations } from './migrations'
+import { formatTicketNumber } from '../../shared/api'
 
 export type Db = DatabaseSync
 
@@ -18,6 +19,8 @@ export function openDb(file: string): Db {
 
 /** Applies pending migrations in order; PRAGMA user_version tracks how many have run. */
 export function migrate(db: Db): void {
+  // ticket_no(number) in SQL = "NT-0007" with the current prefix (same formatter as the rest of the app).
+  db.function('ticket_no', { deterministic: false }, (n) => formatTicketNumber(Number(n)))
   const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
   for (let i = user_version; i < migrations.length; i++) {
     tx(db, () => {

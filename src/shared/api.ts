@@ -96,6 +96,19 @@ export interface StoredFile {
 export interface AppInfo {
   version: string
   dataDir: string
+  /** Automated tests: the welcome tour stays out of the way */
+  tests: boolean
+}
+
+/** Ticket prefix suggested from a business name: "Acme Repairs" → "AR-", "Nano Tech Services" → "NTS-". */
+export function suggestPrefix(name: string): string {
+  const initials = name
+    .split(/[^A-Za-z0-9]+/)
+    .filter((w) => w && !/^(and|of|the|inc|ltd|llc|co)$/i.test(w))
+    .map((w) => w[0].toUpperCase())
+    .join('')
+    .slice(0, 4)
+  return initials ? `${initials}-` : 'T-'
 }
 
 // ---------- Customers & tickets ----------
@@ -152,7 +165,7 @@ export interface DisplayPrefs {
 }
 
 export const DEFAULT_DISPLAY: DisplayPrefs = {
-  ticketPrefix: 'NT-',
+  ticketPrefix: 'T-',
   currency: 'CAD',
   statusLabels: {},
   paymentMethods: ['Cash', 'Card', 'Debit', 'e-Transfer', 'PayPal', 'Cheque', 'Bank transfer', 'Other'],

@@ -23,6 +23,7 @@ import { NAV_ROUTES, visibleNav } from './lib/navOrder'
 import { useUi } from './store/ui'
 import { loadDisplay, useDisplay } from './store/display'
 import { useAppearance } from './lib/appearance'
+import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -110,7 +111,9 @@ export function App() {
   useGlobalShortcuts()
   useAppearance()
   useEffect(() => {
-    void loadDisplay().then(() => useData.getState().refresh())
+    void loadDisplay()
+      .then(() => useData.getState().refresh())
+      .then(() => maybeStartOnboarding())
     // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
     return window.plannrEvents.onNavigate((target) => {
       if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
@@ -128,6 +131,7 @@ export function App() {
       <ContextMenuHost />
       <ToastHost />
       <ShortcutsDialog />
+      <Onboarding />
     </div>
   )
 }

@@ -136,7 +136,7 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Business tab: currency (shown with a plain symbol, e.g. $ for CAD) and your own payment methods.
    - Plus everything from the sidebar work: sections, icons and colours, order.
    - Display preferences live in the shared formatters (`setDisplayPrefs` in shared/api.ts), so the main process (printing, search titles) and the window agree.
-12. **For other people:** an optional first-run tutorial (pick which parts you want: tickets, money, vault and so on; shows how to connect Zoho, QuickBooks and Google), then a GitHub page with a description and a download.
+12. **For other people:** Welcome tour **done (2026-10-05)**. It runs on a fresh install only (anyone with existing data is marked done) and can be reopened from Settings → General. Steps: welcome, business name with a suggested ticket prefix and currency, pick the parts you want (unticked ones leave the menu), the optional connections, tips. New installs default to the "T-" prefix; installs that already had tickets keep "NT-". Ticket numbers built in SQL go through `ticket_no()` (registered in migrate) so custom prefixes show everywhere. Still to do: an optional first-run tutorial (pick which parts you want: tickets, money, vault and so on; shows how to connect Zoho, QuickBooks and Google), then a GitHub page with a description and a download.
 **Later:** cloud sync to the desktop PC, a phone app, and ChatGPT/Claude integration (summarize a ticket, draft customer emails, ask questions about your notes).
 
 ## Quality rules Claude follows

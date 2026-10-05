@@ -260,7 +260,7 @@ async function push(db: Db, api: GoogleApi, calendarId: string, timeZone: string
     .prepare(
       `SELECT e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.updated_at, e.deleted_at, e.google_id, e.google_synced_at,
          COALESCE(CASE e.link_type
-           WHEN 'ticket' THEN printf('NT-%04d', t.number) || CASE WHEN tc.name <> '' THEN ' (' || tc.name || ')' ELSE '' END
+           WHEN 'ticket' THEN ticket_no(t.number) || CASE WHEN tc.name <> '' THEN ' (' || tc.name || ')' ELSE '' END
            WHEN 'customer' THEN c.name WHEN 'note' THEN n.title END, '') AS link_title,
          CASE WHEN e.kind = 'pickup' AND (t.id IS NULL OR t.deleted_at IS NOT NULL) THEN 1 ELSE 0 END AS hidden
        FROM events e

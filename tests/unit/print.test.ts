@@ -60,7 +60,7 @@ describe('printouts', () => {
   it('intake slip: business, ticket number, customer (escaped), repair, terms and a signature line; no passcode', () => {
     const html = intakeHtml(data())
     expect(html).toContain('Nano Tech Services')
-    expect(html).toContain('Repair ticket NT-0007')
+    expect(html).toContain('Repair ticket T-0007')
     expect(html).toContain('Jane &lt;Doe&gt;')
     expect(html).toContain('Cracked screen')
     expect(html).toContain('Not responsible for data loss.')

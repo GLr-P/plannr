@@ -69,7 +69,7 @@ test('dragging a ticket from the tray onto a day sets its pickup, and the text c
   await expect(popover()).toBeVisible()
   const title = page.getByLabel('Event title')
   await expect(title).toHaveValue('Bob Smith pickup')
-  await expect(popover().locator('.popover-link')).toContainText('NT-0002 · Dell XPS (Bob Smith)')
+  await expect(popover().locator('.popover-link')).toContainText('T-0002 · Dell XPS (Bob Smith)')
   await title.fill('Bob picks up laptop')
   await expect(popover().locator('.popover-foot')).toContainText('Saved')
   await page.keyboard.press('Escape')
@@ -89,7 +89,7 @@ test('dragging a note from the sidebar creates a linked event', async () => {
 
 test('clicking an event shows why it is linked and opens the ticket', async () => {
   await dayCell(D15).locator('.fc-event').click()
-  await expect(popover().locator('.popover-link')).toContainText('NT-0001 · iPhone 13 (Jane Doe)')
+  await expect(popover().locator('.popover-link')).toContainText('T-0001 · iPhone 13 (Jane Doe)')
   await expect(popover().getByLabel('This is the ticket’s pickup date')).toBeChecked()
   await popover().getByLabel('Day before (9 AM)').uncheck()
   await page.getByLabel('Event notes').fill('Bring charger')
@@ -97,7 +97,7 @@ test('clicking an event shows why it is linked and opens the ticket', async () =
   await shot(page, 'c2-popover')
 
   await popover().locator('.popover-link').click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0001')
   const ev = await page.evaluate(async (id) => (await window.plannr.calendar.forLink(id))[0], janeTicket)
   expect(ev.reminders).toEqual(['day_of'])
   expect(ev.notes).toBe('Bring charger')

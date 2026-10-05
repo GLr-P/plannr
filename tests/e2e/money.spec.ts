@@ -77,7 +77,7 @@ test('overview: subscription cost, what is due, who owes; mark a bill paid', asy
 
 test('records a ticket payment; the ticket shows Paid and nobody owes', async () => {
   await page.locator('.due-row', { hasText: 'Jane Doe' }).click()
-  await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
+  await expect(page.locator('.ticket-no')).toHaveText('T-0001')
   await expect(page.locator('.pay-badge')).toHaveText('Owes $150.00')
   await page.getByRole('button', { name: 'Record payment' }).click()
   await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('150.00')
@@ -108,7 +108,7 @@ test('transactions: add an expense, filter, search', async () => {
 
   const rows = page.locator('.tx-row')
   await expect(rows).toHaveCount(3) // rent, ticket payment, parts
-  await expect(rows.filter({ hasText: 'Payment · NT-0001' })).toContainText('NT-0001 · Jane Doe')
+  await expect(rows.filter({ hasText: 'Payment · T-0001' })).toContainText('T-0001 · Jane Doe')
   await expect(page.locator('.tx-totals')).toContainText('$150.00')
   await expect(page.locator('.tx-totals')).toContainText('$1,245.50')
   await page.locator('.tx-toolbar .chip-btn', { hasText: 'Income' }).click()

@@ -74,7 +74,7 @@ describe('tickets', () => {
     const a = tickets.createTicket(db, { templateId: null })
     const b = tickets.createTicket(db, { templateId: null })
     expect([a.number, b.number]).toEqual([1, 2])
-    expect(formatTicketNumber(b.number)).toBe('NT-0002')
+    expect(formatTicketNumber(b.number)).toBe('T-0002')
     expect(a.status).toBe('intake')
     expect(a.receivedOn).toBe(localDate())
   })
@@ -130,7 +130,7 @@ describe('tickets', () => {
     expect(ids({ query: 'jane' })).toEqual([t1.id])
     expect(ids({ query: 'jane@x' })).toEqual([t1.id])
     expect(ids({ query: '5551234567' })).toEqual([t1.id])
-    expect(ids({ query: 'NT-0002' })).toEqual([t2.id])
+    expect(ids({ query: 'T-0002' })).toEqual([t2.id])
     expect(ids({ query: 'nt2' })).toEqual([t2.id])
     expect(ids({ query: 'xps' })).toEqual([t2.id])
     expect(ids({ query: 'swordfish' })).toEqual([t1.id])
@@ -141,8 +141,8 @@ describe('tickets', () => {
     const c = customers.createCustomer(db, { name: 'Jane Doe' })
     const t = tickets.createTicket(db, { customerId: c.id, templateId: null })
     tickets.updateTicket(db, t.id, { device: 'Pixel 7' })
-    expect(search(db, 'pixel')[0]).toMatchObject({ type: 'ticket', id: t.id, title: 'NT-0001 · Pixel 7' })
-    expect(search(db, 'NT-0001')[0].id).toBe(t.id)
+    expect(search(db, 'pixel')[0]).toMatchObject({ type: 'ticket', id: t.id, title: 'T-0001 · Pixel 7' })
+    expect(search(db, 'T-0001')[0].id).toBe(t.id)
     customers.updateCustomer(db, c.id, { name: 'Janet Roe' })
     expect(search(db, 'janet').map((r) => r.type).sort()).toEqual(['customer', 'ticket'])
   })
@@ -167,7 +167,7 @@ describe('tickets', () => {
       device: 'iPad',
       content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'mention', attrs: { id: c.id, label: 'Jane', kind: 'customer' } }] }] }
     })
-    expect(backlinks(db, c.id)).toEqual([{ type: 'ticket', id: t.id, title: 'NT-0001 · iPad' }])
+    expect(backlinks(db, c.id)).toEqual([{ type: 'ticket', id: t.id, title: 'T-0001 · iPad' }])
   })
 })
 

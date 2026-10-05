@@ -14,7 +14,8 @@ import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
 import { ensureStarterNoteTemplates } from './services/note-templates'
-import { loadDisplayPrefs } from './display'
+import { loadDisplayPrefs, pinLegacyPrefix } from './display'
+import { ensureOnboardingState } from './services/onboarding'
 import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
 import { APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
@@ -123,7 +124,9 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
+    pinLegacyPrefix(db)
     loadDisplayPrefs(db)
+    ensureOnboardingState(db)
     ensureStarterTemplate(db)
     ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)

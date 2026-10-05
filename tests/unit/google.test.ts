@@ -135,7 +135,7 @@ describe('Plannr → Google', () => {
     const plain = cal.createEvent(db, { title: 'Dentist', date: '2026-10-13' })
     await sync()
     const pickupG = google.list(plannrCal()).find((e) => e.summary === 'Jane Doe pickup')!
-    expect(pickupG.description).toBe('— From Plannr: NT-0001 (Jane Doe)')
+    expect(pickupG.description).toBe('— From Plannr: T-0001 (Jane Doe)')
 
     await later()
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-14' }) // moving the pickup on the ticket

@@ -1,6 +1,6 @@
 import type { Db } from '../db'
 import { newId, now, tx } from '../db'
-import type { CalendarEvent, EntityType, EventInput, EventKind, EventUpdate, ReminderKind } from '../../shared/api'
+import { formatTicketNumber, type CalendarEvent, type EntityType, type EventInput, type EventKind, type EventUpdate, type ReminderKind } from '../../shared/api'
 import { isDate } from './doc'
 
 const REMINDER_KINDS = new Set<ReminderKind>(['day_before', 'day_of'])
@@ -25,7 +25,7 @@ interface EventRow {
 
 const COLS = `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, e.link_type, e.link_id, e.reminders, e.updated_at,
   CASE e.link_type
-    WHEN 'ticket' THEN printf('NT-%04d', t.number)
+    WHEN 'ticket' THEN ticket_no(t.number)
       || CASE WHEN t.device <> '' THEN ' · ' || t.device ELSE '' END
       || CASE WHEN tc.name <> '' THEN ' (' || tc.name || ')' ELSE '' END
     WHEN 'customer' THEN COALESCE(NULLIF(c.name, ''), 'Unnamed customer')
@@ -121,7 +121,7 @@ function defaultPickupTitle(db: Db, ticketId: string): string {
     .prepare('SELECT t.number, c.name FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id WHERE t.id = ?')
     .get(ticketId) as { number: number; name: string | null } | undefined
   if (!r) return 'Pickup'
-  return `${r.name?.trim() || `NT-${String(r.number).padStart(4, '0')}`} pickup`
+  return `${r.name?.trim() || formatTicketNumber(r.number)} pickup`
 }
 
 export function updateEvent(db: Db, id: string, patch: EventUpdate): CalendarEvent {

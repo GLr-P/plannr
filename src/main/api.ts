@@ -363,7 +363,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       ticket: async (id, kind) => printTicket(db, dataDir, id, kind, process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined)
     },
     app: {
-      info: async () => ({ version: app.getVersion(), dataDir }),
+      info: async () => ({ version: app.getVersion(), dataDir, tests: Boolean(process.env.PLANNR_DATA_DIR) && process.env.PLANNR_ONBOARDING !== '1' }),
       openDataFolder: async () => {
         await shell.openPath(dataDir)
       },

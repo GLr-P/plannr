@@ -1720,3 +1720,171 @@ kbd {
 .status-names .status {
   align-self: flex-start;
 }
+
+/* ---------- Welcome tour ---------- */
+.onboard-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 260;
+}
+.onboard {
+  width: min(680px, calc(100vw - 48px));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 60px);
+}
+.onboard-body {
+  padding: 28px 32px 8px;
+  overflow-y: auto;
+  min-height: 360px;
+}
+.onboard-body h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.onboard-body > .muted {
+  margin: 0 0 16px;
+}
+.onboard-welcome {
+  text-align: center;
+  padding: 36px 24px 0;
+}
+.onboard-welcome p {
+  font-size: 15px;
+  max-width: 480px;
+  margin: 10px auto;
+  line-height: 1.55;
+}
+.onboard-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 28px;
+  font-weight: 700;
+}
+.onboard-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 380px;
+}
+.onboard-features,
+.onboard-connect {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.feature-card,
+.connect-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: left;
+  background: var(--bg);
+}
+.feature-card {
+  opacity: 0.55;
+}
+.feature-card.on {
+  opacity: 1;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.feature-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--bg-subtle);
+  color: var(--accent);
+}
+.feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.feature-text strong {
+  font-size: 14px;
+  color: var(--text);
+}
+.feature-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg);
+}
+.feature-card.on .feature-check {
+  border-color: var(--accent);
+  background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6 9 17l-5-5'/></svg>") center / 12px no-repeat;
+}
+.onboard-connect {
+  grid-template-columns: 1fr;
+  margin-bottom: 12px;
+}
+.onboard-tips {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.onboard-tips li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.onboard-tips li > span:nth-child(2) {
+  flex: 1;
+}
+.tip-icon {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+.onboard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 16px 32px;
+  border-top: 1px solid var(--border);
+}
+.onboard-dots {
+  display: flex;
+  gap: 6px;
+}
+.onboard-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.onboard-dots span.on {
+  background: var(--accent);
+  width: 18px;
+  border-radius: 4px;
+}
+.onboard-actions {
+  display: flex;
+  gap: 8px;
+}

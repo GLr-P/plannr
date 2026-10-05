@@ -149,7 +149,7 @@ describe('transactions, ticket payments and summary', () => {
     s = money.summary(db, '2026-10', '2026-10-04')
     expect(s.unpaidTickets).toEqual([])
     expect(s.incomeCents).toBe(15000)
-    expect(money.listTransactions(db, { ticketId: t.id })[0].ticketLabel).toBe('NT-0001 · Jane Doe')
+    expect(money.listTransactions(db, { ticketId: t.id })[0].ticketLabel).toBe('T-0001 · Jane Doe')
   })
 
   it('summarises a month: income, expenses, subscription cost, upcoming (overdue first)', () => {

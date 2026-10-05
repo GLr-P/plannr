@@ -3,6 +3,12 @@ import type { Db } from './db'
 import { rebuildSearchIndex } from './services/reindex'
 import { getSetting, setSetting } from './services/settings'
 
+/** Installs from before ticket prefixes were a setting used "NT-": keep it, so existing ticket numbers don't change. */
+export function pinLegacyPrefix(db: Db): void {
+  if (getSetting(db, 'display') !== null) return
+  if (db.prepare('SELECT 1 FROM tickets LIMIT 1').get()) setSetting(db, 'display', { ...DEFAULT_DISPLAY, ticketPrefix: 'NT-' })
+}
+
 /** Loads the saved display preferences (ticket prefix, currency…) into the shared formatters. */
 export function loadDisplayPrefs(db: Db): DisplayPrefs {
   setDisplayPrefs({ ...DEFAULT_DISPLAY, ...((getSetting(db, 'display') as Partial<DisplayPrefs> | null) ?? {}) })
