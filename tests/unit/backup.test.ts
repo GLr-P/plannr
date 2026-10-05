@@ -21,7 +21,7 @@ describe('backups', () => {
     expect(backupDue(db)).toBe(true)
     const first = await runBackup(db, dataDir, backupDir, new Date(2026, 9, 4, 9, 0, 0))
     expect(first.file).toBe('plannr-2026-10-04_090000.db')
-    expect(backupDue(db)).toBe(false)
+    expect(backupDue(db, new Date(2026, 9, 4, 10, 0, 0).getTime())).toBe(false)
     expect(readFileSync(join(backupDir, 'files', 'attachments', 'ab', 'photo.png'), 'utf8')).toBe('PNGDATA')
     await runBackup(db, dataDir, backupDir, new Date(2026, 9, 5, 9, 0, 0))
     expect(listBackups(backupDir).map((b) => b.file)).toEqual(['plannr-2026-10-05_090000.db', 'plannr-2026-10-04_090000.db'])

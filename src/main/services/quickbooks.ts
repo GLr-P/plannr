@@ -47,9 +47,13 @@ const q = (s: string): string => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
 
 export const getConfig = (db: Db): QboConfig | null => (getSetting(db, 'qbo.config') as QboConfig | null) ?? null
 
+/** Sales + customers need only the item, sales tax and start date; expenses also need their accounts. */
 export function configComplete(c: QboConfig | null): c is QboConfig {
-  return Boolean(c && c.itemId && c.taxCodeId && c.paymentAccountId && c.expenseAccountId && c.purchaseTaxCodeId && c.startDate)
+  return Boolean(c && c.itemId && c.taxCodeId && c.startDate)
 }
+
+/** Expenses wait (unsent) until the paid-from account, expense account and purchase tax are chosen. */
+export const expensesReady = (c: QboConfig): boolean => Boolean(c.paymentAccountId && c.expenseAccountId && c.purchaseTaxCodeId)
 
 /** Pre-tax amount and tax for a tax-included total (rate in %). Cents; the two always add up to the total. */
 export function splitTax(grossCents: number, ratePercent: number): { net: number; tax: number } {
@@ -253,6 +257,7 @@ export async function syncQuickBooks(db: Db, api: QboApi): Promise<QboSyncResult
           }
           continue
         }
+        if (t.type === 'expense' && !expensesReady(cfg)) continue
         const customerQboId = t.customer_id ? (customerIds.get(t.customer_id) ?? getLink(db, 'customer', t.customer_id)?.qbo_id ?? null) : null
         const body = t.type === 'income' ? salesReceipt(t, cfg, customerQboId, paymentMethods) : purchase(t, cfg, expenseAccounts)
         const entity = link

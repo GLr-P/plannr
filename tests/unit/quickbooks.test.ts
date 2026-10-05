@@ -211,6 +211,19 @@ describe('transactions → QuickBooks', () => {
     expect(qbo.store.Purchase).toHaveLength(1)
   })
 
+  it('without expense accounts chosen, sales still go and expenses wait until they are', async () => {
+    setSetting(db, 'qbo.config', { ...CONFIG, paymentAccountId: '', paymentAccountType: '', expenseAccountId: '', purchaseTaxCodeId: '' })
+    money.addTransaction(db, { type: 'expense', amountCents: 1000, date: '2026-10-05', description: 'Tools' })
+    money.addTransaction(db, { type: 'income', amountCents: 5000, date: '2026-10-05' })
+    const r = await syncQuickBooks(db, qbo)
+    expect(r.problems).toEqual([])
+    expect(qbo.store.SalesReceipt).toHaveLength(1)
+    expect(qbo.store.Purchase).toHaveLength(0)
+    setSetting(db, 'qbo.config', CONFIG)
+    await syncQuickBooks(db, qbo)
+    expect(qbo.store.Purchase).toHaveLength(1)
+  })
+
   it('refuses to sync until the where-things-go choices are made', async () => {
     setSetting(db, 'qbo.config', { ...CONFIG, taxCodeId: '' })
     await expect(syncQuickBooks(db, qbo)).rejects.toThrow(/Choose where things go/)

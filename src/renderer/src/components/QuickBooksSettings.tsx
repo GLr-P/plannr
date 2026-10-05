@@ -37,7 +37,8 @@ export function QuickBooksSettings() {
   }
 
   if (!status) return null
-  const setupDone = Boolean(status.config?.itemId && status.config?.taxCodeId && status.config?.paymentAccountId && status.config?.expenseAccountId)
+  const setupDone = Boolean(status.config?.itemId && status.config?.taxCodeId && status.config?.startDate)
+  const expensesOn = Boolean(status.config?.paymentAccountId && status.config?.expenseAccountId && status.config?.purchaseTaxCodeId)
 
   return (
     <section className="setting integration">
@@ -93,6 +94,11 @@ export function QuickBooksSettings() {
               {status.lastSyncAt && <span className="muted"> · sent {relativeTime(status.lastSyncAt).toLowerCase()}</span>}
               {status.config && <span className="muted"> · from {status.config.startDate}</span>}
             </p>
+            {!expensesOn && (
+              <p className="small muted">
+                Expenses aren’t sent yet. Once your QuickBooks has a bank account and an expense account, use “Change where things go” to pick them; expenses since the start date go then.
+              </p>
+            )}
             {status.problems.length > 0 && (
               <div className="qbo-problems">
                 <div className="popover-label">Couldn’t send {status.problems.length} item{status.problems.length === 1 ? '' : 's'} (will retry):</div>
@@ -158,7 +164,7 @@ function QboSetup({ initial, onSaved, onError }: { initial: QboConfig | null; on
 
   if (!options) return <p className="small muted">Loading your QuickBooks lists…</p>
   const set = (patch: Partial<QboConfig>): void => setCfg((c) => ({ ...c, ...patch }))
-  const ready = cfg.itemId && cfg.taxCodeId && cfg.paymentAccountId && cfg.expenseAccountId && cfg.purchaseTaxCodeId && cfg.startDate
+  const ready = cfg.itemId && cfg.taxCodeId && cfg.startDate
 
   const save = async (): Promise<void> => {
     setSaving(true)
@@ -223,6 +229,9 @@ function QboSetup({ initial, onSaved, onError }: { initial: QboConfig | null; on
             ))}
           </select>
         </label>
+        <span className="small">
+          <strong>Expenses</strong> <span className="muted">(optional; leave blank until your QuickBooks has these accounts, and expenses wait until then)</span>
+        </span>
         <label className="mfield">
           Expenses are paid from
           <select
