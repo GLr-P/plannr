@@ -14,6 +14,7 @@ import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
 import { ensureStarterNoteTemplates } from './services/note-templates'
+import { loadDisplayPrefs } from './display'
 import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
 import { APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
@@ -55,6 +56,7 @@ function effectiveTheme(): Theme {
 function createWindow(): void {
   const theme = effectiveTheme()
   const colors = themeColors[theme]
+  const zoom = Math.max(0.8, Math.min(1.4, Number(getSetting(db, 'zoom')) || 1))
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -65,8 +67,9 @@ function createWindow(): void {
     icon: resourcePath('icon.png'),
     backgroundColor: colors.bg,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: colors.titlebar, symbolColor: colors.symbol, height: TITLEBAR_HEIGHT },
+    titleBarOverlay: { color: colors.titlebar, symbolColor: colors.symbol, height: Math.round(TITLEBAR_HEIGHT * zoom) },
     webPreferences: {
+      zoomFactor: zoom, // text size from Settings
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
@@ -120,6 +123,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
+    loadDisplayPrefs(db)
     ensureStarterTemplate(db)
     ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)

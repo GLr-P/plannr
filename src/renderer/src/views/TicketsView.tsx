@@ -4,6 +4,7 @@ import { ChevronDown, Plus, Search, X } from 'lucide-react'
 import {
   formatTicketNumber,
   TICKET_STATUSES,
+  statusLabel,
   type TemplateSummary,
   type TicketStatus,
   type TicketSummary
@@ -25,9 +26,9 @@ const useFilters = create<{ status: StatusFilter; query: string; from: string; t
   to: ''
 }))
 
-const STATUS_CHIPS: { id: StatusFilter; label: string }[] = [
+const statusChips = (): { id: StatusFilter; label: string }[] => [
   { id: 'open', label: 'Open' },
-  ...TICKET_STATUSES.map((s) => ({ id: s.id as StatusFilter, label: s.label })),
+  ...TICKET_STATUSES.map((s) => ({ id: s.id as StatusFilter, label: statusLabel(s.id) })),
   { id: 'all', label: 'All' },
   { id: 'trash', label: 'Trash' }
 ]
@@ -94,7 +95,7 @@ export function TicketsView() {
       </div>
 
       <div className="chips" role="tablist" aria-label="Status">
-        {STATUS_CHIPS.map((c) => (
+        {statusChips().map((c) => (
           <button
             key={c.id}
             type="button"

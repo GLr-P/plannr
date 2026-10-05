@@ -46,5 +46,15 @@ export function search(db: Db, q: string, opts: { limit?: number; types?: Entity
        LIMIT ?`
     )
     .all(...params) as { type: EntityType; id: string; title: string; updated_at: number; snippet: string }[]
-  return rows.map((r) => ({ type: r.type, id: r.id, title: r.title, snippet: r.snippet, updatedAt: r.updated_at }))
+  const results = rows.map((r) => ({ type: r.type, id: r.id, title: r.title, snippet: r.snippet, updatedAt: r.updated_at }))
+  // A repair number ("7", "0007", "nt7", "AB-0007") finds that ticket first, whatever the prefix.
+  const num = /^(?:[a-z]+-?)?0*(\d+)$/i.exec(q.trim())
+  if (num && (!opts.types || opts.types.includes('ticket'))) {
+    const t = db.prepare('SELECT id FROM tickets WHERE number = ? AND deleted_at IS NULL').get(Number(num[1])) as { id: string } | undefined
+    const indexed = t && (db.prepare("SELECT title, updated_at FROM search_index WHERE type = 'ticket' AND id = ?").get(t.id) as { title: string; updated_at: number } | undefined)
+    if (t && indexed) {
+      return [{ type: 'ticket' as const, id: t.id, title: indexed.title, snippet: '', updatedAt: indexed.updated_at }, ...results.filter((r) => r.id !== t.id)].slice(0, limit)
+    }
+  }
+  return results
 }

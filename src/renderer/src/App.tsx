@@ -19,8 +19,10 @@ import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, newTicket, openEntity } from './actions'
 import { ShortcutsDialog, useShortcutsOpen } from './components/Shortcuts'
-import { NAV_ROUTES, navOrder } from './lib/navOrder'
+import { NAV_ROUTES, visibleNav } from './lib/navOrder'
 import { useUi } from './store/ui'
+import { loadDisplay, useDisplay } from './store/display'
+import { useAppearance } from './lib/appearance'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -41,7 +43,8 @@ function useGlobalShortcuts(): void {
         e.preventDefault()
         useShortcutsOpen.getState().set(!useShortcutsOpen.getState().open)
       } else if (plainCtrl && /^[1-9]$/.test(key)) {
-        const id = navOrder(useUi.getState().prefs.navOrder)[Number(key) - 1]
+        const { prefs } = useUi.getState()
+        const id = visibleNav(prefs.navOrder, prefs.navHidden)[Number(key) - 1]
         if (id) {
           e.preventDefault()
           useNav.getState().go(NAV_ROUTES[id])
@@ -102,9 +105,12 @@ function MainView() {
 
 export function App() {
   const loaded = useData((s) => s.loaded)
+  const displayVersion = useDisplay((s) => s.version) // re-render pages when ticket prefix/currency/status names change
+  const view = useNav((s) => s.route.view)
   useGlobalShortcuts()
+  useAppearance()
   useEffect(() => {
-    void useData.getState().refresh()
+    void loadDisplay().then(() => useData.getState().refresh())
     // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
     return window.plannrEvents.onNavigate((target) => {
       if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
@@ -117,7 +123,8 @@ export function App() {
     <div className="app">
       <TitleBar />
       <Sidebar />
-      <main className="main">{loaded && <MainView />}</main>
+      {/* Settings isn't redrawn while you edit it; every other page picks up new names/prefix/currency right away. */}
+      <main className="main">{loaded && <MainView key={view === 'settings' ? 'settings' : displayVersion} />}</main>
       <ContextMenuHost />
       <ToastHost />
       <ShortcutsDialog />

@@ -10,12 +10,15 @@ import { GoogleSettings } from '../components/GoogleSettings'
 import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
+import { HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { Keyboard } from 'lucide-react'
 
 const TABS = [
   { id: 'general', label: 'General' },
+  { id: 'layout', label: 'Layout' },
   { id: 'business', label: 'Business' },
+  { id: 'tickets', label: 'Tickets' },
   { id: 'accounts', label: 'Connected accounts' },
   { id: 'data', label: 'Backups & data' }
 ] as const
@@ -63,7 +66,7 @@ export function SettingsView() {
         <>
           <section className="setting">
             <div>
-              <h3>Appearance</h3>
+              <h3>Theme</h3>
               <p className="muted">Follow Windows, or always use light or dark.</p>
             </div>
             <div className="segmented" role="radiogroup" aria-label="Theme">
@@ -82,6 +85,8 @@ export function SettingsView() {
             </div>
           </section>
 
+          <LookSettings />
+
           <section className="setting">
             <div>
               <h3>Keyboard shortcuts</h3>
@@ -92,14 +97,6 @@ export function SettingsView() {
             <button type="button" className="btn" onClick={() => useShortcutsOpen.getState().set(true)}>
               <Keyboard /> Show shortcuts
             </button>
-          </section>
-
-          <section className="setting">
-            <div>
-              <h3>Recent notes in the sidebar</h3>
-              <p className="muted">Show your 5 most recently edited notes under the main menu. Home always shows them.</p>
-            </div>
-            <Switch label="Recent notes in the sidebar" checked={showRecent} onChange={(v) => setUiPref('sidebarRecent', v ? '1' : '0')} />
           </section>
 
           <section className="setting">
@@ -132,11 +129,33 @@ export function SettingsView() {
             />
           </section>
 
+          <WeekStartSetting />
           <HolidaySettings />
         </>
       )}
 
-      {tab === 'business' && <BusinessSettings />}
+      {tab === 'layout' && (
+        <>
+          <MenuSettings />
+          <HomeLayoutSettings />
+          <section className="setting">
+            <div>
+              <h3>Recent notes in the sidebar</h3>
+              <p className="muted">Show your 5 most recently edited notes under the main menu. Home always shows them.</p>
+            </div>
+            <Switch label="Recent notes in the sidebar" checked={showRecent} onChange={(v) => setUiPref('sidebarRecent', v ? '1' : '0')} />
+          </section>
+        </>
+      )}
+
+      {tab === 'business' && (
+        <>
+          <BusinessSettings />
+          <MoneyDisplaySettings />
+        </>
+      )}
+
+      {tab === 'tickets' && <TicketSettings />}
 
       {tab === 'accounts' && (
         <>

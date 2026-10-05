@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
 import { ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { displayPrefs, formatTicketNumber, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -276,6 +276,7 @@ ${google.calendarName} (Google)`}>
             dayMaxEvents={4}
             nowIndicator
             fixedWeekCount={false}
+            firstDay={displayPrefs().weekStart}
             slotMinTime="06:00:00"
             slotMaxTime="22:00:00"
             scrollTime="08:00:00"

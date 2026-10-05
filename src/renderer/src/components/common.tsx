@@ -37,7 +37,7 @@ export function StatusPill({ status }: { status: TicketStatus }) {
 export function StatusSelect({ value, onChange }: { value: TicketStatus; onChange: (s: TicketStatus) => void }) {
   return (
     <select className={`status status-select status-${value}`} value={value} onChange={(e) => onChange(e.target.value as TicketStatus)} aria-label="Status">
-      {TICKET_STATUSES.map((s) => (
+      {TICKET_STATUSES.map((s) => ({ ...s, label: statusLabel(s.id) })).map((s) => (
         <option key={s.id} value={s.id}>
           {s.label}
         </option>

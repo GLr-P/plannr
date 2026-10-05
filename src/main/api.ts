@@ -27,6 +27,8 @@ import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
 import { getBusiness, printTicket } from './print-window'
+import { displayPrefs } from '../shared/api'
+import { saveDisplayPrefs } from './display'
 import { join } from 'node:path'
 
 export const TITLEBAR_HEIGHT = 44
@@ -343,6 +345,10 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       reorderSections: async (ids) => sidebar.reorderSections(db, ids),
       move: async (item, dest, order) => sidebar.moveInSidebar(db, item, dest, order)
     },
+    display: {
+      get: async () => displayPrefs(),
+      set: async (patch) => saveDisplayPrefs(db, patch)
+    },
     business: {
       get: async () => getBusiness(db),
       set: async (patch) => {
@@ -366,8 +372,17 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         if (!win) return
         const c = themeColors[theme]
         win.setBackgroundColor(c.bg)
-        win.setTitleBarOverlay({ color: c.titlebar, symbolColor: c.symbol, height: TITLEBAR_HEIGHT })
+        win.setTitleBarOverlay({ color: c.titlebar, symbolColor: c.symbol, height: Math.round(TITLEBAR_HEIGHT * win.webContents.getZoomFactor()) })
       },
+      setZoom: async (factor) => {
+        const f = Math.max(0.8, Math.min(1.4, Number(factor) || 1))
+        setSetting(db, 'zoom', f)
+        const win = getWindow()
+        if (!win) return
+        win.webContents.setZoomFactor(f)
+        win.setTitleBarOverlay({ height: Math.round(TITLEBAR_HEIGHT * f) }) // the window buttons line up with the bigger title bar
+      },
+      getZoom: async () => Number(getSetting(db, 'zoom')) || 1,
       getOpenAtLogin: async () => getOpenAtLogin(),
       setOpenAtLogin: async (enabled) => setOpenAtLogin(enabled)
     }

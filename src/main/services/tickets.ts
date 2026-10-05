@@ -115,8 +115,8 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
     const like = likeTerm(word)
     const ors = ['c.name', 'c.email', 't.device', 't.issue', 't.content_text'].map((col) => `${col} LIKE ? ESCAPE '\\'`)
     params.push(like, like, like, like, like)
-    // Repair number: "NT-0007", "nt7", "0007" or "7"
-    const num = /^(?:nt-?)?0*(\d+)$/i.exec(word)
+    // Repair number: "NT-0007", "nt7", "0007" or "7" (any letters before it, so a custom prefix works too)
+    const num = /^(?:[a-z]+-?)?0*(\d+)$/i.exec(word)
     if (num) {
       ors.push('t.number = ?')
       params.push(Number(num[1]))

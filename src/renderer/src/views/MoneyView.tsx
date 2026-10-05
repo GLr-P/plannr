@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, CircleCheck, Download, ExternalLink, Plus, Repeat, Search, SkipForward, Trash2, X } from 'lucide-react'
 import {
   FREQUENCIES,
-  PAYMENT_METHODS,
+  paymentMethods,
   formatTicketNumber,
   statusLabel,
   type MoneyOccurrence,
@@ -632,7 +632,7 @@ export function TransactionForm({
   const [description, setDescription] = useState(defaultDescription ?? '')
   const [amount, setAmount] = useState(defaultAmountCents ? (defaultAmountCents / 100).toFixed(2) : '')
   const [category, setCategory] = useState(ticketId ? 'Repairs' : '')
-  const [method, setMethod] = useState(type === 'income' ? 'Cash' : 'Card')
+  const [method, setMethod] = useState(paymentMethods()[type === 'income' ? 0 : Math.min(1, paymentMethods().length - 1)])
   const [categories, setCategories] = useState<string[]>([])
   const taxPref = useUi((s) => s.prefs[`taxMode.${type}`]) as TaxMode | undefined
   const setPref = useUi((s) => s.setPref)
@@ -686,7 +686,7 @@ export function TransactionForm({
       </select>
       {mode === 'added' && cents ? <span className="small muted">= {money0(cents)} with tax</span> : null}
       <select value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Payment method">
-        {PAYMENT_METHODS.map((m) => (
+        {paymentMethods(method).map((m) => (
           <option key={m}>{m}</option>
         ))}
       </select>

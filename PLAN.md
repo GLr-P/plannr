@@ -129,7 +129,13 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
 10. **More to create:** note types and more templates. **Done (2026-10-05).**
    - Note templates: 7 starters (Meeting notes, Checklist, Repair guide, Supplier, Inventory, Weekly plan, Daily log), each with its own icon. Pick one from **New note ▾**, or right-click a note → Save as template. The Templates page has Ticket and Note tabs.
    - New blocks: Table (right-click a cell to add or delete rows and columns, or toggle the header row; columns resize) and Callout (info, tip, warning, important, note; click the icon to change it).
-11. **Customization:** as much as sensible (sidebar, sections, colours, layout and so on).
+11. **Customization:** as much as sensible (sidebar, sections, colours, layout and so on). **Done (2026-10-05).**
+   - Look (Settings → General): theme, 8 accent colours, comfortable or compact spacing, 4 text sizes (zoom), week starts Sunday or Monday.
+   - Layout tab: hide menu items (everything except Home); choose and reorder the Home sections; recent notes in the sidebar. The menu order itself is set by dragging in the sidebar.
+   - Tickets tab: your own number prefix (search follows it: "ab7" finds AB-0007, in the ticket list and the main search) and names for the five statuses.
+   - Business tab: currency (shown with a plain symbol, e.g. $ for CAD) and your own payment methods.
+   - Plus everything from the sidebar work: sections, icons and colours, order.
+   - Display preferences live in the shared formatters (`setDisplayPrefs` in shared/api.ts), so the main process (printing, search titles) and the window agree.
 12. **For other people:** an optional first-run tutorial (pick which parts you want: tickets, money, vault and so on; shows how to connect Zoho, QuickBooks and Google), then a GitHub page with a description and a download.
 **Later:** cloud sync to the desktop PC, a phone app, and ChatGPT/Claude integration (summarize a ticket, draft customer emails, ask questions about your notes).
 

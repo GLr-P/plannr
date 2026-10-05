@@ -1,4 +1,4 @@
-import { formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
+import { formatCurrency, formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
 import { splitTax } from './quickbooks'
 
 /*
@@ -32,7 +32,7 @@ export interface PrintData {
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 const lines = (s: string): string => esc(s).replace(/\n/g, '<br>')
-const money = (cents: number): string => (cents / 100).toLocaleString('en-CA', { style: 'currency', currency: 'CAD' })
+const money = formatCurrency
 const day = (iso: string | null): string => {
   if (!iso) return ''
   const [y, m, d] = iso.split('-').map(Number)

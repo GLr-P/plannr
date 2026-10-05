@@ -28,7 +28,7 @@ import { noteTitle } from '../lib/format'
 import { ItemIcon } from '../lib/icons'
 import { childrenOf, isWithin, placeItem, placeNextTo, useAddingFolder, useSidebarDrag, type Dragging, type Entry } from '../lib/sidebarTree'
 import { openMenu } from './ContextMenu'
-import { navOrder, type NavId } from '../lib/navOrder'
+import { navHidden, navOrder, type NavId } from '../lib/navOrder'
 import { folderMenu, newSection, noteMenu, renameFolder, renameNote, sectionMenu, sidebarMenu, useRenaming } from '../menus'
 
 /** Section of a detail page, so e.g. "Tickets" stays highlighted while a ticket is open. */
@@ -397,6 +397,7 @@ export function Sidebar() {
   const openTickets = useData((s) => s.counts.open)
   const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
   const order = navOrder(useUi((s) => s.prefs.navOrder))
+  const hidden = navHidden(useUi((s) => s.prefs.navHidden))
   const setPref = useUi((s) => s.setPref)
   const adding = useAddingFolder((s) => s.dest)
   const recent = notes
@@ -470,7 +471,7 @@ export function Sidebar() {
         if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('sidebar-spacer')) openMenu(e, sidebarMenu())
       }}
     >
-      {order.map((id) => nav[id])}
+      {order.filter((id) => !hidden.includes(id)).map((id) => nav[id])}
 
       {sections.map((s) => {
         const entries = childrenOf({ sectionId: s.id }, notes, folders)
@@ -497,8 +498,8 @@ export function Sidebar() {
 
       <div className="sidebar-spacer" />
       <div className="sidebar-divider" />
-      <NavItem icon={<Lock />} label="Vault" target={{ view: 'vault' }} />
-      <NavItem icon={<LayoutTemplate />} label="Templates" target={{ view: 'templates' }} />
+      {!hidden.includes('vault') && <NavItem icon={<Lock />} label="Vault" target={{ view: 'vault' }} />}
+      {!hidden.includes('templates') && <NavItem icon={<LayoutTemplate />} label="Templates" target={{ view: 'templates' }} />}
       <NavItem icon={<Trash2 />} label="Trash" target={{ view: 'notes', filter: { kind: 'trash' } }} />
       <NavItem icon={<Settings />} label="Settings" target={{ view: 'settings' }} />
     </nav>

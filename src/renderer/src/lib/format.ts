@@ -1,3 +1,4 @@
+import { formatCurrency } from '../../../shared/api'
 const DAY = 86_400_000
 
 export function relativeTime(ms: number, now = Date.now()): string {
@@ -22,7 +23,7 @@ export function greeting(date = new Date()): string {
 
 export function formatMoney(cents: number | null): string {
   if (cents === null) return ''
-  return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+  return formatCurrency(cents)
 }
 
 /** "$1,299.50" / "1299.5" / "" → cents (or null when empty/invalid). */

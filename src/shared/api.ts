@@ -134,9 +134,47 @@ export const TICKET_STATUSES = [
   { id: 'picked_up', label: 'Picked up' }
 ] as const
 export type TicketStatus = (typeof TICKET_STATUSES)[number]['id']
-export const statusLabel = (s: TicketStatus): string => TICKET_STATUSES.find((x) => x.id === s)?.label ?? s
+export const statusLabel = (s: TicketStatus): string => display.statusLabels[s]?.trim() || (TICKET_STATUSES.find((x) => x.id === s)?.label ?? s)
 
-export const formatTicketNumber = (n: number): string => `NT-${String(n).padStart(4, '0')}`
+// ---------- Display preferences (Settings), shared by the main process and the window ----------
+
+export interface DisplayPrefs {
+  /** Before ticket numbers, e.g. "NT-" → NT-0007 */
+  ticketPrefix: string
+  /** ISO currency code, e.g. CAD */
+  currency: string
+  /** Your names for the ticket statuses (blank = default name) */
+  statusLabels: Partial<Record<TicketStatus, string>>
+  /** Choices when recording a payment or expense */
+  paymentMethods: string[]
+  /** 0 = Sunday, 1 = Monday */
+  weekStart: 0 | 1
+}
+
+export const DEFAULT_DISPLAY: DisplayPrefs = {
+  ticketPrefix: 'NT-',
+  currency: 'CAD',
+  statusLabels: {},
+  paymentMethods: ['Cash', 'Card', 'Debit', 'e-Transfer', 'PayPal', 'Cheque', 'Bank transfer', 'Other'],
+  weekStart: 0
+}
+
+const display: DisplayPrefs = { ...DEFAULT_DISPLAY }
+export const displayPrefs = (): DisplayPrefs => display
+export function setDisplayPrefs(patch: Partial<DisplayPrefs>): void {
+  Object.assign(display, patch)
+}
+
+export const formatTicketNumber = (n: number): string => `${display.ticketPrefix}${String(n).padStart(4, '0')}`
+
+/** "$1,299.50" in the chosen currency (narrow symbol, so CAD shows "$" not "CA$"). */
+export function formatCurrency(cents: number): string {
+  try {
+    return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: display.currency, currencyDisplay: 'narrowSymbol' })
+  } catch {
+    return (cents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+  }
+}
 
 export interface TicketSummary {
   id: string
@@ -508,7 +546,9 @@ export interface MoneySummary {
   unpaidTickets: UnpaidTicket[]
 }
 
-export const PAYMENT_METHODS = ['Cash', 'Card', 'Zelle', 'Venmo', 'Cash App', 'PayPal', 'Check', 'Bank transfer', 'Other']
+/** Payment methods to offer (Settings → Business), plus `current` if it's no longer in the list. */
+export const paymentMethods = (current?: string): string[] =>
+  current && !display.paymentMethods.includes(current) ? [...display.paymentMethods, current] : display.paymentMethods
 export const DEFAULT_CATEGORIES = ['Parts', 'Software', 'Rent', 'Utilities', 'Phone & internet', 'Insurance', 'Marketing', 'Fuel', 'Tools', 'Other']
 
 // ---------- Google Calendar ----------
@@ -892,6 +932,10 @@ export interface PlannrApi {
     /** Move a note/folder into a section or folder; `order` = that place's full new item order */
     move(item: SidebarRef, dest: SidebarDest, order: SidebarRef[]): Promise<void>
   }
+  display: {
+    get(): Promise<DisplayPrefs>
+    set(patch: Partial<DisplayPrefs>): Promise<DisplayPrefs>
+  }
   business: {
     get(): Promise<BusinessInfo>
     set(patch: Partial<BusinessInfo>): Promise<BusinessInfo>
@@ -904,6 +948,9 @@ export interface PlannrApi {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
     setTheme(theme: Theme): Promise<void>
+    /** Text size: 1 = normal (0.8–1.4) */
+    setZoom(factor: number): Promise<void>
+    getZoom(): Promise<number>
     getOpenAtLogin(): Promise<boolean>
     /** Start Plannr (in the tray) when Windows starts, so reminders always work */
     setOpenAtLogin(enabled: boolean): Promise<void>
@@ -968,9 +1015,10 @@ export const API_SHAPE = {
   quickbooks: ['status', 'configureKey', 'connect', 'disconnect', 'options', 'createItem', 'setConfig', 'syncNow'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   sidebar: ['sections', 'createSection', 'renameSection', 'removeSection', 'reorderSections', 'move'],
+  display: ['get', 'set'],
   business: ['get', 'set'],
   print: ['ticket'],
-  app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
+  app: ['info', 'openDataFolder', 'setTheme', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

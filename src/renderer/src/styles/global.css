@@ -1544,3 +1544,179 @@ kbd {
   gap: 3px;
   flex-shrink: 0;
 }
+
+/* ---------- Accent colours (Settings → General) ---------- */
+:root[data-accent='purple'] {
+  --accent: #7c4ddb;
+}
+:root[data-accent='purple'][data-theme='dark'] {
+  --accent: #a083f0;
+}
+:root[data-accent='teal'] {
+  --accent: #0f8c86;
+}
+:root[data-accent='teal'][data-theme='dark'] {
+  --accent: #3cc0b8;
+}
+:root[data-accent='green'] {
+  --accent: #1f8a4c;
+}
+:root[data-accent='green'][data-theme='dark'] {
+  --accent: #4cc27c;
+}
+:root[data-accent='orange'] {
+  --accent: #d9661b;
+}
+:root[data-accent='orange'][data-theme='dark'] {
+  --accent: #f0915a;
+}
+:root[data-accent='red'] {
+  --accent: #d03b3b;
+}
+:root[data-accent='red'][data-theme='dark'] {
+  --accent: #ef6b6b;
+}
+:root[data-accent='pink'] {
+  --accent: #d23f86;
+}
+:root[data-accent='pink'][data-theme='dark'] {
+  --accent: #ef77ae;
+}
+:root[data-accent='graphite'] {
+  --accent: #3c3c40;
+}
+:root[data-accent='graphite'][data-theme='dark'] {
+  --accent: #c4c4c8;
+  --accent-text: #1b1b1d;
+}
+:root[data-accent]:not([data-accent='blue']) {
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --selection: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* ---------- Compact spacing ---------- */
+:root[data-density='compact'] .nav-item {
+  height: 26px;
+}
+:root[data-density='compact'] .sidebar-group .section-header {
+  margin-top: 8px;
+}
+:root[data-density='compact'] .page {
+  padding-top: 18px;
+}
+:root[data-density='compact'] .note-row {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+:root[data-density='compact'] .history-row {
+  min-height: 34px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+:root[data-density='compact'] .table td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+:root[data-density='compact'] .setting {
+  padding: 12px 0;
+}
+
+/* ---------- Settings: appearance pickers ---------- */
+.accent-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.accent-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.accent-swatch.on {
+  box-shadow: 0 0 0 2px var(--text);
+}
+.setting-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Settings: customization ---------- */
+.setting-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 16px;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 420px;
+}
+.order-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.order-buttons {
+  display: flex;
+  gap: 2px;
+}
+.setting-input {
+  height: 34px;
+  min-width: 140px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 14px;
+  outline: none;
+}
+.setting-input:focus,
+.setting-textarea:focus {
+  border-color: var(--accent);
+}
+.setting-textarea {
+  max-width: 320px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px 10px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.status-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px 16px;
+  max-width: 640px;
+}
+.status-names .status {
+  align-self: flex-start;
+}

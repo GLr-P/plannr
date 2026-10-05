@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { X } from 'lucide-react'
 import { useUi } from '../store/ui'
-import { NAV_LABELS, navOrder } from '../lib/navOrder'
+import { NAV_LABELS, visibleNav } from '../lib/navOrder'
 
 export const useShortcutsOpen = create<{ open: boolean; set: (open: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }))
 
@@ -17,7 +17,10 @@ const Keys = ({ k }: { k: string }) => (
 /** Ctrl+/ (or Settings → Keyboard shortcuts): every shortcut on one page. */
 export function ShortcutsDialog() {
   const { open, set } = useShortcutsOpen()
-  const order = navOrder(useUi((s) => s.prefs.navOrder))
+  const order = visibleNav(
+    useUi((s) => s.prefs.navOrder),
+    useUi((s) => s.prefs.navHidden)
+  )
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent): void => {
