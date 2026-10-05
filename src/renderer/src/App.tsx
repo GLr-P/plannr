@@ -12,6 +12,7 @@ import { CustomerView } from './views/CustomerView'
 import { TemplatesView, TemplateView } from './views/TemplatesView'
 import { CalendarView } from './views/CalendarView'
 import { VaultView } from './views/VaultView'
+import { MoneyView } from './views/MoneyView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, openEntity } from './actions'
@@ -70,6 +71,8 @@ function MainView() {
       return <CalendarView date={route.date} eventId={route.eventId} />
     case 'vault':
       return <VaultView />
+    case 'money':
+      return <MoneyView itemId={route.itemId} />
     case 'settings':
       return <SettingsView />
   }
@@ -83,6 +86,7 @@ export function App() {
     // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
     return window.plannrEvents.onNavigate((target) => {
       if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
+      else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
       else openEntity(target.type, target.id)
     })
   }, [])

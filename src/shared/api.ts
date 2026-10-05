@@ -134,6 +134,8 @@ export interface TicketSummary {
   receivedOn: string | null
   pickupOn: string | null
   closedAt: number | null
+  /** Sum of payments recorded for this ticket */
+  paidCents: number
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -362,6 +364,124 @@ export type VaultResult = { ok: true } | { ok: false; error: string; retryAfterM
 
 export const MIN_PASSCODE_LENGTH = 6
 
+// ---------- Money ----------
+
+export type RecurringKind = 'bill' | 'subscription'
+export type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'once'
+export const FREQUENCIES: { id: Frequency; label: string; per: string }[] = [
+  { id: 'weekly', label: 'Weekly', per: '/wk' },
+  { id: 'monthly', label: 'Monthly', per: '/mo' },
+  { id: 'quarterly', label: 'Every 3 months', per: '/qtr' },
+  { id: 'yearly', label: 'Yearly', per: '/yr' },
+  { id: 'once', label: 'One time', per: '' }
+]
+
+export interface RecurringItem {
+  id: string
+  kind: RecurringKind
+  name: string
+  amountCents: number
+  frequency: Frequency
+  /** YYYY-MM-DD */
+  nextDue: string
+  category: string
+  autopay: boolean
+  /** Remind this many days before (and on the day); -1 = no reminders */
+  remindDays: number
+  url: string
+  notes: string
+  active: boolean
+  cancelledOn: string | null
+  updatedAt: number
+}
+
+export interface RecurringPatch {
+  name?: string
+  amountCents?: number
+  frequency?: Frequency
+  nextDue?: string
+  category?: string
+  autopay?: boolean
+  remindDays?: number
+  url?: string
+  notes?: string
+  active?: boolean
+}
+
+export type TransactionType = 'income' | 'expense'
+
+export interface Transaction {
+  id: string
+  date: string
+  type: TransactionType
+  amountCents: number
+  description: string
+  category: string
+  method: string
+  ticketId: string | null
+  /** e.g. "NT-0007 · Jane Doe" when linked to a ticket */
+  ticketLabel: string
+  recurringId: string | null
+  updatedAt: number
+}
+
+export interface TransactionInput {
+  date?: string
+  type: TransactionType
+  amountCents: number
+  description?: string
+  category?: string
+  method?: string
+  ticketId?: string | null
+  recurringId?: string | null
+}
+
+export interface TransactionFilter {
+  /** YYYY-MM-DD inclusive */
+  from?: string
+  to?: string
+  type?: TransactionType
+  query?: string
+  ticketId?: string
+}
+
+/** A bill/subscription due date (calendar, upcoming list). */
+export interface MoneyOccurrence {
+  recurringId: string
+  date: string
+  name: string
+  kind: RecurringKind
+  amountCents: number
+  autopay: boolean
+  /** Before today and not paid yet */
+  overdue: boolean
+}
+
+export interface UnpaidTicket {
+  ticketId: string
+  number: number
+  customerName: string
+  device: string
+  status: TicketStatus
+  priceCents: number
+  paidCents: number
+}
+
+export interface MoneySummary {
+  month: string
+  incomeCents: number
+  expenseCents: number
+  /** Active subscriptions converted to a monthly / yearly cost */
+  subscriptionsMonthlyCents: number
+  subscriptionsYearlyCents: number
+  /** Overdue and due in the next 30 days */
+  upcoming: MoneyOccurrence[]
+  unpaidTickets: UnpaidTicket[]
+}
+
+export const PAYMENT_METHODS = ['Cash', 'Card', 'Zelle', 'Venmo', 'Cash App', 'PayPal', 'Check', 'Bank transfer', 'Other']
+export const DEFAULT_CATEGORIES = ['Parts', 'Software', 'Rent', 'Utilities', 'Phone & internet', 'Insurance', 'Marketing', 'Fuel', 'Tools', 'Other']
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -478,6 +598,26 @@ export interface PlannrApi {
     /** Save-file dialog to export a decrypted copy */
     exportFile(fileId: string): Promise<boolean>
   }
+  money: {
+    recurring(): Promise<RecurringItem[]>
+    createRecurring(kind: RecurringKind): Promise<RecurringItem>
+    updateRecurring(id: string, patch: RecurringPatch): Promise<RecurringItem>
+    removeRecurring(id: string): Promise<void>
+    /** Records the payment (an expense) and moves to the next due date */
+    markPaid(id: string, opts?: { date?: string; amountCents?: number }): Promise<RecurringItem>
+    /** Moves to the next due date without recording a payment */
+    skip(id: string): Promise<RecurringItem>
+    transactions(filter?: TransactionFilter): Promise<Transaction[]>
+    addTransaction(input: TransactionInput): Promise<Transaction>
+    updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<Transaction>
+    removeTransaction(id: string): Promise<void>
+    /** month = YYYY-MM */
+    summary(month: string): Promise<MoneySummary>
+    occurrences(from: string, to: string): Promise<MoneyOccurrence[]>
+    categories(): Promise<string[]>
+    /** Save-file dialog: transactions in [from, to] as CSV */
+    exportCsv(from: string, to: string): Promise<boolean>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -523,6 +663,22 @@ export const API_SHAPE = {
   search: ['query'],
   files: ['save', 'open'],
   settings: ['get', 'set'],
+  money: [
+    'recurring',
+    'createRecurring',
+    'updateRecurring',
+    'removeRecurring',
+    'markPaid',
+    'skip',
+    'transactions',
+    'addTransaction',
+    'updateTransaction',
+    'removeTransaction',
+    'summary',
+    'occurrences',
+    'categories',
+    'exportCsv'
+  ],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 

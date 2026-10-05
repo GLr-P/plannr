@@ -60,3 +60,50 @@ export function dueReminders(db: Db, now = new Date(), lookbackMs = LOOKBACK_MS)
 export function markReminderFired(db: Db, eventId: string, key: string): void {
   db.prepare('INSERT OR IGNORE INTO reminder_log (event_id, reminder_key, fired_at) VALUES (?, ?, ?)').run(eventId, key, Date.now())
 }
+
+// ---------- Bills & subscriptions ----------
+
+export interface MoneyReminder {
+  recurringId: string
+  key: string
+  title: string
+  body: string
+}
+
+const dollars = (cents: number): string => `$${(cents / 100).toFixed(2)}`
+
+/**
+ * "X days before" (9 AM) and "day of" (8 AM) reminders for active bills/subscriptions with reminders on.
+ * Auto-pay charges are recorded the day after the due date, so auto-pay items get both reminders too.
+ */
+export function dueMoneyReminders(db: Db, now = new Date(), lookbackMs = LOOKBACK_MS): MoneyReminder[] {
+  const rows = db
+    .prepare('SELECT id, kind, name, amount_cents, next_due, autopay, remind_days FROM recurring WHERE deleted_at IS NULL AND active = 1 AND remind_days >= 0')
+    .all() as { id: string; kind: 'bill' | 'subscription'; name: string; amount_cents: number; next_due: string; autopay: number; remind_days: number }[]
+  const logged = db.prepare('SELECT 1 FROM reminder_log WHERE event_id = ? AND reminder_key = ?')
+  const out: MoneyReminder[] = []
+  for (const r of rows) {
+    const [y, m, d] = r.next_due.split('-').map(Number)
+    const name = r.name || (r.kind === 'subscription' ? 'Subscription' : 'Bill')
+    const slots: { key: string; at: Date; body: string }[] = []
+    if (r.remind_days > 0) {
+      const when = r.remind_days === 1 ? 'tomorrow' : `in ${r.remind_days} days`
+      const body =
+        r.kind === 'subscription'
+          ? `Renews ${when} · ${dollars(r.amount_cents)}${r.autopay ? ' will be charged' : ''}`
+          : `${r.autopay ? 'Auto-pays' : 'Due'} ${when} · ${dollars(r.amount_cents)}`
+      slots.push({ key: `money-before@${r.next_due}`, at: new Date(y, m - 1, d - r.remind_days, 9, 0), body })
+    }
+    slots.push({
+      key: `money-dayof@${r.next_due}`,
+      at: new Date(y, m - 1, d, 8, 0),
+      body: `${r.kind === 'subscription' ? 'Renews' : r.autopay ? 'Auto-pays' : 'Due'} today · ${dollars(r.amount_cents)}`
+    })
+    for (const s of slots) {
+      const age = now.getTime() - s.at.getTime()
+      if (age < 0 || age > lookbackMs || logged.get(r.id, s.key)) continue
+      out.push({ recurringId: r.id, key: s.key, title: name, body: s.body })
+    }
+  }
+  return out
+}

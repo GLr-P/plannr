@@ -19,6 +19,7 @@ import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
 import { LinkedEvents } from '../components/LinkedEvents'
+import { TicketPayments } from './MoneyView'
 
 export function TicketView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined)
@@ -265,6 +266,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             />
           </div>
         </div>
+
+        {!trashed && <TicketPayments ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
 
         <PhotoGallery ticketId={ticket.id} />
 

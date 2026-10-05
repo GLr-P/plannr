@@ -7,6 +7,7 @@ import './styles/editor.css'
 import './styles/business.css'
 import './styles/calendar.css'
 import './styles/vault.css'
+import './styles/money.css'
 
 // The main process passes the starting theme so the first paint has the right colors.
 const initial = new URLSearchParams(location.search).get('theme')

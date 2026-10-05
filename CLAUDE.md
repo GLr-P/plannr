@@ -65,6 +65,10 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - Vault files are stored as `<data>/vault/<id>.bin` (sealed, with the file id as additional data). Their name, type and size live in the sealed `vault_files.meta`. The privileged `plannr-vault://file/<id>/<name>` protocol decrypts in memory and returns 404 while locked. `webPreferences.plugins` is on so Chromium's PDF viewer can preview PDFs.
   - Vault notes use `NoteEditor` with `options={{ mentions: false, upload }}`, so pasted images go to the vault (`inline: true`, so they're hidden from attachments).
   - "Open in app" writes a temporary copy under `%TEMP%/plannr-vault-open`, which is deleted on lock, start and quit.
+- **Money** (`services/money.ts`):
+  - `recurring` holds bills and subscriptions, with `anchor_day` for month-safe advancing. `transactions` holds income and expenses; ticket payments are income rows with `ticket_id`, and `TicketSummary.paidCents` sums them.
+  - `processAutopay` charges occurrences with `next_due < today` and `>= due_set_on`. It runs every minute in the background and before the money list and summary calls.
+  - `dueMoneyReminders` shares `reminder_log`, keyed by recurring id. Money due dates are virtual calendar events (`money.occurrences`), not rows in `events`.
 - **Background** (`main/background.ts`):
   - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
   - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.

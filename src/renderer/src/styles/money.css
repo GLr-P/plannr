@@ -1,0 +1,400 @@
+/* ---------- Money ---------- */
+.money-tabs {
+  margin: 14px 0 18px;
+}
+.month-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.month-label {
+  min-width: 140px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 14px 0 6px;
+}
+.stat {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+.stat-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 650;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+.stat-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.income {
+  color: rgb(22, 150, 70);
+}
+.expense {
+  color: var(--danger);
+}
+:root[data-theme='dark'] .income {
+  color: rgb(74, 222, 128);
+}
+.money-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.due-list,
+.recurring-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.due-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  text-align: left;
+}
+button.due-row:hover,
+.due-row:hover {
+  background: var(--hover);
+}
+.due-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.due-main.as-button {
+  cursor: pointer;
+}
+.due-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.due-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.due-sub.overdue {
+  color: var(--danger);
+  font-weight: 500;
+}
+.due-amount {
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.due-amount.owed {
+  color: var(--danger);
+}
+.per {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 1px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 9px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.muted-badge {
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+}
+
+/* Bills & subscriptions */
+.recurring-actions {
+  display: flex;
+  gap: 8px;
+}
+.recurring-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.recurring-item.open {
+  border-color: var(--border-strong);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.recurring-item.cancelled {
+  opacity: 0.7;
+}
+.recurring-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+}
+.recurring-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+  border-radius: var(--radius);
+}
+.recurring-main:hover {
+  background: var(--hover);
+}
+.recurring-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.row-actions-visible {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.recurring-editor {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 16px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border);
+}
+.mfield {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.mfield.wide {
+  grid-column: 1 / -1;
+}
+.mfield input,
+.mfield select,
+.mfield textarea {
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 400;
+  outline: none;
+}
+.mfield textarea {
+  height: auto;
+  min-height: 60px;
+  field-sizing: content;
+  padding: 8px 10px;
+  resize: none;
+}
+.mfield input:focus,
+.mfield select:focus,
+.mfield textarea:focus {
+  border-color: var(--accent);
+}
+.mfield-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mfield-row input {
+  flex: 1;
+}
+.mfield-check {
+  grid-column: span 3;
+}
+.recurring-editor-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-toggle-btn {
+  margin-top: 22px;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.section-toggle-btn:hover {
+  background: var(--hover);
+}
+
+/* Transactions */
+.tx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tx-toolbar .chips {
+  margin: 0;
+}
+.tx-toolbar .filter-field {
+  margin: 0;
+}
+.tx-totals {
+  display: flex;
+  gap: 18px;
+  margin: 14px 2px 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.tx-table td.income,
+.tx-table td.expense {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tx-row:hover .row-actions {
+  visibility: visible;
+}
+.link-btn.tight {
+  padding: 0;
+  font-size: 12.5px;
+}
+.tx-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.tx-form input,
+.tx-form select {
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 0 8px;
+  outline: none;
+}
+.tx-form input:focus,
+.tx-form select:focus {
+  border-color: var(--accent);
+}
+.tx-form .grow {
+  flex: 1;
+  min-width: 160px;
+}
+.tx-form .amount {
+  width: 110px;
+}
+.tx-form-type {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+}
+
+/* Ticket page: payments */
+.ticket-payments {
+  margin: 4px 0 14px;
+}
+.ticket-payments-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ticket-payments-head .vault-field-label {
+  margin: 0;
+}
+.pay-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pay-badge.paid {
+  color: rgb(22, 150, 70);
+  background: rgba(22, 150, 70, 0.12);
+}
+.pay-badge.owes {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.payment-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 420px;
+}
+.payment-list li {
+  display: grid;
+  grid-template-columns: 110px 1fr auto 28px;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* Calendar: bill & subscription due dates */
+.fc .ev-money,
+.fc .ev-money.fc-daygrid-block-event,
+.fc .ev-money.fc-daygrid-dot-event {
+  background: rgba(13, 148, 136, 0.13);
+}
+.fc .ev-money .ev-chip {
+  color: rgb(15, 118, 110);
+}
+.fc .ev-overdue {
+  background: var(--danger-soft) !important;
+}
+.fc .ev-overdue .ev-chip {
+  color: var(--danger) !important;
+}
+:root[data-theme='dark'] .fc .ev-money .ev-chip {
+  color: rgb(94, 234, 212);
+}

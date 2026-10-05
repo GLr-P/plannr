@@ -37,6 +37,7 @@ test.afterAll(async () => {
 
 test('Enter in a toggle title moves into the toggle, and pasted photos go inside it', async () => {
   await page.getByRole('button', { name: 'New note' }).first().click()
+  await expect(page.getByLabel('Title')).toBeFocused() // the new note is open
   await page.keyboard.type('iPhone 13 screen')
   await page.keyboard.press('Enter')
   await page.keyboard.type('/toggle')

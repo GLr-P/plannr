@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, FileText, Flag, Pin, Plus, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type Holiday, type TicketSummary } from '../../../shared/api'
+import { CalendarDays, DollarSign, FileText, Flag, Pin, Plus, Wrench } from 'lucide-react'
+import { formatTicketNumber, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
 import { StatusPill } from '../components/common'
@@ -8,7 +9,7 @@ import { NewTicketButton } from './TicketsView'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { newNote } from '../actions'
-import { formatDay, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
+import { formatDay, formatMoney, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
 
 function dayLabel(date: string): string {
   if (date === todayISO()) return 'Today'
@@ -30,7 +31,9 @@ export function HomeView() {
   const [tickets, setTickets] = useState<TicketSummary[]>([])
   const [upcoming, setUpcoming] = useState<CalendarEvent[]>([])
   const [holidays, setHolidays] = useState<Holiday[]>([])
+  const [bills, setBills] = useState<MoneyOccurrence[]>([])
   useEffect(() => {
+    void upcomingBills(7).then(setBills)
     void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
     void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
@@ -52,7 +55,7 @@ export function HomeView() {
         </div>
       </header>
 
-      {(upcoming.length > 0 || holidays.length > 0) && (
+      {(upcoming.length > 0 || holidays.length > 0 || bills.length > 0) && (
         <section>
           <h2 className="section-title">Coming up</h2>
           <ul className="ticket-history">
@@ -63,6 +66,19 @@ export function HomeView() {
                   <span className="upcoming-day">{dayLabel(h.date)}</span>
                   <span className="history-main">{h.title}</span>
                   <span className="history-date">{h.observance ? 'Observance' : 'Holiday'}</span>
+                </button>
+              </li>
+            ))}
+            {bills.map((b) => (
+              <li key={`${b.recurringId}:${b.date}`}>
+                <button type="button" className="history-row" onClick={() => go({ view: 'money', itemId: b.recurringId })}>
+                  <DollarSign className="row-lead" />
+                  <span className="upcoming-day">{dayLabel(b.date)}</span>
+                  <span className="history-main">
+                    {b.name || 'Bill'}
+                    <span className="muted"> · {b.kind === 'subscription' ? 'renews' : 'due'}{b.autopay ? ' (auto-pay)' : ''}</span>
+                  </span>
+                  <span className="history-date">{formatMoney(b.amountCents)}</span>
                 </button>
               </li>
             ))}

@@ -1,7 +1,8 @@
 import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, shell, Tray } from 'electron'
 import { join } from 'node:path'
 import type { Db } from './db'
-import { dueReminders, markReminderFired } from './services/reminders'
+import { dueMoneyReminders, dueReminders, markReminderFired } from './services/reminders'
+import { processAutopay } from './services/money'
 import type { EntityType } from '../shared/api'
 
 export const APP_ID = 'com.nanotechservices.plannr'
@@ -11,7 +12,7 @@ export const resourcePath = (file: string): string =>
   app.isPackaged ? join(process.resourcesPath, 'resources', file) : join(app.getAppPath(), 'resources', file)
 
 /** Asks the window to show something (used by notifications). */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string }
 
 export function showWindow(getWindow: () => BrowserWindow | null, target?: NavigateTarget): void {
   const win = getWindow()
@@ -45,6 +46,14 @@ export function createTray(getWindow: () => BrowserWindow | null, quit: () => vo
 export function startReminders(db: Db, getWindow: () => BrowserWindow | null): () => void {
   const check = (): void => {
     if (!Notification.isSupported()) return
+    // Bill/subscription reminders first (auto-pay below moves due dates forward once charged).
+    for (const r of dueMoneyReminders(db)) {
+      markReminderFired(db, r.recurringId, r.key)
+      const n = new Notification({ title: r.title, body: r.body, icon: resourcePath('icon.png') })
+      n.on('click', () => showWindow(getWindow, { money: r.recurringId }))
+      n.show()
+    }
+    processAutopay(db)
     for (const r of dueReminders(db)) {
       markReminderFired(db, r.eventId, r.key) // mark first: never repeat, even if showing fails
       const n = new Notification({ title: r.title, body: r.body, icon: resourcePath('icon.png') })

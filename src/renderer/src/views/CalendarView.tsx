@@ -4,8 +4,10 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { ChevronLeft, ChevronRight, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type Holiday, type TicketSummary } from '../../../shared/api'
+import { ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
+import { formatTicketNumber, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { go } from '../store/nav'
+import { formatMoney } from '../lib/format'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { DRAG_MIME, openEntity, readDrag } from '../actions'
@@ -42,15 +44,21 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [range, setRange] = useState<{ from: string; to: string } | null>(null)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [holidays, setHolidays] = useState<Holiday[]>([])
+  const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
 
   const reload = useCallback(async () => {
     if (!range) return
-    const [evs, hols] = await Promise.all([api.calendar.range(range.from, range.to), api.holidays.range(range.from, range.to)])
+    const [evs, hols, due] = await Promise.all([
+      api.calendar.range(range.from, range.to),
+      api.holidays.range(range.from, range.to),
+      api.money.occurrences(range.from, range.to)
+    ])
     setEvents(evs)
     setHolidays(hols)
+    setBills(due)
     setVersion((v) => v + 1)
   }, [range])
   useEffect(() => {
@@ -79,6 +87,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-holiday', h.observance ? 'ev-observance' : ''],
         extendedProps: { holiday: h }
       })),
+      // Bill & subscription due dates (read-only here; managed in Money)
+      ...bills.map((b) => ({
+        id: `money:${b.recurringId}:${b.date}`,
+        title: `${b.name || 'Bill'} · ${formatMoney(b.amountCents)}`,
+        start: b.date,
+        allDay: true,
+        editable: false,
+        order: 0,
+        classNames: ['ev-money', b.overdue ? 'ev-overdue' : ''],
+        extendedProps: { bill: b }
+      })),
       ...events.map((e) => ({
         order: 1,
         id: e.id,
@@ -90,7 +109,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays]
+    [events, holidays, bills]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -130,6 +149,14 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         <div className="ev-chip" title={`${holiday.title}${holiday.observance ? ' (observance)' : ' (holiday)'}`}>
           <Flag className="ev-icon" />
           <span className="ev-title">{holiday.title}</span>
+        </div>
+      )
+    const bill = arg.event.extendedProps.bill as MoneyOccurrence | undefined
+    if (bill)
+      return (
+        <div className="ev-chip" title={`${bill.kind === 'subscription' ? 'Subscription renews' : 'Bill due'}${bill.autopay ? ' (auto-pay)' : ''}`}>
+          <DollarSign className="ev-icon" />
+          <span className="ev-title">{arg.event.title}</span>
         </div>
       )
     const ev = arg.event.extendedProps.ev as CalendarEvent
@@ -233,6 +260,8 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
             eventClick={(info) => {
               info.jsEvent.preventDefault()
               if (info.event.extendedProps.holiday) return // holidays are read-only
+              const bill = info.event.extendedProps.bill as MoneyOccurrence | undefined
+              if (bill) return go({ view: 'money', itemId: bill.recurringId })
               const r = info.el.getBoundingClientRect()
               setPopover({ kind: 'edit', event: info.event.extendedProps.ev as CalendarEvent, anchor: { x: r.right, y: r.top } })
             }}

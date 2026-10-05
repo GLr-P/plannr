@@ -12,6 +12,7 @@ import * as templates from './services/templates'
 import { backlinks } from './services/links'
 import * as calendar from './services/calendar'
 import * as holidays from './services/holidays'
+import * as money from './services/money'
 import { getOpenAtLogin, setOpenAtLogin } from './background'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
@@ -150,6 +151,30 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
             'If you forget your vault passcode, this key is the only way to get back in.'
           ].join('\r\n')
         )
+        return true
+      }
+    },
+    money: {
+      // Auto-pay catch-up runs first so lists are right even if Plannr was closed when something renewed.
+      recurring: async () => (money.processAutopay(db), money.listRecurring(db)),
+      createRecurring: async (kind) => money.createRecurring(db, kind),
+      updateRecurring: async (id, patch) => money.updateRecurring(db, id, patch),
+      removeRecurring: async (id) => money.removeRecurring(db, id),
+      markPaid: async (id, opts) => money.markPaid(db, id, opts),
+      skip: async (id) => money.skip(db, id),
+      transactions: async (filter) => money.listTransactions(db, filter),
+      addTransaction: async (input) => money.addTransaction(db, input),
+      updateTransaction: async (id, patch) => money.updateTransaction(db, id, patch),
+      removeTransaction: async (id) => money.removeTransaction(db, id),
+      summary: async (month) => (money.processAutopay(db), money.summary(db, month)),
+      occurrences: async (from, to) => money.occurrences(db, from, to),
+      categories: async () => money.categories(db),
+      exportCsv: async (from, to) => {
+        const win = getWindow()
+        const options = { defaultPath: `Plannr transactions ${from} to ${to}.csv`, filters: [{ name: 'CSV', extensions: ['csv'] }] }
+        const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+        if (result.canceled || !result.filePath) return false
+        writeFileSync(result.filePath, '﻿' + money.transactionsCsv(db, from, to)) // BOM so Excel reads it as UTF-8
         return true
       }
     },

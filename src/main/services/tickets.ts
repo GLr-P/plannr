@@ -31,6 +31,7 @@ interface TicketRow {
   received_on: string | null
   pickup_on: string | null
   closed_at: number | null
+  paid_cents: number
   created_at: number
   updated_at: number
   deleted_at: number | null
@@ -40,7 +41,8 @@ interface TicketRow {
 
 const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on,
   t.closed_at, t.created_at, t.updated_at, t.deleted_at,
-  c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email`
+  c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+  (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid_cents`
 const FROM = 'FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id'
 
 const STATUS_IDS = new Set<string>(TICKET_STATUSES.map((s) => s.id))
@@ -60,6 +62,7 @@ function toSummary(r: TicketRow): TicketSummary {
     receivedOn: r.received_on,
     pickupOn: r.pickup_on,
     closedAt: r.closed_at,
+    paidCents: r.paid_cents ?? 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     deletedAt: r.deleted_at

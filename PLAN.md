@@ -99,7 +99,13 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Nothing readable on disk (verified by tests that scan the raw database file); vault items are never in search
    - Encrypted files on any item (PDFs, scans, photos): names and contents are encrypted. Images and PDFs preview inside Plannr, decrypted only in memory; "Open in app" uses a temporary copy deleted on lock; "Save a copy" exports. New → Document creates an item and opens the file picker.
    - Every item has rich notes (the same editor as notes; pasted images are encrypted) and user-defined custom fields that can be hidden
-5. **Money**
+5. **Money**. **Done (2026-10-04).** Includes:
+   - Bills and subscriptions (weekly, monthly, quarterly, yearly or one-time; the day of month is kept, so the 31st survives short months)
+   - Auto-pay (charged the day after the due date, with no backfill for dates before tracking started); mark paid or skip
+   - Reminders N days before and on the day; due dates on the calendar and Home; cancelled items kept
+   - Ticket payments with Paid / Owes badges
+   - Overview: income, expenses, profit, subscription cost per month and year, coming up, customers who owe
+   - Transactions with filters and search, plus CSV export
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.
 7. **Polish & install:** backups, installer, start-with-Windows option
 

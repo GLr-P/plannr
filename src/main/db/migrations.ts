@@ -217,5 +217,49 @@ export const migrations: string[] = [
     deleted_at INTEGER
   );
   CREATE INDEX vault_files_item ON vault_files(item_id);
+  `,
+
+  /* 8: money: bills & subscriptions (recurring), and income/expense transactions (incl. ticket payments) */ `
+  CREATE TABLE recurring (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('bill', 'subscription')),
+    name TEXT NOT NULL DEFAULT '',
+    amount_cents INTEGER NOT NULL DEFAULT 0,
+    frequency TEXT NOT NULL DEFAULT 'monthly' CHECK (frequency IN ('weekly', 'monthly', 'quarterly', 'yearly', 'once')),
+    next_due TEXT NOT NULL,       -- YYYY-MM-DD
+    anchor_day INTEGER NOT NULL,  -- day of month it's due (so the 31st comes back after short months)
+    category TEXT NOT NULL DEFAULT '',
+    autopay INTEGER NOT NULL DEFAULT 0,
+    remind_days INTEGER NOT NULL DEFAULT 3,  -- remind this many days before (plus on the day); -1 = no reminders
+    url TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1,       -- 0 = cancelled
+    cancelled_on TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+
+  CREATE TABLE transactions (
+    id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,           -- YYYY-MM-DD
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+    description TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    method TEXT NOT NULL DEFAULT '',
+    ticket_id TEXT,
+    recurring_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX transactions_date ON transactions(date);
+  CREATE INDEX transactions_ticket ON transactions(ticket_id);
+  `,
+
+  /* 9: when a bill's due date was set; earlier due dates count as already paid (no auto-pay backfill) */ `
+  ALTER TABLE recurring ADD COLUMN due_set_on TEXT;
+  UPDATE recurring SET due_set_on = date(created_at / 1000, 'unixepoch', 'localtime');
   `
 ]

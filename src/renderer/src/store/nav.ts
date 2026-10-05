@@ -14,6 +14,7 @@ export type Route =
   | { view: 'template'; id: string }
   | { view: 'calendar'; date?: string; eventId?: string }
   | { view: 'vault' }
+  | { view: 'money'; itemId?: string }
   | { view: 'settings' }
 
 interface NavState {

@@ -13,6 +13,7 @@ import { go } from '../store/nav'
 import { DRAG_MIME, newTicket } from '../actions'
 import { formatDay, formatMoney } from '../lib/format'
 import { StatusPill } from '../components/common'
+import { PaidBadge } from './MoneyView'
 
 type StatusFilter = TicketStatus | 'open' | 'all' | 'trash'
 
@@ -151,7 +152,10 @@ export function TicketsView() {
                   </td>
                   <td className="nowrap">{formatDay(t.receivedOn)}</td>
                   <td className="nowrap">{formatDay(t.pickupOn)}</td>
-                  <td className="num">{formatMoney(t.priceCents)}</td>
+                  <td className="num">
+                    <div>{formatMoney(t.priceCents)}</div>
+                    {(t.status === 'ready' || t.status === 'picked_up' || t.paidCents > 0) && <PaidBadge priceCents={t.priceCents} paidCents={t.paidCents} />}
+                  </td>
                 </tr>
               ))}
             </tbody>
