@@ -230,7 +230,7 @@ test('business details print on the intake slip and receipt; the passcode is lef
   // Look at the slip as printed
   const viewer = app.waitForEvent('window')
   await app.evaluate(({ BrowserWindow }, file) => {
-    const w = new BrowserWindow({ width: 820, height: 1000, show: false })
+    const w = new BrowserWindow({ width: 820, height: 1000, focusable: false }) // shown: hidden windows don't paint in the packaged app
     void w.loadFile(file)
   }, out)
   const slipPage = await viewer
