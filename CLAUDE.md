@@ -81,6 +81,12 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - Scopes are read-only. Messages are searched live with `entire:<email>` and then filtered to mail to, from or cc the customer, and nothing is stored.
   - Email HTML is shown in a sandboxed `srcdoc` iframe (no scripts) whose CSP blocks remote loads.
   - Keys and tokens live in `main/secrets.ts`.
+- **QuickBooks Online** (`services/quickbooks.ts` holds the one-way Plannr → QuickBooks sync, tested against a fake API; `main/quickbooks-client.ts` handles OAuth and HTTP; `main/quickbooks-sync.ts` schedules it every 15 min and 8 s after money/customer changes):
+  - Production keys only (the API base is production). Sign-in runs in a Plannr window that catches the redirect to Intuit's `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl`, which must be listed under the app's Production redirect URIs. Refresh tokens rotate, so always store the newest one.
+  - Customers become Customer records (matched by DisplayName). Income becomes a SalesReceipt and expenses become a Purchase, each `TaxInclusive` using `splitTax`. `qbo_links` keeps the QuickBooks Id and SyncToken; `local_type` `invoice` marks payments linked to an invoice made in QuickBooks (`transactions.qbo_invoice`), which are never sent.
+  - Settings `qbo.config` holds where things go. Sales need only the item, the sales tax code and `startDate`. The expense fields are optional, and expenses wait until they're set. Only transactions dated on or after `startDate` are sent.
+  - Payments get a tax choice. "Tax included" is the default. "+ tax" records amount × (1 + rate), so Plannr stores what was actually paid. "No tax" sets `tax_exempt` and is sent with QuickBooks' Exempt code.
+  - A server-side TaxCode named "Exempt" is looked up by name at sync time.
 - **Backups** (`services/backup.ts`):
   - `node:sqlite` `backup()` writes snapshots to `<backupDir>/snapshots/plannr-<stamp>.db`; each is integrity-checked and the newest 30 are kept.
   - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
