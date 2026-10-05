@@ -15,6 +15,7 @@ import { useAutosave } from '../lib/useAutosave'
 import { formatMoney, parseMoney } from '../lib/format'
 import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common'
+import { undoToast } from '../lib/toast'
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
@@ -111,6 +112,11 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     await api.tickets.trash(ticket.id)
     void useData.getState().refreshCounts()
     go({ view: 'tickets' })
+    undoToast(`${formatTicketNumber(ticket.number)} moved to trash`, async () => {
+      await api.tickets.restore(ticket.id)
+      void useData.getState().refreshCounts()
+      go({ view: 'ticket', id: ticket.id })
+    })
   }
 
   return (

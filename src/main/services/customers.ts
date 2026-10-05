@@ -128,6 +128,11 @@ export function updateCustomer(db: Db, id: string, patch: CustomerInput): Custom
 }
 
 /** Soft-deletes the customer. Their tickets are kept and still show the name. */
+export function restoreCustomer(db: Db, id: string): void {
+  db.prepare('UPDATE customers SET deleted_at = NULL, updated_at = ? WHERE id = ?').run(now(), id)
+  reindexCustomer(db, id)
+}
+
 export function trashCustomer(db: Db, id: string): void {
   tx(db, () => {
     db.prepare('UPDATE customers SET deleted_at = ?, updated_at = ? WHERE id = ?').run(now(), now(), id)

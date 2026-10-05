@@ -188,6 +188,7 @@ test('moves a note to trash and restores it', async () => {
   await page.locator('.note-row', { hasText: 'Supplier list' }).click()
   await page.getByRole('button', { name: 'Move to trash' }).click()
   await expect(page.locator('.sidebar .nav-item', { hasText: 'Supplier list' })).toHaveCount(0)
+  await expect(page.locator('.app-toast')).toContainText('Note moved to trash')
 
   await page.locator('.sidebar .nav-item', { hasText: 'Trash' }).click()
   await expect(page.locator('.note-row')).toHaveCount(1)

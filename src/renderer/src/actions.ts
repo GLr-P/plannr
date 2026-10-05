@@ -2,6 +2,7 @@ import { api } from './api'
 import { useData } from './store/data'
 import { go, useNav, type Route } from './store/nav'
 import type { EntityType } from '../../shared/api'
+import { undoToast } from './lib/toast'
 
 export async function newNote(folderId: string | null = null, title?: string): Promise<void> {
   // Leave the current note right away so keys typed while the new one opens can't land in it.
@@ -16,6 +17,10 @@ export async function trashNote(id: string): Promise<void> {
   await useData.getState().refresh()
   const { route, back } = useNav.getState()
   if (route.view === 'note' && route.id === id) back()
+  undoToast('Note moved to trash', async () => {
+    await api.notes.restore(id)
+    await useData.getState().refresh()
+  })
 }
 
 export async function moveNote(id: string, folderId: string | null): Promise<void> {

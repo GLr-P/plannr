@@ -6,6 +6,7 @@ import { go } from '../store/nav'
 import { useAutosave } from '../lib/useAutosave'
 import { formatDay, formatMoney } from '../lib/format'
 import { ConfirmButton, SaveIndicator, StatusPill } from '../components/common'
+import { undoToast } from '../lib/toast'
 import { Backlinks } from '../components/Backlinks'
 import { CustomerEmails } from '../components/CustomerEmails'
 import { LinkedEvents } from '../components/LinkedEvents'
@@ -68,6 +69,10 @@ function CustomerPage({ customer }: { customer: Customer }) {
               await saver.flush()
               await api.customers.trash(customer.id)
               go({ view: 'customers' })
+              undoToast(`${customer.name || 'Customer'} deleted`, async () => {
+                await api.customers.restore(customer.id)
+                go({ view: 'customer', id: customer.id })
+              })
             }}
           />
         </div>

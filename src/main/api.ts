@@ -94,7 +94,8 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       get: async (id) => customers.getCustomer(db, id),
       create: async (input) => moneyChanged(customers.createCustomer(db, input)),
       update: async (id, patch) => moneyChanged(customers.updateCustomer(db, id, patch)),
-      trash: async (id) => moneyChanged(customers.trashCustomer(db, id))
+      trash: async (id) => moneyChanged(customers.trashCustomer(db, id)),
+      restore: async (id) => moneyChanged(customers.restoreCustomer(db, id))
     },
     tickets: {
       list: async (filter) => tickets.listTickets(db, filter),
@@ -214,12 +215,14 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       createRecurring: async (kind) => money.createRecurring(db, kind),
       updateRecurring: async (id, patch) => money.updateRecurring(db, id, patch),
       removeRecurring: async (id) => money.removeRecurring(db, id),
+      restoreRecurring: async (id) => money.restoreRecurring(db, id),
       markPaid: async (id, opts) => moneyChanged(money.markPaid(db, id, opts)),
       skip: async (id) => money.skip(db, id),
       transactions: async (filter) => money.listTransactions(db, filter),
       addTransaction: async (input) => moneyChanged(money.addTransaction(db, input)),
       updateTransaction: async (id, patch) => moneyChanged(money.updateTransaction(db, id, patch)),
       removeTransaction: async (id) => moneyChanged(money.removeTransaction(db, id)),
+      restoreTransaction: async (id) => moneyChanged(money.restoreTransaction(db, id)),
       summary: async (month) => (money.processAutopay(db), money.summary(db, month)),
       occurrences: async (from, to) => money.occurrences(db, from, to),
       categories: async () => money.categories(db),

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { ContextMenuHost } from './components/ContextMenu'
+import { ToastHost } from './lib/toast'
 import { HomeView } from './views/HomeView'
 import { NotesView } from './views/NotesView'
 import { NoteView } from './views/NoteView'
@@ -98,6 +99,7 @@ export function App() {
       <Sidebar />
       <main className="main">{loaded && <MainView />}</main>
       <ContextMenuHost />
+      <ToastHost />
     </div>
   )
 }

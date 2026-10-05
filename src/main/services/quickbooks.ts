@@ -97,7 +97,8 @@ function customerBody(c: CustomerRow, displayName: string): Record<string, unkno
     PrimaryEmailAddr: c.email ? { Address: c.email } : undefined,
     PrimaryPhone: c.phone ? { FreeFormNumber: c.phone } : undefined,
     BillAddr: c.address ? { Line1: c.address.slice(0, 500) } : undefined,
-    Notes: 'From Plannr'
+    Notes: 'From Plannr',
+    Active: true
   }
 }
 

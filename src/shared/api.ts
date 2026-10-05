@@ -663,6 +663,7 @@ export interface PlannrApi {
     create(input?: CustomerInput): Promise<Customer>
     update(id: string, patch: CustomerInput): Promise<Customer>
     trash(id: string): Promise<void>
+    restore(id: string): Promise<void>
   }
   tickets: {
     list(filter?: TicketFilter): Promise<TicketSummary[]>
@@ -766,6 +767,7 @@ export interface PlannrApi {
     createRecurring(kind: RecurringKind): Promise<RecurringItem>
     updateRecurring(id: string, patch: RecurringPatch): Promise<RecurringItem>
     removeRecurring(id: string): Promise<void>
+    restoreRecurring(id: string): Promise<void>
     /** Records the payment (an expense) and moves to the next due date */
     markPaid(id: string, opts?: { date?: string; amountCents?: number }): Promise<RecurringItem>
     /** Moves to the next due date without recording a payment */
@@ -774,6 +776,7 @@ export interface PlannrApi {
     addTransaction(input: TransactionInput): Promise<Transaction>
     updateTransaction(id: string, patch: Partial<TransactionInput>): Promise<Transaction>
     removeTransaction(id: string): Promise<void>
+    restoreTransaction(id: string): Promise<void>
     /** month = YYYY-MM */
     summary(month: string): Promise<MoneySummary>
     occurrences(from: string, to: string): Promise<MoneyOccurrence[]>
@@ -837,7 +840,7 @@ export interface PlannrApi {
 
 export const API_SHAPE = {
   notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags'],
-  customers: ['list', 'get', 'create', 'update', 'trash'],
+  customers: ['list', 'get', 'create', 'update', 'trash', 'restore'],
   tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts'],
   photos: ['list', 'add', 'remove', 'setKind'],
   templates: ['list', 'get', 'create', 'update', 'remove'],
@@ -875,12 +878,14 @@ export const API_SHAPE = {
     'createRecurring',
     'updateRecurring',
     'removeRecurring',
+    'restoreRecurring',
     'markPaid',
     'skip',
     'transactions',
     'addTransaction',
     'updateTransaction',
     'removeTransaction',
+    'restoreTransaction',
     'summary',
     'occurrences',
     'categories',

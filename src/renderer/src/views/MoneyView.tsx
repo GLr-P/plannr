@@ -20,6 +20,7 @@ import { useAutosave } from '../lib/useAutosave'
 import { formatDay, formatMoney, parseMoney, todayISO } from '../lib/format'
 import { addDays } from '../lib/time'
 import { ConfirmButton } from '../components/common'
+import { undoToast } from '../lib/toast'
 
 type Tab = 'overview' | 'recurring' | 'transactions'
 const TABS: { id: Tab; label: string }[] = [
@@ -475,6 +476,10 @@ function RecurringEditor({ r, categories, onChanged }: { r: RecurringItem; categ
           label="Delete"
           onConfirm={async () => {
             await api.money.removeRecurring(r.id)
+            undoToast(`${r.name || 'Item'} deleted`, async () => {
+              await api.money.restoreRecurring(r.id)
+              onChanged()
+            })
             onChanged()
           }}
         />
@@ -588,6 +593,10 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
                         onConfirm={async () => {
                           await api.money.removeTransaction(t.id)
                           await load()
+                          undoToast('Transaction deleted', async () => {
+                            await api.money.restoreTransaction(t.id)
+                            await load()
+                          })
                         }}
                       />
                     </span>
@@ -625,7 +634,7 @@ export function TransactionForm({
   const [category, setCategory] = useState(ticketId ? 'Repairs' : '')
   const [method, setMethod] = useState(type === 'income' ? 'Cash' : 'Card')
   const [categories, setCategories] = useState<string[]>([])
-  const taxPref = useUi((s) => s.prefs.taxMode) as TaxMode | undefined
+  const taxPref = useUi((s) => s.prefs[`taxMode.${type}`]) as TaxMode | undefined
   const setPref = useUi((s) => s.setPref)
   const [taxMode, setTaxMode] = useState<TaxMode>(taxPref ?? 'included')
   const [taxRate, setTaxRate] = useState(0)
@@ -641,7 +650,7 @@ export function TransactionForm({
   const save = async (): Promise<void> => {
     if (!cents) return
     await api.money.addTransaction({ type, date, description, amountCents: cents, category, method, ticketId: ticketId ?? null, taxExempt: mode === 'exempt' })
-    setPref('taxMode', taxMode)
+    setPref(`taxMode.${type}`, taxMode)
     onDone(true)
   }
 
@@ -748,6 +757,11 @@ export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ti
                   await api.money.removeTransaction(p.id)
                   await load()
                   onChanged?.()
+                  undoToast('Payment removed', async () => {
+                    await api.money.restoreTransaction(p.id)
+                    await load()
+                    onChanged?.()
+                  })
                 }}
               >
                 <Trash2 />

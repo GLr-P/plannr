@@ -151,6 +151,10 @@ export function removeRecurring(db: Db, id: string): void {
   db.prepare('UPDATE recurring SET deleted_at = ?, updated_at = ? WHERE id = ?').run(now(), now(), id)
 }
 
+export function restoreRecurring(db: Db, id: string): void {
+  db.prepare('UPDATE recurring SET deleted_at = NULL, updated_at = ? WHERE id = ?').run(now(), id)
+}
+
 /** Moves to the next due date; a one-time bill becomes inactive once done. */
 function moveOn(db: Db, r: RecurringRow, today: string): void {
   if (r.frequency === 'once') {
@@ -350,6 +354,10 @@ export function updateTransaction(db: Db, id: string, patch: Partial<Transaction
 
 export function removeTransaction(db: Db, id: string): void {
   db.prepare('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?').run(now(), now(), id)
+}
+
+export function restoreTransaction(db: Db, id: string): void {
+  db.prepare('UPDATE transactions SET deleted_at = NULL, updated_at = ? WHERE id = ?').run(now(), id)
 }
 
 export function categories(db: Db): string[] {

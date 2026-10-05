@@ -123,6 +123,19 @@ test('transactions: add an expense, filter, search', async () => {
   await shot(page, 'm4-transactions')
 })
 
+test('deleting a transaction can be undone', async () => {
+  const rows = page.locator('.tx-row')
+  const parts = rows.filter({ hasText: 'Screen parts' })
+  await parts.hover()
+  await parts.getByRole('button', { name: 'Delete transaction' }).click()
+  await parts.getByRole('button', { name: 'Delete transaction' }).click() // second click confirms
+  await expect(rows).toHaveCount(2)
+  await expect(page.locator('.app-toast')).toContainText('Transaction deleted')
+  await page.locator('.app-toast').getByRole('button', { name: 'Undo' }).click()
+  await expect(rows).toHaveCount(3)
+  await expect(page.locator('.app-toast')).toHaveCount(0)
+})
+
 test('due dates show on the calendar and on Home', async () => {
   await nav('Calendar').click()
   const due = inDays(3)
