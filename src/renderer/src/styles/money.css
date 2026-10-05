@@ -397,6 +397,10 @@ button.due-row:hover,
 .qbo-inv-form input:focus {
   border-color: var(--accent);
 }
+.tx-row .link-btn.tight + .link-btn.tight,
+.tx-row .link-btn.tight + .qbo-inv-form {
+  margin-left: 12px;
+}
 .link-btn.qbo-inv-add {
   color: var(--text-muted);
 }
