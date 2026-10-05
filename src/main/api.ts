@@ -25,6 +25,8 @@ import type { GoogleSync } from './google-sync'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
+import { getBusiness, printTicket } from './print-window'
+import { join } from 'node:path'
 
 export const TITLEBAR_HEIGHT = 44
 export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: string }> = {
@@ -331,6 +333,19 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         await shell.openPath(hooks.backupDir())
       },
       restore: async (file) => hooks.restoreAndRestart(file)
+    },
+    business: {
+      get: async () => getBusiness(db),
+      set: async (patch) => {
+        const next = { ...getBusiness(db), ...patch }
+        next.taxRate = Math.max(0, Math.min(100, Number(next.taxRate) || 0))
+        setSetting(db, 'business', next)
+        return next
+      }
+    },
+    print: {
+      // Tests write the page to a file instead of opening the print dialog.
+      ticket: async (id, kind) => printTicket(db, dataDir, id, kind, process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined)
     },
     app: {
       info: async () => ({ version: app.getVersion(), dataDir }),

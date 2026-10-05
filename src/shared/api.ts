@@ -628,6 +628,31 @@ export interface QboStatus {
   problems: string[]
 }
 
+// ---------- Business details & printing ----------
+
+/** Shown on printouts (intake slip, receipt, label). */
+export interface BusinessInfo {
+  name: string
+  address: string
+  phone: string
+  email: string
+  website: string
+  /** e.g. "GST", "HST" */
+  taxName: string
+  /** % included in prices, used to show the tax on receipts and for "+ tax" payments when QuickBooks isn't set up */
+  taxRate: number
+  /** GST/HST registration number */
+  taxNumber: string
+  /** Printed on the intake slip above the signature line */
+  intakeTerms: string
+  /** Printed at the bottom of receipts */
+  receiptNote: string
+  logoFileId: string | null
+  labelSize: '62x29mm' | '2.25x1.25in' | '4x6in'
+}
+
+export type PrintKind = 'intake' | 'receipt' | 'label'
+
 // ---------- Backups ----------
 
 export interface BackupInfo {
@@ -828,6 +853,14 @@ export interface PlannrApi {
     /** Restores a snapshot (current data is saved first) and restarts Plannr */
     restore(file: string): Promise<void>
   }
+  business: {
+    get(): Promise<BusinessInfo>
+    set(patch: Partial<BusinessInfo>): Promise<BusinessInfo>
+  }
+  print: {
+    /** Opens the Windows print dialog for a ticket printout */
+    ticket(id: string, kind: PrintKind): Promise<void>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -895,6 +928,8 @@ export const API_SHAPE = {
   zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message'],
   quickbooks: ['status', 'configureKey', 'connect', 'disconnect', 'options', 'createItem', 'setConfig', 'syncNow'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
+  business: ['get', 'set'],
+  print: ['ticket'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 

@@ -1,5 +1,5 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launch, makePng, shot } from './helpers'
@@ -199,6 +199,49 @@ test('a note can @-link a ticket, and the ticket shows it', async () => {
   await page.locator('.prose .mention').click()
   await expect(page.locator('.ticket-no')).toHaveText('NT-0001')
   await expect(page.locator('.backlinks', { hasText: 'Linked from' })).toContainText('Screen supplier')
+})
+
+test('business details print on the intake slip and receipt; the passcode is left off', async () => {
+  await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
+  await page.getByLabel('Business name').fill('Nano Tech Services')
+  await page.getByLabel('Tax name').fill('GST')
+  await page.getByLabel('Tax rate (%)').fill('5')
+  await page.getByLabel('Phone', { exact: true }).click() // leaving a field saves it
+  await expect(page.locator('.saved-flash')).toBeVisible()
+  await shot(page, 'b10-business')
+
+  await nav('Tickets').click()
+  await page.locator('.ticket-row', { hasText: 'NT-0001' }).click()
+  const out = join(dataDir, 'last-print.html')
+  const printed = async (kind: string): Promise<string> => {
+    await page.getByRole('button', { name: 'Print', exact: true }).click()
+    await page.getByRole('menuitem', { name: kind }).click()
+    await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Device label' ? '@page { size: 62mm 29mm' : 'Repair ticket NT-0001')
+    return readFileSync(out, 'utf8')
+  }
+
+  const slip = await printed('Intake slip')
+  expect(slip).toContain('Nano Tech Services')
+  expect(slip).toContain('Jane Doe')
+  expect(slip).toContain('Scuffed corners')
+  expect(slip).not.toContain('1234') // passcodes never go on paper
+
+  // Look at the slip as printed
+  const viewer = app.waitForEvent('window')
+  await app.evaluate(({ BrowserWindow }, file) => {
+    const w = new BrowserWindow({ width: 820, height: 1000, show: false })
+    void w.loadFile(file)
+  }, out)
+  const slipPage = await viewer
+  await slipPage.waitForLoadState()
+  await slipPage.screenshot({ path: join('test-results', 'screens', 'b11-intake-slip.png') })
+  await slipPage.close()
+
+  const label = await printed('Device label')
+  expect(label).toContain('NT-0001')
+  const receipt = await printed('Receipt')
+  expect(receipt).toContain('No payments recorded yet')
+  expect(receipt).toContain('Balance owing')
 })
 
 test('everything is still there after restarting', async () => {

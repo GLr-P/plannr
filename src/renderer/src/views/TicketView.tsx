@@ -15,7 +15,10 @@ import { useAutosave } from '../lib/useAutosave'
 import { formatMoney, parseMoney } from '../lib/format'
 import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common'
-import { undoToast } from '../lib/toast'
+import { showToast, undoToast } from '../lib/toast'
+import { openMenu } from '../components/ContextMenu'
+import { Printer, Receipt, Tag, ClipboardList } from 'lucide-react'
+import type { PrintKind } from '../../../shared/api'
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
@@ -134,6 +137,24 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           {!trashed && (
             <>
               <StatusSelect value={fields.status} onChange={(status) => set({ status }, true)} />
+              <button
+                type="button"
+                className="btn sm"
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  const print = async (kind: PrintKind): Promise<void> => {
+                    await saver.flush()
+                    await api.print.ticket(ticket.id, kind).catch((err: Error) => showToast(err.message))
+                  }
+                  openMenu({ clientX: r.left, clientY: r.bottom + 4 }, [
+                    { label: 'Intake slip', icon: <ClipboardList />, onSelect: () => print('intake') },
+                    { label: 'Receipt', icon: <Receipt />, onSelect: () => print('receipt') },
+                    { label: 'Device label', icon: <Tag />, onSelect: () => print('label') }
+                  ])
+                }}
+              >
+                <Printer /> Print
+              </button>
               <ConfirmButton title="Move ticket to trash" onConfirm={trash} />
             </>
           )}

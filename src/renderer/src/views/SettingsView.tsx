@@ -9,6 +9,7 @@ import { BackupSettings } from '../components/BackupSettings'
 import { GoogleSettings } from '../components/GoogleSettings'
 import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
+import { BusinessSettings } from '../components/BusinessSettings'
 
 export function SettingsView() {
   const { pref, setPref } = useTheme()
@@ -53,6 +54,8 @@ export function SettingsView() {
           ))}
         </div>
       </section>
+
+      <BusinessSettings />
 
       <section className="setting">
         <div>

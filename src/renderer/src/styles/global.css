@@ -1373,3 +1373,39 @@ kbd {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ---------- Settings: business details ---------- */
+.business-setting {
+  align-items: flex-start;
+}
+.business-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin-top: 12px;
+  max-width: 620px;
+}
+.business-grid textarea {
+  height: auto;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-preview {
+  max-height: 48px;
+  max-width: 160px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  background: #fff;
+}
+.saved-flash {
+  font-weight: 400;
+  margin-left: 6px;
+}

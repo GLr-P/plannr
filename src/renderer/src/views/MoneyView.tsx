@@ -640,7 +640,9 @@ export function TransactionForm({
   const [taxRate, setTaxRate] = useState(0)
   useEffect(() => {
     void api.money.categories().then(setCategories)
-    void api.quickbooks.status().then((s) => setTaxRate((type === 'income' ? s.config?.taxRate : s.config?.purchaseTaxRate) ?? 0))
+    void Promise.all([api.quickbooks.status(), api.business.get()]).then(([s, b]) =>
+      setTaxRate((type === 'income' ? s.config?.taxRate : s.config?.purchaseTaxRate) ?? b.taxRate ?? 0)
+    )
   }, [type])
   const entered = parseMoney(amount)
   const mode: TaxMode = taxMode === 'added' && !taxRate ? 'included' : taxMode
