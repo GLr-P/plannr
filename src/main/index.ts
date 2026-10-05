@@ -6,7 +6,9 @@ import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
 import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { holidaysStale, refreshHolidays } from './services/holidays'
+import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
+import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
 import { ensureSearchIndex } from './services/reindex'
@@ -135,7 +137,35 @@ if (!app.requestSingleInstanceLock()) {
       if (!file) return new Response('Locked or not found', { status: 404 })
       return new Response(new Uint8Array(file.data), { headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store' } })
     })
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession))
+    // Backups go to Documents\Plannr Backups unless another folder was chosen (tests keep them inside their data folder).
+    const backupDir = (): string => {
+      const chosen = getSetting(db, 'backupDir')
+      return typeof chosen === 'string' && chosen ? chosen : isTest ? join(dataDir, 'backups') : join(app.getPath('documents'), 'Plannr Backups')
+    }
+    const restoreAndRestart = async (file: string): Promise<void> => {
+      const dir = backupDir() // read before closing the database
+      vaultSession?.lock()
+      db.close()
+      restoreSnapshot(dataDir, dir, file)
+      quitting = true
+      if (!isTest) app.relaunch() // tests start the app again themselves
+      app.exit(0)
+    }
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart }))
+    // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
+    if (!isTest) {
+      const autoBackup = (): void => {
+        if (!backupDue(db)) return
+        try {
+          ensureDir(backupDir(), { recursive: true })
+        } catch {
+          // folder unavailable (e.g. USB drive unplugged): runBackup records the error for Settings
+        }
+        void runBackup(db, dataDir, backupDir()).catch(() => undefined)
+      }
+      setTimeout(autoBackup, 30_000) // shortly after start, so opening Plannr stays fast
+      setInterval(autoBackup, 60 * 60 * 1000)
+    }
     createWindow()
     // Keep holidays fresh (weekly). Tests only do this when given a saved feed (no internet in tests).
     if (!isTest || process.env.PLANNR_HOLIDAY_FIXTURE) {

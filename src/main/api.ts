@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
-import { API_SHAPE, type PlannrApi, type Theme } from '../shared/api'
+import { API_SHAPE, type BackupStatus, type PlannrApi, type Theme } from '../shared/api'
 import * as notes from './services/notes'
 import * as folders from './services/folders'
 import * as customers from './services/customers'
@@ -14,6 +14,7 @@ import * as calendar from './services/calendar'
 import * as holidays from './services/holidays'
 import * as money from './services/money'
 import { getOpenAtLogin, setOpenAtLogin } from './background'
+import * as backups from './services/backup'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -24,7 +25,19 @@ export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: 
   dark: { bg: '#1b1b1d', titlebar: '#151517', symbol: '#d6d6d6' }
 }
 
-export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession): PlannrApi {
+export interface ApiHooks {
+  backupDir: () => string
+  /** Closes the database, puts the snapshot back and restarts Plannr */
+  restoreAndRestart: (file: string) => Promise<void>
+}
+
+export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
+  const backupStatus = (): BackupStatus => ({
+    dir: hooks.backupDir(),
+    lastAt: (getSetting(db, 'lastBackupAt') as number | null) ?? null,
+    error: (getSetting(db, 'backupError') as string | null) ?? null,
+    backups: backups.listBackups(hooks.backupDir())
+  })
   return {
     notes: {
       list: async (opts) => notes.listNotes(db, opts),
@@ -177,6 +190,27 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         writeFileSync(result.filePath, '﻿' + money.transactionsCsv(db, from, to)) // BOM so Excel reads it as UTF-8
         return true
       }
+    },
+    backup: {
+      status: async () => backupStatus(),
+      runNow: async () => {
+        await backups.runBackup(db, dataDir, hooks.backupDir()).catch(() => undefined) // failure is shown via status.error
+        return backupStatus()
+      },
+      chooseFolder: async () => {
+        const win = getWindow()
+        const options = { title: 'Where should Plannr keep backups?', properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
+        const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+        if (!result.canceled && result.filePaths[0]) {
+          setSetting(db, 'backupDir', result.filePaths[0])
+          await backups.runBackup(db, dataDir, hooks.backupDir()).catch(() => undefined) // back up there right away
+        }
+        return backupStatus()
+      },
+      openFolder: async () => {
+        await shell.openPath(hooks.backupDir())
+      },
+      restore: async (file) => hooks.restoreAndRestart(file)
     },
     app: {
       info: async () => ({ version: app.getVersion(), dataDir }),

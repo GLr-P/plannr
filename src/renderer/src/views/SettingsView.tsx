@@ -4,6 +4,7 @@ import type { AppInfo, ThemePref } from '../../../shared/api'
 import { api } from '../api'
 import { useTheme } from '../theme'
 import { HolidaySettings } from '../components/HolidaySettings'
+import { BackupSettings } from '../components/BackupSettings'
 
 export function SettingsView() {
   const { pref, setPref } = useTheme()
@@ -78,6 +79,8 @@ export function SettingsView() {
       </section>
 
       <HolidaySettings />
+
+      <BackupSettings />
 
       <section className="setting">
         <div>

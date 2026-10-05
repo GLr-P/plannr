@@ -482,6 +482,21 @@ export interface MoneySummary {
 export const PAYMENT_METHODS = ['Cash', 'Card', 'Zelle', 'Venmo', 'Cash App', 'PayPal', 'Check', 'Bank transfer', 'Other']
 export const DEFAULT_CATEGORIES = ['Parts', 'Software', 'Rent', 'Utilities', 'Phone & internet', 'Insurance', 'Marketing', 'Fuel', 'Tools', 'Other']
 
+// ---------- Backups ----------
+
+export interface BackupInfo {
+  file: string
+  createdAt: number
+  size: number
+}
+
+export interface BackupStatus {
+  dir: string
+  lastAt: number | null
+  error: string | null
+  backups: BackupInfo[]
+}
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -618,6 +633,15 @@ export interface PlannrApi {
     /** Save-file dialog: transactions in [from, to] as CSV */
     exportCsv(from: string, to: string): Promise<boolean>
   }
+  backup: {
+    status(): Promise<BackupStatus>
+    runNow(): Promise<BackupStatus>
+    /** Folder picker for where backups go (e.g. a USB drive or OneDrive folder) */
+    chooseFolder(): Promise<BackupStatus>
+    openFolder(): Promise<void>
+    /** Restores a snapshot (current data is saved first) and restarts Plannr */
+    restore(file: string): Promise<void>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -679,6 +703,7 @@ export const API_SHAPE = {
     'categories',
     'exportCsv'
   ],
+  backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
