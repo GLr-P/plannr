@@ -279,6 +279,59 @@ export interface HolidayStatus {
   error: string | null
 }
 
+// ---------- Vault ----------
+
+export type VaultItemKind = 'login' | 'card' | 'note'
+
+/** Fields each kind shows, in order. `secret` fields are hidden until revealed. */
+export const VAULT_FIELDS: Record<VaultItemKind, { key: string; label: string; secret?: boolean; multiline?: boolean }[]> = {
+  login: [
+    { key: 'username', label: 'Username / email' },
+    { key: 'password', label: 'Password', secret: true },
+    { key: 'url', label: 'Website' },
+    { key: 'notes', label: 'Notes', multiline: true }
+  ],
+  card: [
+    { key: 'cardholder', label: 'Name on card' },
+    { key: 'number', label: 'Card number', secret: true },
+    { key: 'expiry', label: 'Expiry (MM/YY)' },
+    { key: 'cvv', label: 'Security code', secret: true },
+    { key: 'pin', label: 'PIN', secret: true },
+    { key: 'notes', label: 'Notes', multiline: true }
+  ],
+  note: [{ key: 'notes', label: 'Secure note', multiline: true }]
+}
+
+export interface VaultItem {
+  id: string
+  kind: VaultItemKind
+  title: string
+  fields: Record<string, string>
+  createdAt: number
+  updatedAt: number
+}
+
+export interface VaultItemSummary {
+  id: string
+  kind: VaultItemKind
+  title: string
+  /** e.g. username, or card ending */
+  subtitle: string
+  updatedAt: number
+}
+
+export interface VaultStatus {
+  setUp: boolean
+  unlocked: boolean
+  autoLockMinutes: number
+  /** While > 0, unlocking is paused after repeated wrong passcodes */
+  retryAfterMs: number
+}
+
+export type VaultResult = { ok: true } | { ok: false; error: string; retryAfterMs?: number }
+
+export const MIN_PASSCODE_LENGTH = 6
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -364,6 +417,28 @@ export interface PlannrApi {
     configure(opts: { region?: string | null; showObservances?: boolean }): Promise<HolidayStatus>
     refresh(): Promise<HolidayStatus>
   }
+  vault: {
+    status(): Promise<VaultStatus>
+    /** First-time setup. Returns the recovery key (shown once). */
+    setup(passcode: string): Promise<{ recoveryKey: string }>
+    unlock(passcode: string): Promise<VaultResult>
+    /** Forgot passcode: the recovery key sets a new one */
+    recover(recoveryKey: string, newPasscode: string): Promise<VaultResult>
+    changePasscode(current: string, next: string): Promise<VaultResult>
+    lock(): Promise<void>
+    /** Keeps the vault unlocked while it's being used */
+    touch(): Promise<void>
+    setAutoLock(minutes: number): Promise<void>
+    list(): Promise<VaultItemSummary[]>
+    get(id: string): Promise<VaultItem | null>
+    create(kind: VaultItemKind): Promise<VaultItem>
+    update(id: string, patch: { title?: string; fields?: Record<string, string> }): Promise<VaultItem>
+    remove(id: string): Promise<void>
+    /** Copies a field to the clipboard; cleared again after 30 seconds */
+    copy(id: string, field: string): Promise<void>
+    /** Save-file dialog for the recovery key */
+    saveRecoveryKey(recoveryKey: string): Promise<boolean>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -383,6 +458,23 @@ export const API_SHAPE = {
   links: ['backlinks'],
   calendar: ['range', 'get', 'create', 'update', 'remove', 'forLink', 'drop'],
   holidays: ['range', 'status', 'configure', 'refresh'],
+  vault: [
+    'status',
+    'setup',
+    'unlock',
+    'recover',
+    'changePasscode',
+    'lock',
+    'touch',
+    'setAutoLock',
+    'list',
+    'get',
+    'create',
+    'update',
+    'remove',
+    'copy',
+    'saveRecoveryKey'
+  ],
   folders: ['list', 'create', 'rename', 'remove'],
   search: ['query'],
   files: ['save', 'open'],

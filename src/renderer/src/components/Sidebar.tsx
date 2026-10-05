@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, CalendarDays, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
+import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, CalendarDays, Lock, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go, useNav, type Route } from '../store/nav'
@@ -185,6 +185,7 @@ export function Sidebar() {
       />
       <NavItem icon={<Users />} label="Customers" target={{ view: 'customers' }} />
       <NavItem icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} />
+      <NavItem icon={<Lock />} label="Vault" target={{ view: 'vault' }} />
 
       <div className="section-header">
         <button type="button" className="section-toggle" onClick={() => toggle('section:notes')}>

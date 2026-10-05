@@ -1,4 +1,5 @@
-import { app, BrowserWindow, nativeTheme, net, Notification, protocol, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, net, Notification, powerMonitor, protocol, shell } from 'electron'
+import { VaultSession } from './vault-session'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -30,6 +31,7 @@ protocol.registerSchemesAsPrivileged([
 let db: Db
 let mainWindow: BrowserWindow | null = null
 let quitting = false
+let vaultSession: VaultSession | null = null
 const getWindow = (): BrowserWindow | null => mainWindow
 
 function quit(): void {
@@ -73,6 +75,7 @@ function createWindow(): void {
     if (quitting || !background || getSetting(db, 'runInBackground') === false) return
     event.preventDefault()
     mainWindow?.hide()
+    vaultSession?.lock() // hidden in the tray = locked
     if (!getSetting(db, 'trayHintShown') && Notification.isSupported()) {
       new Notification({ title: 'Plannr is still running', body: 'It stays in the tray so reminders can pop up. Right-click the tray icon to quit.', icon: resourcePath('icon.png') }).show()
       setSetting(db, 'trayHintShown', true)
@@ -101,7 +104,10 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => showWindow(getWindow))
-  app.on('before-quit', () => (quitting = true))
+  app.on('before-quit', () => {
+    quitting = true
+    vaultSession?.clearClipboardNow() // don't leave a copied password behind
+  })
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
@@ -116,7 +122,10 @@ if (!app.requestSingleInstanceLock()) {
       return net.fetch(pathToFileURL(file.path).toString())
     })
 
-    registerIpc(createApi(db, dataDir, getWindow))
+    vaultSession = new VaultSession(db, () => mainWindow?.webContents.send('vault-locked'))
+    powerMonitor.on('lock-screen', () => vaultSession?.lock())
+    powerMonitor.on('suspend', () => vaultSession?.lock())
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession))
     createWindow()
     // Keep holidays fresh (weekly). Tests only do this when given a saved feed (no internet in tests).
     if (!isTest || process.env.PLANNR_HOLIDAY_FIXTURE) {

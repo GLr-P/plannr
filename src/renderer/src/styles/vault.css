@@ -1,0 +1,321 @@
+/* ---------- Vault ---------- */
+.vault-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 40px 20px;
+}
+.vault-card {
+  width: 420px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+.vault-card h1 {
+  font-size: 22px;
+}
+.vault-card p {
+  margin: 0;
+}
+.vault-badge {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.vault-badge svg {
+  width: 22px;
+  height: 22px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.field input,
+.field select {
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 0 12px;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+}
+.field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.hint.warn {
+  color: rgb(180, 120, 4);
+}
+.error-text {
+  font-size: 13px;
+  color: var(--danger);
+}
+.ok-text {
+  font-size: 13px;
+  color: rgb(22, 150, 70);
+}
+.btn.wide {
+  width: 100%;
+  justify-content: center;
+  height: 38px;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.vault-card .link-btn {
+  align-self: center;
+}
+.recovery-key {
+  display: block;
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 14px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  word-break: normal; /* wrap only at the dashes, never inside a group */
+  user-select: all;
+}
+.row-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.shake {
+  animation: shake 0.35s;
+}
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+.unlocked-pill {
+  font-size: 12px;
+  font-weight: 500;
+  vertical-align: middle;
+  margin-left: 8px;
+  padding: 2px 9px;
+  border-radius: 10px;
+  color: rgb(22, 150, 70);
+  background: rgba(22, 150, 70, 0.12);
+}
+.menu-anchor {
+  position: relative;
+}
+.vault-split {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  margin-top: 16px;
+  min-height: 60vh;
+}
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--border);
+  padding-right: 16px;
+}
+.vault-list .filter-field {
+  margin: 0 0 8px;
+}
+.vault-empty {
+  padding: 10px 4px;
+}
+.vault-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.vault-row:hover {
+  background: var(--hover);
+}
+.vault-row.active {
+  background: var(--accent-soft);
+}
+.vault-row-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.vault-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.vault-row-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-row-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.vault-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.vault-title {
+  font-size: 26px;
+}
+.vault-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+  max-width: 560px;
+}
+.vault-field-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.vault-field-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vault-field-row input,
+.vault-field-row textarea {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 0 10px;
+  font-size: 14.5px;
+  outline: none;
+}
+.vault-field-row input[type='password'] {
+  letter-spacing: 0.15em;
+}
+.vault-field-row textarea {
+  height: auto;
+  min-height: 110px;
+  field-sizing: content;
+  padding: 8px 10px;
+  resize: none;
+  line-height: 1.5;
+}
+.vault-field-row input:focus,
+.vault-field-row textarea:focus {
+  border-color: var(--accent);
+}
+.vault-settings {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 320px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vault-settings .field select {
+  font-size: 13.5px;
+  height: 34px;
+}
+.change-pass {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.change-pass input {
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 0 10px;
+  outline: none;
+}
+.change-pass input:focus {
+  border-color: var(--accent);
+}
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-radius: 20px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  z-index: 300;
+}
+
+/* Printing the recovery key prints only the key card. */
+@media print {
+  .titlebar,
+  .sidebar,
+  .no-print {
+    display: none !important;
+  }
+  .app {
+    display: block;
+  }
+  .vault-card {
+    box-shadow: none;
+    border: none;
+  }
+}

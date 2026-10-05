@@ -5,7 +5,10 @@ export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: 
 declare global {
   interface Window {
     plannr: PlannrApi
-    plannrEvents: { onNavigate: (callback: (target: NavigateTarget) => void) => () => void }
+    plannrEvents: {
+      onNavigate: (callback: (target: NavigateTarget) => void) => () => void
+      onVaultLocked: (callback: () => void) => () => void
+    }
   }
 }
 

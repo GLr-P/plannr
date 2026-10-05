@@ -56,6 +56,11 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - Native drops onto the calendar find their date and time with `document.elementsFromPoint` (`[data-date]`, `.fc-timegrid-slot[data-time]`), because FullCalendar's own external-drag API doesn't handle HTML5 drag.
   - `calendar.drop` applies the rules: a ticket becomes or moves its pickup; a customer or note becomes a linked event.
 - **Holidays** (`services/holidays.ts`): Google's public holiday calendars are downloaded as an iCal feed with no API key (`holidayFeedUrl`), parsed by `parseIcs`, and cached in the `holidays` table. They refresh weekly, and on startup when stale. They show as read-only calendar events (ids prefixed `holiday:`). Tests set `PLANNR_HOLIDAY_FIXTURE` to the saved real feed in `tests/fixtures/us-holidays.ics` so they never need the internet.
+- **Vault** (`services/vault.ts` holds the pure crypto and storage; `main/vault-session.ts` holds the unlocked key in memory):
+  - A random data key (DEK) encrypts each item's whole JSON (kind, title, fields) with AES-256-GCM, using the item id as additional data. Rows in `vault_keys` store the DEK wrapped by scrypt keys derived from the passcode and from the recovery key.
+  - The renderer never sees the key, and vault data must never go into `search_index`, logs or other tables. Locking wipes the DEK buffer.
+  - Electron 44's `clipboard.readText` and `writeText` are async (`clear()` is sync).
+  - Unit tests pass a cheap KDF (`{N: 2**10}`); the app uses `DEFAULT_KDF`.
 - **Background** (`main/background.ts`):
   - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
   - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.

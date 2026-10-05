@@ -18,5 +18,10 @@ contextBridge.exposeInMainWorld('plannrEvents', {
     const listener = (_event: unknown, target: unknown): void => callback(target)
     ipcRenderer.on('navigate', listener)
     return () => ipcRenderer.removeListener('navigate', listener)
+  },
+  onVaultLocked: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('vault-locked', listener)
+    return () => ipcRenderer.removeListener('vault-locked', listener)
   }
 })

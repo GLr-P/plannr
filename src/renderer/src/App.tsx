@@ -11,6 +11,7 @@ import { CustomersView } from './views/CustomersView'
 import { CustomerView } from './views/CustomerView'
 import { TemplatesView, TemplateView } from './views/TemplatesView'
 import { CalendarView } from './views/CalendarView'
+import { VaultView } from './views/VaultView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, openEntity } from './actions'
@@ -67,6 +68,8 @@ function MainView() {
       return <TemplateView id={route.id} />
     case 'calendar':
       return <CalendarView date={route.date} eventId={route.eventId} />
+    case 'vault':
+      return <VaultView />
     case 'settings':
       return <SettingsView />
   }

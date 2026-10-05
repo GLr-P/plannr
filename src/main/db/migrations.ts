@@ -186,5 +186,24 @@ export const migrations: string[] = [
     PRIMARY KEY (region, uid)
   );
   CREATE INDEX holidays_date ON holidays(date);
+  `,
+
+  /* 6: vault. Nothing here is readable without the passcode or recovery key:
+        vault_keys holds the data key encrypted ("wrapped") by each, vault_items holds AES-256-GCM ciphertext. */ `
+  CREATE TABLE vault_keys (
+    id TEXT PRIMARY KEY CHECK (id IN ('passcode', 'recovery')),
+    salt TEXT NOT NULL,     -- base64
+    params TEXT NOT NULL,   -- scrypt parameters (JSON), so they can be raised later
+    wrapped TEXT NOT NULL,  -- base64: iv | tag | encrypted data key
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE vault_items (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL,     -- base64: iv | tag | ciphertext of the item JSON (kind, title, fields)
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
   `
 ]

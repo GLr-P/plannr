@@ -90,7 +90,13 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Windows notifications (day before at 9 AM, day of at 8 AM), close-to-tray, and a Start-with-Windows option
    - An app icon and a Start menu shortcut
    - Public holidays from Google’s holiday calendars (public feed, so no sign-in needed): pick a country or turn them off, optionally hide observances; refreshed weekly
-4. **Vault**
+4. **Vault**. **Done (2026-10-04).** Includes:
+   - A passcode (6+ characters) turned into a key with scrypt (N=2^17); a random data key wraps every item in AES-256-GCM, bound to the item id
+   - The data key is wrapped separately by the passcode and by a recovery key (shown once; copy, save or print)
+   - Logins with a password generator, plus cards and secure notes; reveal and copy, with the clipboard auto-cleared after 30 s
+   - Auto-lock after inactivity (1–60 min), on PC lock or sleep, and on close-to-tray; a wait after 5 wrong passcodes
+   - Change passcode, or reset it with the recovery key
+   - Nothing readable on disk (verified by tests that scan the raw database file); vault items are never in search
 5. **Money**
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.
 7. **Polish & install:** backups, installer, start-with-Windows option

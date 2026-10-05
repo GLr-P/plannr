@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
-import { readFileSync } from 'node:fs'
+import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
+import { readFileSync, writeFileSync } from 'node:fs'
+import type { VaultSession } from './vault-session'
 import type { Db } from './db'
 import { API_SHAPE, type PlannrApi, type Theme } from '../shared/api'
 import * as notes from './services/notes'
@@ -22,7 +23,7 @@ export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: 
   dark: { bg: '#1b1b1d', titlebar: '#151517', symbol: '#d6d6d6' }
 }
 
-export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null): PlannrApi {
+export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession): PlannrApi {
   return {
     notes: {
       list: async (opts) => notes.listNotes(db, opts),
@@ -103,6 +104,40 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     settings: {
       get: async (key) => getSetting(db, key),
       set: async (key, value) => setSetting(db, key, value)
+    },
+    vault: {
+      status: async () => vaultSession.status(),
+      setup: async (passcode) => vaultSession.setup(passcode),
+      unlock: async (passcode) => vaultSession.unlock(passcode),
+      recover: async (key, passcode) => vaultSession.recover(key, passcode),
+      changePasscode: async (current, next) => vaultSession.changePasscode(current, next),
+      lock: async () => vaultSession.lock(),
+      touch: async () => vaultSession.touch(),
+      setAutoLock: async (minutes) => vaultSession.setAutoLock(minutes),
+      list: async () => vaultSession.list(),
+      get: async (id) => vaultSession.get(id),
+      create: async (kind) => vaultSession.create(kind),
+      update: async (id, patch) => vaultSession.update(id, patch),
+      remove: async (id) => vaultSession.remove(id),
+      copy: async (id, field) => vaultSession.copy(id, field),
+      saveRecoveryKey: async (recoveryKey) => {
+        const win = getWindow()
+        const options = { defaultPath: 'Plannr vault recovery key.txt', filters: [{ name: 'Text', extensions: ['txt'] }] }
+        const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+        if (result.canceled || !result.filePath) return false
+        writeFileSync(
+          result.filePath,
+          [
+            'Plannr vault recovery key',
+            '',
+            recoveryKey,
+            '',
+            'Keep this somewhere safe (not only on this computer).',
+            'If you forget your vault passcode, this key is the only way to get back in.'
+          ].join('\r\n')
+        )
+        return true
+      }
     },
     app: {
       info: async () => ({ version: app.getVersion(), dataDir }),
