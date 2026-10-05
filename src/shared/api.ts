@@ -16,6 +16,10 @@ export type DocJSON = {
 export interface Folder {
   id: string
   name: string
+  /** Icon name from the picker (e.g. "Star") or an emoji; '' = default */
+  icon: string
+  /** Colour id from the palette (e.g. "blue"); '' = default */
+  color: string
   sort: number
   createdAt: number
   updatedAt: number
@@ -27,6 +31,10 @@ export interface NoteSummary {
   folderId: string | null
   pinned: boolean
   tags: string[]
+  /** Icon name from the picker or an emoji; '' = default */
+  icon: string
+  /** Colour id from the palette; '' = default */
+  color: string
   preview: string
   createdAt: number
   updatedAt: number
@@ -50,6 +58,8 @@ export interface NoteUpdate {
   folderId?: string | null
   pinned?: boolean
   tags?: string[]
+  icon?: string
+  color?: string
 }
 
 export interface SearchResult {
@@ -696,6 +706,8 @@ export interface PlannrApi {
     list(): Promise<Folder[]>
     create(name: string): Promise<Folder>
     rename(id: string, name: string): Promise<void>
+    /** Icon and colour ('' = default) */
+    style(id: string, style: { icon?: string; color?: string }): Promise<void>
     remove(id: string): Promise<void>
   }
   search: {
@@ -854,7 +866,7 @@ export const API_SHAPE = {
     'openFile',
     'exportFile'
   ],
-  folders: ['list', 'create', 'rename', 'remove'],
+  folders: ['list', 'create', 'rename', 'style', 'remove'],
   search: ['query'],
   files: ['save', 'open'],
   settings: ['get', 'set'],

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { Pin, PinOff, RotateCcw, Trash2, X } from 'lucide-react'
+import { FileText, Pin, PinOff, RotateCcw, Trash2, X } from 'lucide-react'
 import type { DocJSON, Note, NoteUpdate } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -11,6 +11,9 @@ import { SaveIndicator } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { NoteEditor } from '../editor/NoteEditor'
+import { IconPicker, openPanel } from '../components/ContextMenu'
+import { ItemIcon } from '../lib/icons'
+import { styleNote } from '../menus'
 
 export function NoteView({ id }: { id: string }) {
   const [note, setNote] = useState<Note | null | undefined>(undefined)
@@ -51,6 +54,8 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
   const pinned = live?.pinned ?? note.pinned
   const folderId = live ? live.folderId : note.folderId
   const updatedAt = live?.updatedAt ?? note.updatedAt
+  const icon = live?.icon ?? note.icon
+  const color = live?.color ?? note.color
 
   const onTitle = (value: string): void => {
     setTitle(value)
@@ -146,7 +151,21 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
       )}
 
       <div className="doc">
-        <input
+        <div className="doc-title-row">
+          {!trashed && (
+            <button
+              type="button"
+              className={`doc-icon ${icon || color ? '' : 'unset'}`}
+              title="Change icon"
+              aria-label="Change icon"
+              onClick={(e) =>
+                openPanel(e.currentTarget, 'Icon & colour', () => <IconPicker icon={icon} color={color} onChange={(s) => void styleNote(note.id, s)} />)
+              }
+            >
+              <ItemIcon icon={icon} color={color} fallback={FileText} />
+            </button>
+          )}
+          <input
           className="doc-title"
           value={title}
           placeholder="Untitled"
@@ -165,6 +184,7 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
           aria-label="Title"
           autoFocus={!note.title && !trashed}
         />
+        </div>
 
         <div className="tags">
           {tags.map((t) => (

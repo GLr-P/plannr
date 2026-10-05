@@ -143,6 +143,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       list: async () => folders.listFolders(db),
       create: async (name) => folders.createFolder(db, name),
       rename: async (id, name) => folders.renameFolder(db, id, name),
+      style: async (id, style) => folders.styleFolder(db, id, style),
       remove: async (id) => folders.removeFolder(db, id)
     },
     search: {

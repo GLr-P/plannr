@@ -870,6 +870,49 @@ kbd {
 .doc {
   padding: 0 4px;
 }
+.doc-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: -44px; /* the icon sits in the margin so titles stay aligned with the text */
+}
+.doc-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  color: var(--text-faint);
+}
+.doc-icon:hover {
+  background: var(--hover);
+}
+.doc-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.doc-icon .emoji-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 26px;
+}
+.doc-icon.unset {
+  opacity: 0;
+}
+.doc-title-row:hover .doc-icon.unset,
+.doc-icon.unset:focus-visible {
+  opacity: 0.7;
+}
+.emoji-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
 .doc-title {
   width: 100%;
   border: none;
@@ -1148,4 +1191,171 @@ kbd {
 .qbo-problems ul {
   margin: 4px 0 0;
   padding-left: 18px;
+}
+
+/* ---------- Item colours (icons) ---------- */
+:root {
+  --c-gray: #6b7280;
+  --c-red: #dc2626;
+  --c-orange: #ea580c;
+  --c-yellow: #ca8a04;
+  --c-green: #16a34a;
+  --c-teal: #0d9488;
+  --c-blue: #2563eb;
+  --c-purple: #7c3aed;
+  --c-pink: #db2777;
+}
+:root[data-theme='dark'] {
+  --c-gray: #9ca3af;
+  --c-red: #f87171;
+  --c-orange: #fb923c;
+  --c-yellow: #facc15;
+  --c-green: #4ade80;
+  --c-teal: #2dd4bf;
+  --c-blue: #60a5fa;
+  --c-purple: #a78bfa;
+  --c-pink: #f472b6;
+}
+
+/* ---------- Right-click menu ---------- */
+.ctx-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 210px;
+  max-width: 320px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  outline: none;
+  display: flex;
+  flex-direction: column;
+}
+.ctx-item,
+.ctx-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  text-align: left;
+  color: var(--text);
+  font-size: 13px;
+}
+.ctx-item.focused {
+  background: var(--hover);
+}
+.ctx-item.danger {
+  color: var(--danger);
+}
+.ctx-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--text-muted);
+}
+.ctx-item.danger .ctx-icon {
+  color: var(--danger);
+}
+.ctx-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.ctx-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctx-more {
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+}
+.ctx-back {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  height: 28px;
+  margin-bottom: 2px;
+}
+.ctx-back:hover {
+  background: var(--hover);
+}
+.ctx-back svg {
+  width: 14px;
+  height: 14px;
+}
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+/* ---------- Icon picker ---------- */
+.icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  width: 296px;
+}
+.swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.swatch.on {
+  border-color: var(--bg-elevated);
+  box-shadow: 0 0 0 2px var(--text);
+}
+.swatch-default {
+  background: linear-gradient(135deg, var(--bg) 45%, var(--border-strong) 45%, var(--border-strong) 55%, var(--bg) 55%);
+}
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 2px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+.icon-choice {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+.icon-choice:hover {
+  background: var(--hover);
+}
+.icon-choice.on {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.icon-picker-foot {
+  display: flex;
+  gap: 6px;
+}
+.icon-picker-foot input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: 0 8px;
+  outline: none;
+}
+.icon-picker-foot input:focus {
+  border-color: var(--accent);
 }

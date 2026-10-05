@@ -151,6 +151,39 @@ test('creates a folder and moves a note into it by drag and drop', async () => {
   await shot(page, '06-folder')
 })
 
+test('right-click: rename a folder, give it an icon and colour, move a note out and back', async () => {
+  const folder = page.locator('.sidebar .nav-item', { hasText: 'Clients' })
+  await folder.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Rename' }).click()
+  await page.getByLabel('New name').fill('Customers A-Z')
+  await page.keyboard.press('Enter')
+  const renamed = page.locator('.sidebar .nav-item', { hasText: 'Customers A-Z' })
+  await expect(renamed).toBeVisible()
+
+  await renamed.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Icon & colour' }).click()
+  await page.getByRole('radio', { name: 'orange' }).click()
+  await page.getByLabel('Icon Truck').click()
+  await expect(renamed.locator('svg.lucide-truck')).toHaveCount(1)
+  await shot(page, '06b-icon-picker')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.ctx-menu')).toHaveCount(0)
+
+  const inSidebar = page.locator('.sidebar .nav-item', { hasText: 'Supplier list' })
+  await inSidebar.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Move to folder' }).click()
+  await page.getByRole('menuitem', { name: 'No folder' }).click()
+  await expect(inSidebar).toHaveCount(0) // unfiled and unpinned notes aren't listed in the sidebar
+
+  await page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).click()
+  await page.locator('.note-row', { hasText: 'Supplier list' }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Move to folder' }).click()
+  await page.getByRole('menuitem', { name: 'Customers A-Z' }).click()
+  await expect(page.locator('.note-row', { hasText: 'Supplier list' }).locator('.chip')).toHaveText('Customers A-Z')
+  await renamed.click()
+  await expect(page.locator('.note-row')).toHaveCount(1)
+})
+
 test('moves a note to trash and restores it', async () => {
   await page.locator('.note-row', { hasText: 'Supplier list' }).click()
   await page.getByRole('button', { name: 'Move to trash' }).click()

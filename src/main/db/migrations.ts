@@ -300,5 +300,12 @@ export const migrations: string[] = [
 
   /* 13: payment already in QuickBooks as an invoice made there (its number); not sent as a sales receipt */ `
   ALTER TABLE transactions ADD COLUMN qbo_invoice TEXT NOT NULL DEFAULT '';
+  `,
+
+  /* 14: custom icon (picker name or emoji) and colour for notes and folders */ `
+  ALTER TABLE notes ADD COLUMN icon TEXT NOT NULL DEFAULT '';
+  ALTER TABLE notes ADD COLUMN color TEXT NOT NULL DEFAULT '';
+  ALTER TABLE folders ADD COLUMN icon TEXT NOT NULL DEFAULT '';
+  ALTER TABLE folders ADD COLUMN color TEXT NOT NULL DEFAULT '';
   `
 ]

@@ -4,6 +4,7 @@ import type { DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate } from '..
 import { indexEntity, unindexEntity } from './search'
 import { deleteLinksOf, setLinks } from './links'
 import { extractMentions, extractText } from './doc'
+import { cleanColor, cleanIcon } from './folders'
 
 export { extractMentions, extractText }
 
@@ -13,6 +14,8 @@ interface NoteRow {
   folder_id: string | null
   pinned: number
   tags: string
+  icon: string
+  color: string
   preview: string
   created_at: number
   updated_at: number
@@ -22,7 +25,7 @@ interface NoteRow {
 }
 
 const SUMMARY_COLS =
-  'id, title, folder_id, pinned, tags, substr(content_text, 1, 200) AS preview, created_at, updated_at, deleted_at'
+  'id, title, folder_id, pinned, tags, icon, color, substr(content_text, 1, 200) AS preview, created_at, updated_at, deleted_at'
 
 function toSummary(r: NoteRow): NoteSummary {
   return {
@@ -31,6 +34,8 @@ function toSummary(r: NoteRow): NoteSummary {
     folderId: r.folder_id,
     pinned: r.pinned === 1,
     tags: JSON.parse(r.tags) as string[],
+    icon: r.icon,
+    color: r.color,
     preview: r.preview,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -129,8 +134,21 @@ export function updateNote(db: Db, id: string, patch: NoteUpdate): NoteSummary {
       sets.push('tags = ?')
       params.push(JSON.stringify(normalizeTags(patch.tags)))
     }
-    sets.push('updated_at = ?')
-    params.push(now(), id)
+    if (patch.icon !== undefined) {
+      sets.push('icon = ?')
+      params.push(cleanIcon(patch.icon))
+    }
+    if (patch.color !== undefined) {
+      sets.push('color = ?')
+      params.push(cleanColor(patch.color))
+    }
+    // Changing only the look (icon/colour) doesn't count as an edit, so "Recent" order stays put.
+    const lookOnly = Object.keys(patch).every((k) => k === 'icon' || k === 'color')
+    if (!lookOnly) {
+      sets.push('updated_at = ?')
+      params.push(now())
+    }
+    params.push(id)
     const result = db.prepare(`UPDATE notes SET ${sets.join(', ')} WHERE id = ?`).run(...params)
     if (result.changes === 0) throw new Error(`Note not found: ${id}`)
     reindex(db, id)

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, FileText, Folder, FolderPlus, Home, LayoutTemplate, CalendarDays, Lock, Wallet, Pin, Plus, Settings, Trash2, Users, Wrench } from 'lucide-react'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -7,6 +7,10 @@ import { useUi } from '../store/ui'
 import { DRAG_MIME, moveNote, newNote, newTicket, readDrag, type DragItem } from '../actions'
 import { noteTitle } from '../lib/format'
 import type { Folder as FolderT, NoteSummary } from '../../../shared/api'
+import { ItemIcon } from '../lib/icons'
+import { openMenu } from './ContextMenu'
+import { folderMenu, noteMenu, renameFolder, renameNote, useRenaming } from '../menus'
+import type { LucideIcon } from 'lucide-react'
 
 /** Section of a detail page, so e.g. "Tickets" stays highlighted while a ticket is open. */
 const SECTION: Partial<Record<Route['view'], Route['view']>> = { ticket: 'tickets', customer: 'customers', template: 'templates' }
@@ -25,18 +29,23 @@ function NavItem(props: {
   draggable?: DragItem
   onDropItem?: (item: DragItem) => void
   actions?: ReactNode
+  onContextMenu?: (e: MouseEvent) => void
+  /** Renamable in place: the id the right-click "Rename" sets, the current name and how to save a new one */
+  rename?: { id: string; value: string; save: (name: string) => Promise<void> }
 }) {
   const route = useNav((s) => s.route)
   const [over, setOver] = useState(false)
+  const renaming = useRenaming((s) => props.rename !== undefined && s.id === props.rename.id)
   return (
     <div
       className={`nav-item ${isActive(route, props.target) ? 'active' : ''} ${over ? 'drop-over' : ''}`}
       style={{ paddingLeft: 8 + (props.indent ?? 0) * 14 }}
       role="button"
       tabIndex={0}
-      onClick={() => go(props.target)}
-      onKeyDown={(e) => e.key === 'Enter' && go(props.target)}
-      draggable={!!props.draggable}
+      onClick={() => !renaming && go(props.target)}
+      onKeyDown={(e) => e.key === 'Enter' && !renaming && go(props.target)}
+      onContextMenu={props.onContextMenu}
+      draggable={!!props.draggable && !renaming}
       onDragStart={(e) => {
         if (!props.draggable) return
         e.dataTransfer.setData(DRAG_MIME, JSON.stringify(props.draggable))
@@ -59,7 +68,7 @@ function NavItem(props: {
       }}
     >
       <span className="nav-icon">{props.icon}</span>
-      <span className="nav-label">{props.label}</span>
+      {renaming && props.rename ? <RenameInput value={props.rename.value} save={props.rename.save} /> : <span className="nav-label">{props.label}</span>}
       {props.count !== undefined && <span className="nav-count">{props.count}</span>}
       {props.actions && (
         <span className="nav-actions" onClick={(e) => e.stopPropagation()}>
@@ -67,6 +76,35 @@ function NavItem(props: {
         </span>
       )}
     </div>
+  )
+}
+
+function RenameInput({ value, save }: { value: string; save: (name: string) => Promise<void> }) {
+  const [name, setName] = useState(value)
+  const setRenaming = useRenaming((s) => s.set)
+  const finished = useRef(false)
+  const finish = async (keep: boolean): Promise<void> => {
+    if (finished.current) return
+    finished.current = true
+    if (keep && name.trim() && name.trim() !== value) await save(name.trim())
+    setRenaming(null)
+  }
+  return (
+    <input
+      autoFocus
+      className="nav-input"
+      value={name}
+      aria-label="New name"
+      onFocus={(e) => e.target.select()}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setName(e.target.value)}
+      onBlur={() => void finish(true)}
+      onKeyDown={(e) => {
+        e.stopPropagation()
+        if (e.key === 'Enter') void finish(true)
+        if (e.key === 'Escape') void finish(false)
+      }}
+    />
   )
 }
 
@@ -88,13 +126,15 @@ function FolderNode({ folder, notes }: { folder: FolderT; notes: NoteSummary[] }
               setCollapsed(key, !collapsed)
             }}
           >
-            <Folder className="when-idle" />
+            <ItemIcon icon={folder.icon} color={folder.color} fallback={Folder} className="when-idle" />
             {collapsed ? <ChevronRight className="when-hover" /> : <ChevronDown className="when-hover" />}
           </button>
         }
         label={folder.name}
         target={{ view: 'notes', filter: { kind: 'folder', id: folder.id } }}
         onDropItem={(item) => item.type === 'note' && void moveNote(item.id, folder.id)}
+        onContextMenu={(e) => openMenu(e, folderMenu(folder))}
+        rename={{ id: folder.id, value: folder.name, save: (name) => renameFolder(folder.id, name) }}
         actions={
           <button type="button" className="icon-btn sm" title="New note in folder" onClick={() => void newNote(folder.id)}>
             <Plus />
@@ -103,7 +143,7 @@ function FolderNode({ folder, notes }: { folder: FolderT; notes: NoteSummary[] }
       />
       {!collapsed &&
         (notes.length ? (
-          notes.map((n) => <NoteNode key={n.id} note={n} indent={1} />)
+          notes.map((n) => <NoteNode key={n.id} note={n} place="folder" indent={1} />)
         ) : (
           <div className="nav-empty" style={{ paddingLeft: 8 + 14 + 22 }}>
             Empty — drag notes here
@@ -113,14 +153,18 @@ function FolderNode({ folder, notes }: { folder: FolderT; notes: NoteSummary[] }
   )
 }
 
-function NoteNode({ note, indent = 1 }: { note: NoteSummary; indent?: number }) {
+/** `place` tells apart the same note shown twice (e.g. pinned and in its folder) when renaming in place. */
+function NoteNode({ note, place, indent = 1, fallback = FileText }: { note: NoteSummary; place: string; indent?: number; fallback?: LucideIcon }) {
+  const renameKey = `${place}:${note.id}`
   return (
     <NavItem
-      icon={<FileText />}
+      icon={<ItemIcon icon={note.icon} color={note.color} fallback={fallback} />}
       label={noteTitle(note.title)}
       target={{ view: 'note', id: note.id }}
       indent={indent}
       draggable={{ type: 'note', id: note.id }}
+      onContextMenu={(e) => openMenu(e, noteMenu(note, { renameKey }))}
+      rename={{ id: renameKey, value: note.title, save: (title) => renameNote(note.id, title) }}
     />
   )
 }
@@ -224,7 +268,7 @@ export function Sidebar() {
       {pinned.length > 0 && (
         <SidebarGroup id="pinned" title="Pinned">
           {pinned.map((n) => (
-            <NavItem key={n.id} icon={<Pin />} label={noteTitle(n.title)} target={{ view: 'note', id: n.id }} draggable={{ type: 'note', id: n.id }} />
+            <NoteNode key={n.id} note={n} place="pinned" indent={0} fallback={Pin} />
           ))}
         </SidebarGroup>
       )}
@@ -232,7 +276,7 @@ export function Sidebar() {
       {showRecent && recent.length > 0 && (
         <SidebarGroup id="recent" title="Recent">
           {recent.map((n) => (
-            <NoteNode key={n.id} note={n} indent={0} />
+            <NoteNode key={n.id} note={n} place="recent" indent={0} />
           ))}
         </SidebarGroup>
       )}

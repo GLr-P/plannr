@@ -31,7 +31,7 @@ describe('migrations', () => {
   it('are idempotent', () => {
     migrate(db)
     const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
-    expect(user_version).toBe(13)
+    expect(user_version).toBe(14)
   })
 })
 
@@ -167,6 +167,19 @@ describe('folders', () => {
     folders.renameFolder(db, a.id, 'Renamed')
     folders.renameFolder(db, a.id, '   ')
     expect(folders.listFolders(db).map((f) => f.name)).toEqual(['Renamed', 'A second'])
+  })
+
+  it('folders and notes keep a custom icon and colour; changing only the look is not an edit', async () => {
+    const f = folders.createFolder(db, 'Suppliers')
+    folders.styleFolder(db, f.id, { icon: 'Truck', color: 'orange' })
+    folders.styleFolder(db, f.id, { color: 'Bad Colour!' })
+    expect(folders.listFolders(db)[0]).toMatchObject({ icon: 'Truck', color: '' })
+
+    const n = notes.createNote(db, { title: 'Prices' })
+    await new Promise((r) => setTimeout(r, 3))
+    const styled = notes.updateNote(db, n.id, { icon: '🔧', color: 'blue' })
+    expect(styled).toMatchObject({ icon: '🔧', color: 'blue', updatedAt: n.updatedAt })
+    expect(notes.updateNote(db, n.id, { title: 'Prices 2026' }).updatedAt).toBeGreaterThan(n.updatedAt)
   })
 })
 

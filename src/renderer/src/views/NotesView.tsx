@@ -7,6 +7,9 @@ import { go, type NotesFilter } from '../store/nav'
 import { DRAG_MIME, newNote, togglePin, trashNote } from '../actions'
 import { noteTitle, relativeTime } from '../lib/format'
 import { ConfirmButton } from '../components/common'
+import { openMenu } from '../components/ContextMenu'
+import { ItemIcon } from '../lib/icons'
+import { noteMenu } from '../menus'
 
 export function NotesView({ filter }: { filter: NotesFilter }) {
   const allNotes = useData((s) => s.notes)
@@ -82,8 +85,9 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
                 e.dataTransfer.effectAllowed = 'move'
               }}
               onClick={() => go({ view: 'note', id: n.id })}
+              onContextMenu={isTrash ? undefined : (e) => openMenu(e, noteMenu(n))}
             >
-              <FileText className="note-row-icon" />
+              <ItemIcon icon={n.icon} color={n.color} fallback={FileText} className="note-row-icon" />
               <div className="note-row-main">
                 <div className="note-row-title">
                   {n.pinned && <Pin className="pin-mark" />}

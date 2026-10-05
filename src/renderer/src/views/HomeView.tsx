@@ -9,6 +9,9 @@ import { NewTicketButton } from './TicketsView'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { newNote } from '../actions'
+import { openMenu } from '../components/ContextMenu'
+import { ItemIcon } from '../lib/icons'
+import { noteMenu } from '../menus'
 import { formatDay, formatMoney, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
 
 function dayLabel(date: string): string {
@@ -134,9 +137,9 @@ export function HomeView() {
           <h2 className="section-title">Pinned</h2>
           <div className="card-grid">
             {pinned.map((n) => (
-              <button key={n.id} type="button" className="card" onClick={() => go({ view: 'note', id: n.id })}>
+              <button key={n.id} type="button" className="card" onClick={() => go({ view: 'note', id: n.id })} onContextMenu={(e) => openMenu(e, noteMenu(n))}>
                 <div className="card-title">
-                  <Pin /> {noteTitle(n.title)}
+                  <ItemIcon icon={n.icon} color={n.color} fallback={Pin} /> {noteTitle(n.title)}
                 </div>
                 <div className="card-preview">{n.preview || 'Empty note'}</div>
               </button>
@@ -159,8 +162,8 @@ export function HomeView() {
           <ul className="simple-list">
             {recent.map((n) => (
               <li key={n.id}>
-                <button type="button" onClick={() => go({ view: 'note', id: n.id })}>
-                  <FileText />
+                <button type="button" onClick={() => go({ view: 'note', id: n.id })} onContextMenu={(e) => openMenu(e, noteMenu(n))}>
+                  <ItemIcon icon={n.icon} color={n.color} fallback={FileText} />
                   <span className="simple-title">{noteTitle(n.title)}</span>
                   <span className="simple-meta">{relativeTime(n.updatedAt)}</span>
                 </button>
