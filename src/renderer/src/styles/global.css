@@ -521,8 +521,47 @@ kbd {
   height: 13px;
 }
 .section-actions {
-  display: flex;
+  display: none;
   gap: 1px;
+}
+.section-header:hover .section-actions {
+  display: flex;
+}
+.sidebar-group .section-header {
+  height: 26px;
+  margin-top: 12px;
+  padding: 0 2px 0 4px;
+}
+.sidebar-group .section-toggle {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+}
+.sidebar-group .section-toggle svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+}
+.sidebar-group .section-header:hover .section-toggle svg,
+.sidebar-group .section-toggle[aria-expanded='false'] svg {
+  opacity: 1;
+}
+.folder-chevron {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  color: inherit;
+}
+.folder-chevron svg.when-idle {
+  width: 16px;
+  height: 16px;
+}
+.folder-chevron .when-hover,
+.nav-item:hover .folder-chevron .when-idle {
+  display: none;
+}
+.nav-item:hover .folder-chevron .when-hover {
+  display: block;
 }
 
 /* ---------- Pages ---------- */

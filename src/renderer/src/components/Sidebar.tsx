@@ -25,7 +25,6 @@ function NavItem(props: {
   draggable?: DragItem
   onDropItem?: (item: DragItem) => void
   actions?: ReactNode
-  chevron?: ReactNode
 }) {
   const route = useNav((s) => s.route)
   const [over, setOver] = useState(false)
@@ -59,7 +58,6 @@ function NavItem(props: {
         }
       }}
     >
-      {props.chevron}
       <span className="nav-icon">{props.icon}</span>
       <span className="nav-label">{props.label}</span>
       {props.count !== undefined && <span className="nav-count">{props.count}</span>}
@@ -75,26 +73,27 @@ function NavItem(props: {
 function FolderNode({ folder, notes }: { folder: FolderT; notes: NoteSummary[] }) {
   const key = `folder:${folder.id}`
   const collapsed = useUi((s) => s.collapsed[key] ?? true)
-  const toggle = useUi((s) => s.toggle)
+  const setCollapsed = useUi((s) => s.setCollapsed)
   return (
     <>
       <NavItem
-        icon={<Folder />}
-        label={folder.name}
-        target={{ view: 'notes', filter: { kind: 'folder', id: folder.id } }}
-        chevron={
+        icon={
+          // Folder icon; on hover it becomes the expand/collapse chevron (keeps folders aligned with the rest).
           <button
             type="button"
-            className="chevron"
+            className="chevron folder-chevron"
             aria-label={collapsed ? 'Expand' : 'Collapse'}
             onClick={(e) => {
               e.stopPropagation()
-              toggle(key)
+              setCollapsed(key, !collapsed)
             }}
           >
-            {collapsed ? <ChevronRight /> : <ChevronDown />}
+            <Folder className="when-idle" />
+            {collapsed ? <ChevronRight className="when-hover" /> : <ChevronDown className="when-hover" />}
           </button>
         }
+        label={folder.name}
+        target={{ view: 'notes', filter: { kind: 'folder', id: folder.id } }}
         onDropItem={(item) => item.type === 'note' && void moveNote(item.id, folder.id)}
         actions={
           <button type="button" className="icon-btn sm" title="New note in folder" onClick={() => void newNote(folder.id)}>
@@ -104,9 +103,9 @@ function FolderNode({ folder, notes }: { folder: FolderT; notes: NoteSummary[] }
       />
       {!collapsed &&
         (notes.length ? (
-          notes.map((n) => <NoteNode key={n.id} note={n} indent={2} />)
+          notes.map((n) => <NoteNode key={n.id} note={n} indent={1} />)
         ) : (
-          <div className="nav-empty" style={{ paddingLeft: 8 + 2 * 14 }}>
+          <div className="nav-empty" style={{ paddingLeft: 8 + 14 + 22 }}>
             Empty — drag notes here
           </div>
         ))}
@@ -136,7 +135,7 @@ function NewFolderInput({ onDone }: { onDone: () => void }) {
     onDone()
   }
   return (
-    <div className="nav-item editing" style={{ paddingLeft: 8 + 14 }}>
+    <div className="nav-item editing" style={{ paddingLeft: 8 }}>
       <span className="nav-icon">
         <Folder />
       </span>
@@ -156,12 +155,29 @@ function NewFolderInput({ onDone }: { onDone: () => void }) {
   )
 }
 
+/** A small collapsible group (Pinned, Recent, Folders): a quiet label, items at the same indent as the main nav. */
+function SidebarGroup({ id, title, actions, children }: { id: string; title: string; actions?: ReactNode; children: ReactNode }) {
+  const collapsed = useUi((s) => s.collapsed[`section:${id}`] ?? false)
+  const toggle = useUi((s) => s.toggle)
+  return (
+    <div className="sidebar-group">
+      <div className="section-header">
+        <button type="button" className="section-toggle" aria-expanded={!collapsed} onClick={() => toggle(`section:${id}`)}>
+          {title}
+          {collapsed ? <ChevronRight /> : <ChevronDown />}
+        </button>
+        {actions && <span className="section-actions">{actions}</span>}
+      </div>
+      {!collapsed && children}
+    </div>
+  )
+}
+
 export function Sidebar() {
   const notes = useData((s) => s.notes)
   const folders = useData((s) => s.folders)
   const openTickets = useData((s) => s.counts.open)
-  const notesCollapsed = useUi((s) => s.collapsed['section:notes'] ?? false)
-  const toggle = useUi((s) => s.toggle)
+  const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
   const [addingFolder, setAddingFolder] = useState(false)
   const pinned = notes.filter((n) => n.pinned)
   const recent = notes
@@ -187,58 +203,60 @@ export function Sidebar() {
       <NavItem icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} />
       <NavItem icon={<Wallet />} label="Money" target={{ view: 'money' }} />
       <NavItem icon={<Lock />} label="Vault" target={{ view: 'vault' }} />
+      <NavItem
+        icon={<FileText />}
+        label="Notes"
+        target={{ view: 'notes', filter: { kind: 'all' } }}
+        count={notes.length || undefined}
+        onDropItem={(item) => item.type === 'note' && void moveNote(item.id, null)}
+        actions={
+          <>
+            <button type="button" className="icon-btn sm" title="New folder" aria-label="New folder" onClick={() => setAddingFolder(true)}>
+              <FolderPlus />
+            </button>
+            <button type="button" className="icon-btn sm" title="New note (Ctrl+N)" aria-label="New note" onClick={() => void newNote()}>
+              <Plus />
+            </button>
+          </>
+        }
+      />
 
-      <div className="section-header">
-        <button type="button" className="section-toggle" onClick={() => toggle('section:notes')}>
-          {notesCollapsed ? <ChevronRight /> : <ChevronDown />}
-          Notes
-        </button>
-        <span className="section-actions">
-          <button type="button" className="icon-btn sm" title="New folder" aria-label="New folder" onClick={() => setAddingFolder(true)}>
-            <FolderPlus />
-          </button>
-          <button type="button" className="icon-btn sm" title="New note (Ctrl+N)" aria-label="New note" onClick={() => void newNote()}>
-            <Plus />
-          </button>
-        </span>
-      </div>
-
-      {!notesCollapsed && (
-        <>
-          <NavItem
-            icon={<FileText />}
-            label="All notes"
-            target={{ view: 'notes', filter: { kind: 'all' } }}
-            count={notes.length}
-            indent={1}
-            onDropItem={(item) => item.type === 'note' && void moveNote(item.id, null)}
-          />
-          {pinned.length > 0 && <div className="nav-subheading">Pinned</div>}
+      {pinned.length > 0 && (
+        <SidebarGroup id="pinned" title="Pinned">
           {pinned.map((n) => (
-            <NavItem
-              key={n.id}
-              icon={<Pin />}
-              label={noteTitle(n.title)}
-              target={{ view: 'note', id: n.id }}
-              indent={1}
-              draggable={{ type: 'note', id: n.id }}
-            />
+            <NavItem key={n.id} icon={<Pin />} label={noteTitle(n.title)} target={{ view: 'note', id: n.id }} draggable={{ type: 'note', id: n.id }} />
           ))}
-          {recent.length > 0 && <div className="nav-subheading">Recent</div>}
+        </SidebarGroup>
+      )}
+
+      {showRecent && recent.length > 0 && (
+        <SidebarGroup id="recent" title="Recent">
           {recent.map((n) => (
-            <NoteNode key={n.id} note={n} />
+            <NoteNode key={n.id} note={n} indent={0} />
           ))}
-          {(folders.length > 0 || addingFolder) && <div className="nav-subheading">Folders</div>}
+        </SidebarGroup>
+      )}
+
+      {(folders.length > 0 || addingFolder) && (
+        <SidebarGroup
+          id="folders"
+          title="Folders"
+          actions={
+            <button type="button" className="icon-btn sm" title="New folder" aria-label="New folder" onClick={() => setAddingFolder(true)}>
+              <FolderPlus />
+            </button>
+          }
+        >
           {folders.map((f) => (
             <FolderNode key={f.id} folder={f} notes={notes.filter((n) => n.folderId === f.id)} />
           ))}
           {addingFolder && <NewFolderInput onDone={() => setAddingFolder(false)} />}
-          <NavItem icon={<Trash2 />} label="Trash" target={{ view: 'notes', filter: { kind: 'trash' } }} indent={1} />
-        </>
+        </SidebarGroup>
       )}
 
       <div className="sidebar-spacer" />
       <NavItem icon={<LayoutTemplate />} label="Templates" target={{ view: 'templates' }} />
+      <NavItem icon={<Trash2 />} label="Trash" target={{ view: 'notes', filter: { kind: 'trash' } }} />
       <NavItem icon={<Settings />} label="Settings" target={{ view: 'settings' }} />
     </nav>
   )

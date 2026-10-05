@@ -113,6 +113,13 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - The whole e2e suite also passes against the packaged exe
    - Not code-signed yet, so Windows SmartScreen will warn on first install
 
+
+## Next (requested 2026-10-05, in this order)
+8. **Cleaner sidebar.** **Done (2026-10-05).** Notes is one menu item (hover for + note / + folder). Pinned and Folders only appear when used. Recent notes are off by default, with a setting to show them. Trash sits at the bottom with Templates and Settings. Folders show their icon, which turns into the expand arrow on hover.
+9. **Optimize and polish everything,** and add features that are missing.
+10. **More to create:** note types and more templates.
+11. **Customization:** as much as sensible (sidebar, sections, colours, layout and so on).
+12. **For other people:** an optional first-run tutorial (pick which parts you want: tickets, money, vault and so on; shows how to connect Zoho, QuickBooks and Google), then a GitHub page with a description and a download.
 **Later:** cloud sync to the desktop PC, a phone app, and ChatGPT/Claude integration (summarize a ticket, draft customer emails, ask questions about your notes).
 
 ## Quality rules Claude follows

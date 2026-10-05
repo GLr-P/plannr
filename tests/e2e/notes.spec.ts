@@ -53,7 +53,7 @@ test('creates a note with title, text, to-dos and a toggle section', async () =>
   await expect(page.locator('.prose [data-type="details"]')).toHaveCount(1)
   await page.locator('.prose ul[data-type="taskList"] li input[type="checkbox"]').first().check()
   await saved()
-  await expect(page.locator('.sidebar')).toContainText('Laptop repair checklist')
+  await expect(page.locator('.sidebar')).not.toContainText('Laptop repair checklist') // recent notes are off by default
   await shot(page, '02-note-editor')
 })
 
@@ -132,13 +132,14 @@ test('tags a note and filters by tag', async () => {
 })
 
 test('creates a folder and moves a note into it by drag and drop', async () => {
-  await page.getByRole('button', { name: 'New folder' }).click()
+  await page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).hover() // its buttons show on hover
+  await page.getByRole('button', { name: 'New folder', exact: true }).click()
   await page.keyboard.type('Clients')
   await page.keyboard.press('Enter')
   const folder = page.locator('.sidebar .nav-item', { hasText: 'Clients' })
   await expect(folder).toBeVisible()
 
-  await page.locator('.sidebar .nav-item', { hasText: 'All notes' }).click()
+  await page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).click()
   const row = page.locator('.note-row', { hasText: 'Supplier list' })
   await row.dragTo(folder)
   await expect(row.locator('.chip')).toHaveText('Clients')
@@ -160,7 +161,7 @@ test('moves a note to trash and restores it', async () => {
   await page.locator('.note-row').hover() // row actions appear on hover
   await page.getByRole('button', { name: 'Restore' }).click()
   await expect(page.locator('.empty-state')).toHaveText('Trash is empty.')
-  await expect(page.locator('.sidebar .nav-item', { hasText: 'All notes' }).locator('.nav-count')).toHaveText('2')
+  await expect(page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).locator('.nav-count')).toHaveText('2')
 })
 
 test('switches to dark theme', async () => {
@@ -172,7 +173,7 @@ test('switches to dark theme', async () => {
   await page.keyboard.type('laptop')
   await page.keyboard.press('Enter') // immediately, before results render: must open the match, not create a note
   await expect(title()).toHaveValue('Laptop repair checklist')
-  await expect(page.locator('.sidebar .nav-item', { hasText: 'All notes' }).locator('.nav-count')).toHaveText('2')
+  await expect(page.locator('.sidebar .nav-item').filter({ has: page.locator('.nav-label', { hasText: /^Notes$/ }) }).locator('.nav-count')).toHaveText('2')
   await shot(page, '08-note-dark')
 })
 

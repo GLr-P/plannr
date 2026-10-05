@@ -98,7 +98,7 @@ test('"/Photo dropdown" makes a Photos toggle and puts the picked photos inside'
   await page.keyboard.press('Control+n')
   await page.keyboard.type('X') // typed instantly, before the new note opens
   await expect(page.getByLabel('Title')).toBeFocused()
-  await page.locator('.sidebar .nav-item', { hasText: 'iPhone 13 screen' }).click()
+  await page.getByRole('button', { name: 'Back', exact: true }).click() // back to the previous note
   await expect(page.locator('.prose')).toHaveText(previous) // the previous note must be untouched
   await page.keyboard.press('Control+n')
   await expect(page.getByLabel('Title')).toBeFocused()

@@ -35,7 +35,8 @@ test('back up, lose a note for good, restore it from the backup', async () => {
   await closed
 
   ;({ app, page } = await launch(dataDir))
-  await expect(page.locator('.sidebar')).toContainText('Important customer list')
+  await page.locator('.sidebar .nav-item', { hasText: 'Notes' }).first().click()
+  await expect(page.locator('.note-row', { hasText: 'Important customer list' })).toBeVisible()
   // What was there before the restore was saved as a backup too, so the restore can be undone
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
   await expect(page.locator('.backup-row')).toHaveCount(2)

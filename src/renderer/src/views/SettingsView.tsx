@@ -3,6 +3,7 @@ import { FolderOpen, Monitor, Moon, Sun } from 'lucide-react'
 import type { AppInfo, ThemePref } from '../../../shared/api'
 import { api } from '../api'
 import { useTheme } from '../theme'
+import { useUi } from '../store/ui'
 import { HolidaySettings } from '../components/HolidaySettings'
 import { BackupSettings } from '../components/BackupSettings'
 import { GoogleSettings } from '../components/GoogleSettings'
@@ -14,6 +15,8 @@ export function SettingsView() {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [background, setBackground] = useState(true)
   const [atLogin, setAtLogin] = useState(false)
+  const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
+  const setUiPref = useUi((s) => s.setPref)
   useEffect(() => {
     void api.app.info().then(setInfo)
     void api.settings.get('runInBackground').then((v) => setBackground(v !== false))
@@ -49,6 +52,14 @@ export function SettingsView() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="setting">
+        <div>
+          <h3>Recent notes in the sidebar</h3>
+          <p className="muted">Show your 5 most recently edited notes under the main menu. Home always shows them.</p>
+        </div>
+        <Switch label="Recent notes in the sidebar" checked={showRecent} onChange={(v) => setUiPref('sidebarRecent', v ? '1' : '0')} />
       </section>
 
       <section className="setting">

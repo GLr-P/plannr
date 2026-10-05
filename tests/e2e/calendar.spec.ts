@@ -38,7 +38,8 @@ test.beforeAll(async () => {
     const t2 = await p.tickets.create({ customerId: bob.id, templateId: null })
     await p.tickets.update(t1.id, { device: 'iPhone 13' })
     await p.tickets.update(t2.id, { device: 'Dell XPS' })
-    await p.notes.create({ title: 'Order screens' })
+    const note = await p.notes.create({ title: 'Order screens' })
+    await p.notes.update(note.id, { pinned: true }) // pinned notes stay in the sidebar
     return { janeTicket: t1.id, bobTicket: t2.id }
   }))
   await page.reload()
