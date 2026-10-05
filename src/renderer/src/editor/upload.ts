@@ -8,6 +8,10 @@ export async function storeFile(file: File): Promise<StoredFile> {
   return api.files.save({ name: file.name || 'image.png', mime: file.type, data })
 }
 
+/** Where an editor stores pasted/dropped images; returns the src to use. Notes use Plannr's files, the vault its encrypted store. */
+export type ImageUploader = (file: File) => Promise<{ url: string; name: string }>
+export const defaultUploader: ImageUploader = storeFile
+
 export function imageFiles(list: FileList | null | undefined): File[] {
   return Array.from(list ?? []).filter((f) => f.type.startsWith('image/'))
 }
@@ -36,10 +40,10 @@ function insertImage(view: EditorView, src: string, alt: string, from: number, t
 }
 
 /** Saves images into Plannr and inserts them at `pos` (or the cursor), one after another. */
-export async function insertImages(view: EditorView, files: File[], pos?: number): Promise<void> {
+export async function insertImages(view: EditorView, files: File[], pos?: number, upload: ImageUploader = defaultUploader): Promise<void> {
   let at = pos
   for (const file of files) {
-    const stored = await storeFile(file)
+    const stored = await upload(file)
     if (view.isDestroyed) return
     const size = view.state.doc.content.size
     const [from, to] = at != null ? [Math.min(at, size), Math.min(at, size)] : [view.state.selection.from, view.state.selection.to]
@@ -55,6 +59,17 @@ export function pickImages(): Promise<File[]> {
     input.accept = 'image/*'
     input.multiple = true
     input.onchange = () => resolve(imageFiles(input.files))
+    input.click()
+  })
+}
+
+/** Any files (e.g. PDFs for the vault). */
+export function pickFiles(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.onchange = () => resolve(Array.from(input.files ?? []))
     input.click()
   })
 }

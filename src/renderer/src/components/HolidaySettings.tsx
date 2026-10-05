@@ -33,7 +33,10 @@ export function HolidaySettings() {
             <input
               type="checkbox"
               checked={status.showObservances}
-              onChange={(e) => void run(api.holidays.configure({ showObservances: e.target.checked }))}
+              onChange={(e) => {
+                setStatus({ ...status, showObservances: e.target.checked }) // respond instantly; saving happens in the background
+                void run(api.holidays.configure({ showObservances: e.target.checked }))
+              }}
             />
             Also show observances (Valentine’s Day, Daylight Saving…)
           </label>
@@ -54,7 +57,11 @@ export function HolidaySettings() {
         <select
           className="select"
           value={status.region ?? 'off'}
-          onChange={(e) => void run(api.holidays.configure({ region: e.target.value === 'off' ? null : e.target.value }))}
+          onChange={(e) => {
+            const region = e.target.value === 'off' ? null : e.target.value
+            setStatus({ ...status, region })
+            void run(api.holidays.configure({ region }))
+          }}
           aria-label="Holiday country"
         >
           <option value="off">Off</option>

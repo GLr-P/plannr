@@ -25,7 +25,9 @@ const startHidden = process.argv.includes('--hidden')
 mkdirSync(dataDir, { recursive: true })
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'plannr', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+  { scheme: 'plannr', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+  // Vault files, decrypted in memory on request; only works while the vault is unlocked.
+  { scheme: 'plannr-vault', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
 ])
 
 let db: Db
@@ -64,7 +66,8 @@ function createWindow(): void {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
-      spellcheck: true
+      spellcheck: true,
+      plugins: true // Chromium's built-in PDF viewer, for previewing vault PDFs
     }
   })
   mainWindow.once('ready-to-show', () => {
@@ -107,6 +110,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => {
     quitting = true
     vaultSession?.clearClipboardNow() // don't leave a copied password behind
+    vaultSession?.cleanTemp() // nor decrypted copies of vault files
   })
 
   app.whenReady().then(() => {
@@ -122,9 +126,15 @@ if (!app.requestSingleInstanceLock()) {
       return net.fetch(pathToFileURL(file.path).toString())
     })
 
-    vaultSession = new VaultSession(db, () => mainWindow?.webContents.send('vault-locked'))
+    vaultSession = new VaultSession(db, dataDir, () => mainWindow?.webContents.send('vault-locked'))
     powerMonitor.on('lock-screen', () => vaultSession?.lock())
     powerMonitor.on('suspend', () => vaultSession?.lock())
+    protocol.handle('plannr-vault', (request) => {
+      const url = new URL(request.url)
+      const file = url.hostname === 'file' ? vaultSession?.readFile(url.pathname.split('/')[1] ?? '') : null
+      if (!file) return new Response('Locked or not found', { status: 404 })
+      return new Response(new Uint8Array(file.data), { headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store' } })
+    })
     registerIpc(createApi(db, dataDir, getWindow, vaultSession))
     createWindow()
     // Keep holidays fresh (weekly). Tests only do this when given a saved feed (no internet in tests).

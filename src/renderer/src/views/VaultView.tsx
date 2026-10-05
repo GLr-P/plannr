@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   Copy,
   CreditCard,
+  Download,
+  File as FileIcon,
+  FileText,
+  FolderLock,
+  Paperclip,
+  X,
   ExternalLink,
   Eye,
   EyeOff,
   KeyRound,
   Lock,
+  LockOpen,
   Plus,
   Printer,
   Save,
@@ -20,14 +27,20 @@ import {
 import {
   MIN_PASSCODE_LENGTH,
   VAULT_FIELDS,
+  type DocJSON,
+  type VaultCustomField,
+  type VaultFile,
   type VaultItem,
   type VaultItemKind,
+  type VaultItemPatch,
   type VaultItemSummary,
   type VaultStatus
 } from '../../../shared/api'
 import { api } from '../api'
 import { useAutosave } from '../lib/useAutosave'
 import { ConfirmButton, SaveIndicator } from '../components/common'
+import { NoteEditor } from '../editor/NoteEditor'
+import { pickFiles } from '../editor/upload'
 
 const KIND_LABEL: Record<VaultItemKind, string> = { login: 'Login', card: 'Card', note: 'Secure note' }
 const KIND_ICON: Record<VaultItemKind, React.ReactNode> = { login: <KeyRound />, card: <CreditCard />, note: <StickyNote /> }
@@ -292,6 +305,7 @@ function LockScreen({ status, onUnlocked }: { status: VaultStatus; onUnlocked: (
 function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => void }) {
   const [items, setItems] = useState<VaultItemSummary[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const [pickFor, setPickFor] = useState<string | null>(null) // new Document: open the file picker right away
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<'new' | 'settings' | null>(null)
   const [toast, setToast] = useState('')
@@ -324,15 +338,16 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
     return () => clearTimeout(t)
   }, [toast])
 
-  const create = async (kind: VaultItemKind): Promise<void> => {
+  const create = async (kind: VaultItemKind, withFiles = false): Promise<void> => {
     setMenu(null)
     const item = await api.vault.create(kind)
     await reload()
+    setPickFor(withFiles ? item.id : null)
     setSelected(item.id)
   }
 
   const q = query.trim().toLowerCase()
-  const shown = q ? items.filter((i) => `${i.title} ${i.subtitle}`.toLowerCase().includes(q)) : items
+  const shown = q ? items.filter((i) => `${i.title} ${i.subtitle} ${i.searchText}`.toLowerCase().includes(q)) : items
 
   return (
     <div className="page wide vault-page">
@@ -362,6 +377,13 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
                     <span className="menu-label">{KIND_LABEL[k]}</span>
                   </button>
                 ))}
+                <button type="button" className="menu-item" onClick={() => void create('note', true)}>
+                  <span className="menu-icon">
+                    <FolderLock />
+                  </span>
+                  <span className="menu-label">Document</span>
+                  <span className="menu-hint">PDFs & files</span>
+                </button>
               </div>
             )}
           </div>
@@ -382,6 +404,11 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
                 <span className="vault-row-title">{i.title || `Untitled ${KIND_LABEL[i.kind].toLowerCase()}`}</span>
                 {i.subtitle && <span className="vault-row-sub">{i.subtitle}</span>}
               </span>
+              {i.fileCount > 0 && (
+                <span className="vault-row-files" title={`${i.fileCount} file${i.fileCount === 1 ? '' : 's'}`}>
+                  <Paperclip /> {i.fileCount}
+                </span>
+              )}
             </button>
           ))}
         </aside>
@@ -390,6 +417,7 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
             <ItemEditor
               key={selected}
               id={selected}
+              pickFilesOnOpen={pickFor === selected}
               onChanged={() => void reload()}
               onDeleted={() => {
                 setSelected(null)
@@ -421,10 +449,22 @@ export function generatePassword(length = 20): string {
   return out.join('')
 }
 
-function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChanged: () => void; onDeleted: () => void; onToast: (s: string) => void }) {
+function ItemEditor({
+  id,
+  pickFilesOnOpen,
+  onChanged,
+  onDeleted,
+  onToast
+}: {
+  id: string
+  pickFilesOnOpen?: boolean
+  onChanged: () => void
+  onDeleted: () => void
+  onToast: (s: string) => void
+}) {
   const [item, setItem] = useState<VaultItem | null>(null)
   const [revealed, setRevealed] = useState<Record<string, boolean>>({})
-  const saver = useAutosave<{ title?: string; fields?: Record<string, string> }>(async (patch) => {
+  const saver = useAutosave<VaultItemPatch>(async (patch) => {
     const saved = await api.vault.update(id, patch)
     setItem((cur) => (cur ? { ...cur, updatedAt: saved.updatedAt } : saved))
     onChanged()
@@ -435,6 +475,19 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
     void api.vault.get(id).then(setItem)
   }, [id])
 
+  // Images pasted into vault notes are encrypted like any other vault file.
+  const editorOptions = useMemo(
+    () => ({
+      mentions: false,
+      upload: async (file: File) => {
+        const stored = await api.vault.addFile(id, { name: file.name || 'image.png', mime: file.type, data: new Uint8Array(await file.arrayBuffer()), inline: true })
+        return { url: stored.url, name: stored.name }
+      }
+    }),
+    [id]
+  )
+  const onNotes = useCallback((doc: DocJSON) => saver.queue({ notes: doc }), [saver.queue])
+
   if (!item) return null
 
   const setField = (key: string, value: string): void => {
@@ -443,10 +496,20 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
     saver.queue({ fields: pendingFields.current })
   }
 
+  const setCustom = (custom: VaultCustomField[]): void => {
+    setItem({ ...item, custom })
+    saver.queue({ custom })
+  }
+
   const copy = async (key: string, label: string): Promise<void> => {
     await saver.flush()
     await api.vault.copy(id, key)
     onToast(`${label} copied — clears from the clipboard in 30 s`)
+  }
+
+  const copyText = async (value: string, label: string): Promise<void> => {
+    await navigator.clipboard.writeText(value)
+    onToast(`${label} copied`)
   }
 
   return (
@@ -458,7 +521,7 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
         <span className="toolbar-right">
           <SaveIndicator status={saver.status} updatedAt={item.updatedAt} />
           <ConfirmButton
-            title="Delete item"
+            title="Delete item (and its files)"
             onConfirm={async () => {
               await api.vault.remove(id)
               onDeleted()
@@ -469,7 +532,7 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
       <input
         className="doc-title vault-title"
         value={item.title}
-        placeholder={`Name this ${KIND_LABEL[item.kind].toLowerCase()} (e.g. ${item.kind === 'login' ? 'Zoho Mail' : item.kind === 'card' ? 'Business Visa' : 'Alarm codes'})`}
+        placeholder={`Name this ${KIND_LABEL[item.kind].toLowerCase()} (e.g. ${item.kind === 'login' ? 'Zoho Mail' : item.kind === 'card' ? 'Business Visa' : 'Insurance papers'})`}
         autoFocus={!item.title}
         onChange={(e) => {
           setItem({ ...item, title: e.target.value })
@@ -477,29 +540,26 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
         }}
         aria-label="Item name"
       />
+
       <div className="vault-fields">
         {VAULT_FIELDS[item.kind].map((f) => {
           const value = item.fields[f.key] ?? ''
           const show = !f.secret || revealed[f.key]
           return (
-            <div key={f.key} className={`vault-field ${f.multiline ? 'multi' : ''}`}>
+            <div key={f.key} className="vault-field">
               <label className="vault-field-label" htmlFor={`vf-${f.key}`}>
                 {f.label}
               </label>
               <div className="vault-field-row">
-                {f.multiline ? (
-                  <textarea id={`vf-${f.key}`} value={value} onChange={(e) => setField(f.key, e.target.value)} aria-label={f.label} spellCheck={item.kind === 'note'} />
-                ) : (
-                  <input
-                    id={`vf-${f.key}`}
-                    type={show ? 'text' : 'password'}
-                    value={value}
-                    onChange={(e) => setField(f.key, e.target.value)}
-                    aria-label={f.label}
-                    spellCheck={false}
-                    autoComplete="off"
-                  />
-                )}
+                <input
+                  id={`vf-${f.key}`}
+                  type={show ? 'text' : 'password'}
+                  value={value}
+                  onChange={(e) => setField(f.key, e.target.value)}
+                  aria-label={f.label}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
                 {f.secret && (
                   <button
                     type="button"
@@ -536,7 +596,7 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
                     <ExternalLink />
                   </button>
                 )}
-                {!f.multiline && value && (
+                {value && (
                   <button type="button" className="icon-btn sm" title="Copy" aria-label={`Copy ${f.label}`} onClick={() => void copy(f.key, f.label)}>
                     <Copy />
                   </button>
@@ -545,6 +605,214 @@ function ItemEditor({ id, onChanged, onDeleted, onToast }: { id: string; onChang
             </div>
           )
         })}
+
+        {item.custom.map((c, i) => {
+          const show = !c.secret || revealed[c.id]
+          const update = (patch: Partial<VaultCustomField>): void => setCustom(item.custom.map((x, j) => (j === i ? { ...x, ...patch } : x)))
+          return (
+            <div key={c.id} className="vault-field custom">
+              <input
+                className="vault-field-label-input"
+                value={c.label}
+                placeholder="Field name"
+                onChange={(e) => update({ label: e.target.value })}
+                aria-label="Custom field name"
+              />
+              <div className="vault-field-row">
+                <input
+                  type={show ? 'text' : 'password'}
+                  value={c.value}
+                  onChange={(e) => update({ value: e.target.value })}
+                  aria-label={c.label || 'Custom field value'}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {c.secret && (
+                  <button
+                    type="button"
+                    className="icon-btn sm"
+                    title={show ? 'Hide' : 'Show'}
+                    aria-label={`${show ? 'Hide' : 'Show'} ${c.label}`}
+                    onClick={() => setRevealed({ ...revealed, [c.id]: !show })}
+                  >
+                    {show ? <EyeOff /> : <Eye />}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`icon-btn sm ${c.secret ? 'active' : ''}`}
+                  title={c.secret ? 'Hidden field — click to always show it' : 'Make this a hidden field (like a password)'}
+                  aria-label={c.secret ? `Always show ${c.label}` : `Make ${c.label} hidden`}
+                  onClick={() => update({ secret: !c.secret })}
+                >
+                  {c.secret ? <Lock /> : <LockOpen />}
+                </button>
+                {c.value && (
+                  <button type="button" className="icon-btn sm" title="Copy" aria-label={`Copy ${c.label}`} onClick={() => void copyText(c.value, c.label || 'Value')}>
+                    <Copy />
+                  </button>
+                )}
+                <ConfirmButton title="Remove field" onConfirm={() => setCustom(item.custom.filter((_, j) => j !== i))} />
+              </div>
+            </div>
+          )
+        })}
+        <button
+          type="button"
+          className="add-field-btn"
+          onClick={() => setCustom([...item.custom, { id: crypto.randomUUID(), label: '', value: '', secret: false }])}
+        >
+          <Plus /> Add a field
+        </button>
+      </div>
+
+      <VaultFiles itemId={id} pickOnOpen={pickFilesOnOpen} onChanged={onChanged} />
+
+      <div className="vault-notes">
+        <div className="vault-field-label">Notes</div>
+        <NoteEditor docId={id} content={item.notes} editable onChange={onNotes} options={editorOptions} />
+      </div>
+    </div>
+  )
+}
+
+const fileSize = (bytes: number): string =>
+  bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+
+/** Encrypted attachments: drop or pick files; images and PDFs preview inside Plannr (decrypted only in memory). */
+function VaultFiles({ itemId, pickOnOpen, onChanged }: { itemId: string; pickOnOpen?: boolean; onChanged: () => void }) {
+  const [files, setFiles] = useState<VaultFile[]>([])
+  const [busy, setBusy] = useState(false)
+  const [over, setOver] = useState(false)
+  const [preview, setPreview] = useState<VaultFile | null>(null)
+  const reload = useCallback(async () => setFiles(await api.vault.files(itemId)), [itemId])
+
+  const add = useCallback(
+    async (list: File[]) => {
+      if (!list.length) return
+      setBusy(true)
+      try {
+        for (const f of list) await api.vault.addFile(itemId, { name: f.name, mime: f.type, data: new Uint8Array(await f.arrayBuffer()) })
+        await reload()
+        onChanged()
+      } finally {
+        setBusy(false)
+      }
+    },
+    [itemId, reload, onChanged]
+  )
+
+  useEffect(() => {
+    void reload()
+    if (pickOnOpen) void pickFiles().then(add)
+  }, [reload, pickOnOpen, add])
+
+  return (
+    <section
+      className={`vault-files ${over ? 'drop-over' : ''}`}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault()
+          setOver(true)
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setOver(false)
+        void add(Array.from(e.dataTransfer.files))
+      }}
+    >
+      <div className="vault-files-head">
+        <span className="vault-field-label">
+          Files {files.length > 0 && <span className="muted">{files.length}</span>}
+        </span>
+        <button type="button" className="btn sm" onClick={() => void pickFiles().then(add)} disabled={busy}>
+          <Paperclip /> {busy ? 'Encrypting…' : 'Add files'}
+        </button>
+      </div>
+      {files.length === 0 ? (
+        <div className="vault-files-empty">Drop PDFs, scans, photos or any file here — they’re encrypted like everything else.</div>
+      ) : (
+        <ul className="vault-file-list">
+          {files.map((f) => (
+            <li key={f.id} className="vault-file">
+              <button type="button" className="vault-file-main" onClick={() => setPreview(f)} title="Preview">
+                {f.mime.startsWith('image/') ? (
+                  <img className="vault-file-thumb" src={f.url} alt="" />
+                ) : (
+                  <span className="vault-file-icon">{f.mime === 'application/pdf' ? <FileText /> : <FileIcon />}</span>
+                )}
+                <span className="vault-file-text">
+                  <span className="vault-file-name">{f.name}</span>
+                  <span className="vault-file-meta">{fileSize(f.size)}</span>
+                </span>
+              </button>
+              <span className="row-actions">
+                <button type="button" className="icon-btn sm" title="Open in its app (temporary copy)" aria-label={`Open ${f.name}`} onClick={() => void api.vault.openFile(f.id)}>
+                  <ExternalLink />
+                </button>
+                <button type="button" className="icon-btn sm" title="Save a copy…" aria-label={`Save a copy of ${f.name}`} onClick={() => void api.vault.exportFile(f.id)}>
+                  <Download />
+                </button>
+                <ConfirmButton
+                  title="Delete file"
+                  onConfirm={async () => {
+                    await api.vault.removeFile(f.id)
+                    await reload()
+                    onChanged()
+                  }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {preview && <FilePreview file={preview} onClose={() => setPreview(null)} />}
+    </section>
+  )
+}
+
+function FilePreview({ file, onClose }: { file: VaultFile; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  const isImage = file.mime.startsWith('image/')
+  const isPdf = file.mime === 'application/pdf'
+  return (
+    <div className="file-preview" role="dialog" aria-label={`Preview of ${file.name}`}>
+      <div className="file-preview-bar">
+        <span className="file-preview-name">{file.name}</span>
+        <span className="lightbox-actions">
+          <button type="button" className="btn sm" onClick={() => void api.vault.openFile(file.id)}>
+            <ExternalLink /> Open in app
+          </button>
+          <button type="button" className="btn sm" onClick={() => void api.vault.exportFile(file.id)}>
+            <Download /> Save a copy
+          </button>
+          <button type="button" className="icon-btn" aria-label="Close preview" onClick={onClose}>
+            <X />
+          </button>
+        </span>
+      </div>
+      <div className="file-preview-body">
+        {isImage ? (
+          <img src={file.url} alt={file.name} />
+        ) : isPdf ? (
+          <iframe src={file.url} title={file.name} />
+        ) : (
+          <div className="file-preview-none">
+            <FileIcon />
+            <p>No preview for this kind of file.</p>
+            <p className="muted">Use “Open in app” to view it.</p>
+          </div>
+        )}
       </div>
     </div>
   )

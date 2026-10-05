@@ -205,5 +205,17 @@ export const migrations: string[] = [
     updated_at INTEGER NOT NULL,
     deleted_at INTEGER
   );
+  `,
+
+  /* 7: encrypted vault files. Contents live in <data>/vault/<id>.bin (AES-256-GCM); name/type/size are in the encrypted meta. */ `
+  CREATE TABLE vault_files (
+    id TEXT PRIMARY KEY,
+    item_id TEXT NOT NULL,
+    meta TEXT NOT NULL,   -- base64 sealed JSON {name, mime, size, inline}
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX vault_files_item ON vault_files(item_id);
   `
 ]

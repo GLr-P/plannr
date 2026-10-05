@@ -283,23 +283,29 @@ export interface HolidayStatus {
 
 export type VaultItemKind = 'login' | 'card' | 'note'
 
-/** Fields each kind shows, in order. `secret` fields are hidden until revealed. */
-export const VAULT_FIELDS: Record<VaultItemKind, { key: string; label: string; secret?: boolean; multiline?: boolean }[]> = {
+/** Built-in fields each kind shows, in order. `secret` fields are hidden until revealed. Every kind also has rich notes. */
+export const VAULT_FIELDS: Record<VaultItemKind, { key: string; label: string; secret?: boolean }[]> = {
   login: [
     { key: 'username', label: 'Username / email' },
     { key: 'password', label: 'Password', secret: true },
-    { key: 'url', label: 'Website' },
-    { key: 'notes', label: 'Notes', multiline: true }
+    { key: 'url', label: 'Website' }
   ],
   card: [
     { key: 'cardholder', label: 'Name on card' },
     { key: 'number', label: 'Card number', secret: true },
     { key: 'expiry', label: 'Expiry (MM/YY)' },
     { key: 'cvv', label: 'Security code', secret: true },
-    { key: 'pin', label: 'PIN', secret: true },
-    { key: 'notes', label: 'Notes', multiline: true }
+    { key: 'pin', label: 'PIN', secret: true }
   ],
-  note: [{ key: 'notes', label: 'Secure note', multiline: true }]
+  note: []
+}
+
+/** A field the user added (e.g. "Account #"). */
+export interface VaultCustomField {
+  id: string
+  label: string
+  value: string
+  secret: boolean
 }
 
 export interface VaultItem {
@@ -307,8 +313,18 @@ export interface VaultItem {
   kind: VaultItemKind
   title: string
   fields: Record<string, string>
+  custom: VaultCustomField[]
+  /** Rich notes (same editor as regular notes) */
+  notes: DocJSON | null
   createdAt: number
   updatedAt: number
+}
+
+export interface VaultItemPatch {
+  title?: string
+  fields?: Record<string, string>
+  custom?: VaultCustomField[]
+  notes?: DocJSON
 }
 
 export interface VaultItemSummary {
@@ -317,7 +333,21 @@ export interface VaultItemSummary {
   title: string
   /** e.g. username, or card ending */
   subtitle: string
+  /** Notes text, custom field labels/values and file names, for the vault's own search box */
+  searchText: string
+  fileCount: number
   updatedAt: number
+}
+
+/** An encrypted file in the vault. `url` (plannr-vault://…) only works while the vault is unlocked. */
+export interface VaultFile {
+  id: string
+  itemId: string
+  name: string
+  mime: string
+  size: number
+  url: string
+  createdAt: number
 }
 
 export interface VaultStatus {
@@ -432,12 +462,21 @@ export interface PlannrApi {
     list(): Promise<VaultItemSummary[]>
     get(id: string): Promise<VaultItem | null>
     create(kind: VaultItemKind): Promise<VaultItem>
-    update(id: string, patch: { title?: string; fields?: Record<string, string> }): Promise<VaultItem>
+    update(id: string, patch: VaultItemPatch): Promise<VaultItem>
     remove(id: string): Promise<void>
     /** Copies a field to the clipboard; cleared again after 30 seconds */
     copy(id: string, field: string): Promise<void>
     /** Save-file dialog for the recovery key */
     saveRecoveryKey(recoveryKey: string): Promise<boolean>
+    /** Encrypts and stores a file. `inline` = an image inside the item's notes (not listed as an attachment). */
+    addFile(itemId: string, file: { name: string; mime: string; data: Uint8Array; inline?: boolean }): Promise<VaultFile>
+    /** Attachments of an item (not inline note images) */
+    files(itemId: string): Promise<VaultFile[]>
+    removeFile(fileId: string): Promise<void>
+    /** Opens a temporary decrypted copy in its Windows app (deleted when the vault locks) */
+    openFile(fileId: string): Promise<void>
+    /** Save-file dialog to export a decrypted copy */
+    exportFile(fileId: string): Promise<boolean>
   }
   app: {
     info(): Promise<AppInfo>
@@ -473,7 +512,12 @@ export const API_SHAPE = {
     'update',
     'remove',
     'copy',
-    'saveRecoveryKey'
+    'saveRecoveryKey',
+    'addFile',
+    'files',
+    'removeFile',
+    'openFile',
+    'exportFile'
   ],
   folders: ['list', 'create', 'rename', 'remove'],
   search: ['query'],

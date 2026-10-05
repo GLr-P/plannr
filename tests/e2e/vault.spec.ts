@@ -1,8 +1,8 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { launch, shot } from './helpers'
+import { launch, makePdf, makePng, shot } from './helpers'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -84,7 +84,8 @@ test('adds a card and a secure note; the list shows safe summaries and filters',
   await page.getByRole('button', { name: 'New', exact: true }).click()
   await page.locator('.dropdown-menu .menu-item', { hasText: 'Secure note' }).click()
   await page.getByLabel('Item name', { exact: true }).fill('Shop alarm')
-  await page.getByLabel('Secure note', { exact: true }).fill('Front door 4321')
+  await page.locator('.vault-notes .prose').click()
+  await page.keyboard.type('Front door 4321')
   await expect(page.locator('.save-status')).toHaveAttribute('data-status', 'saved')
 
   const rows = page.locator('.vault-row')
@@ -98,31 +99,92 @@ test('adds a card and a secure note; the list shows safe summaries and filters',
   await shot(page, 'v3-vault')
 })
 
+test('a Document item stores an encrypted PDF that previews inside Plannr', async () => {
+  const pdfPath = join(dataDir, 'Insurance policy.pdf')
+  writeFileSync(pdfPath, makePdf('POLICY-NUMBER-XK-99213'))
+  await page.getByRole('button', { name: 'New', exact: true }).click()
+  const chooser = page.waitForEvent('filechooser')
+  await page.locator('.dropdown-menu .menu-item', { hasText: 'Document' }).click()
+  await (await chooser).setFiles(pdfPath)
+  await page.getByLabel('Item name', { exact: true }).fill('Shop insurance')
+  const file = page.locator('.vault-file', { hasText: 'Insurance policy.pdf' })
+  await expect(file).toBeVisible()
+  await expect(page.locator('.vault-row', { hasText: 'Shop insurance' }).locator('.vault-row-files')).toContainText('1')
+
+  await file.locator('.vault-file-main').click()
+  const frame = page.locator('.file-preview iframe')
+  await expect(frame).toHaveAttribute('src', /^plannr-vault:\/\/file\//)
+  // The decrypted PDF is served from memory while unlocked
+  const served = await app.evaluate(async ({ net }, src) => {
+    const res = await net.fetch(src)
+    const text = new TextDecoder('latin1').decode(await res.arrayBuffer())
+    return { status: res.status, type: res.headers.get('content-type'), hasText: text.includes('POLICY-NUMBER-XK-99213') }
+  }, (await frame.getAttribute('src'))!)
+  expect(served).toEqual({ status: 200, type: 'application/pdf', hasText: true })
+  await page.waitForTimeout(1500) // let the PDF viewer render for the screenshot
+  await shot(page, 'v5-pdf-preview')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.file-preview')).toHaveCount(0)
+})
+
+test('vault notes use the full editor; pasted images are encrypted too; custom fields', async () => {
+  await page.locator('.vault-notes .prose').click()
+  await page.keyboard.type('/h2')
+  await expect(page.locator('.menu-item[data-selected="true"]')).toContainText('Heading 2')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Claim contacts')
+  await page.keyboard.press('Enter')
+  const png = makePng(200, 120).toString('base64')
+  await page.evaluate((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    const dt = new DataTransfer()
+    dt.items.add(new File([bytes], 'claim.png', { type: 'image/png' }))
+    document.querySelector('.vault-notes .prose')!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, png)
+  await expect(page.locator('.vault-notes .prose h2')).toHaveText('Claim contacts')
+  const img = page.locator('.vault-notes .prose img')
+  await expect(img).toHaveAttribute('src', /^plannr-vault:\/\/file\//)
+  expect(await img.evaluate((el: HTMLImageElement) => (el.complete && el.naturalWidth) || new Promise<number>((r) => (el.onload = () => r(el.naturalWidth))))).toBe(200)
+  await expect(page.locator('.vault-file')).toHaveCount(1) // pasted note images aren't listed as attachments
+
+  await page.getByRole('button', { name: 'Add a field' }).click()
+  await page.getByLabel('Custom field name', { exact: true }).fill('Policy #')
+  await page.getByLabel('Policy #', { exact: true }).fill('XK-99213')
+  await page.getByRole('button', { name: 'Make Policy # hidden' }).click()
+  await expect(page.getByLabel('Policy #', { exact: true })).toHaveAttribute('type', 'password')
+  await expect(page.locator('.save-status')).toHaveAttribute('data-status', 'saved')
+  await shot(page, 'v6-document')
+})
+
 test('vault contents never appear in global search or in the database file', async () => {
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Zoho')
   await expect(page.locator('.search-row', { hasText: 'Zoho Mail' })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
-  const raw = ['plannr.db', 'plannr.db-wal']
+  const vaultFiles = existsSync(join(dataDir, 'vault')) ? readdirSync(join(dataDir, 'vault')).map((f) => join('vault', f)) : []
+  expect(vaultFiles.length).toBeGreaterThanOrEqual(2) // the PDF and the pasted image
+  const raw = ['plannr.db', 'plannr.db-wal', ...vaultFiles]
     .map((f) => join(dataDir, f))
     .filter((f) => existsSync(f))
     .map((f) => readFileSync(f).toString('latin1'))
     .join('')
-  for (const secret of ['Zoho Mail', 'owner@nanotechservices', password, 'Business Visa', '4111 1111', 'Front door 4321', 'blue-horse-42']) {
+  for (const secret of ['Zoho Mail', 'owner@nanotechservices', password, 'Business Visa', '4111 1111', 'Front door 4321', 'blue-horse-42', 'POLICY-NUMBER-XK', 'Insurance policy', 'Claim contacts', 'XK-99213']) {
     expect(raw.includes(secret), `"${secret}" found in database`).toBe(false)
   }
 })
 
 test('locking hides everything; wrong passcode is refused, right one opens', async () => {
+  const fileUrl = await page.locator('.vault-notes .prose img').first().getAttribute('src').catch(() => null)
   await page.getByRole('button', { name: 'Lock', exact: true }).click()
   await expect(page.locator('.vault-card h1')).toHaveText('Vault locked')
+  if (fileUrl) expect(await app.evaluate(async ({ net }, u) => (await net.fetch(u)).status, fileUrl)).toBe(404) // files are unreadable while locked
   await page.getByLabel('Vault passcode', { exact: true }).fill('wrong-pass')
   await page.getByRole('button', { name: 'Unlock' }).click()
   await expect(page.locator('.error-text')).toContainText('isn’t right')
   await shot(page, 'v4-locked')
   await unlock('blue-horse-42')
-  await expect(page.locator('.vault-row')).toHaveCount(3)
+  await expect(page.locator('.vault-row')).toHaveCount(4)
 })
 
 test('changing the passcode in vault settings', async () => {
@@ -146,7 +208,7 @@ test('forgot passcode: the recovery key sets a new one', async () => {
   await page.getByLabel('Confirm passcode', { exact: true }).fill('red-owl-2026')
   await page.getByRole('button', { name: 'Reset passcode and unlock' }).click()
   await expect(page.locator('.unlocked-pill')).toBeVisible()
-  await expect(page.locator('.vault-row')).toHaveCount(3)
+  await expect(page.locator('.vault-row')).toHaveCount(4)
 })
 
 test('after a restart the vault starts locked and keeps its items', async () => {

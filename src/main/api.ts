@@ -120,6 +120,20 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       update: async (id, patch) => vaultSession.update(id, patch),
       remove: async (id) => vaultSession.remove(id),
       copy: async (id, field) => vaultSession.copy(id, field),
+      addFile: async (itemId, file) => vaultSession.addFile(itemId, file),
+      files: async (itemId) => vaultSession.files(itemId),
+      removeFile: async (fileId) => vaultSession.removeFile(fileId),
+      openFile: async (fileId) => vaultSession.openFile(fileId),
+      exportFile: async (fileId) => {
+        const file = vaultSession.readFile(fileId)
+        if (!file) return false
+        const win = getWindow()
+        const options = { defaultPath: file.name }
+        const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+        if (result.canceled || !result.filePath) return false
+        writeFileSync(result.filePath, file.data)
+        return true
+      },
       saveRecoveryKey: async (recoveryKey) => {
         const win = getWindow()
         const options = { defaultPath: 'Plannr vault recovery key.txt', filters: [{ name: 'Text', extensions: ['txt'] }] }

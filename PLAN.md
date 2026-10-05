@@ -97,6 +97,8 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Auto-lock after inactivity (1–60 min), on PC lock or sleep, and on close-to-tray; a wait after 5 wrong passcodes
    - Change passcode, or reset it with the recovery key
    - Nothing readable on disk (verified by tests that scan the raw database file); vault items are never in search
+   - Encrypted files on any item (PDFs, scans, photos): names and contents are encrypted. Images and PDFs preview inside Plannr, decrypted only in memory; "Open in app" uses a temporary copy deleted on lock; "Save a copy" exports. New → Document creates an item and opens the file picker.
+   - Every item has rich notes (the same editor as notes; pasted images are encrypted) and user-defined custom fields that can be hidden
 5. **Money**
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.
 7. **Polish & install:** backups, installer, start-with-Windows option

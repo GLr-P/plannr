@@ -32,7 +32,7 @@ import type { EntityType } from '../../../shared/api'
 import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
 import { FormField } from './FormField'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
-import { insertImages, pickImages } from './upload'
+import { defaultUploader, insertImages, pickImages, type ImageUploader } from './upload'
 
 interface SlashCommand {
   label: string
@@ -81,6 +81,17 @@ const ToggleKeys = Extension.create({
   }
 })
 
+/** Keeps each editor's image uploader on the editor, so slash commands store images in the right place. */
+const Uploader = Extension.create<{ upload: ImageUploader }, { upload: ImageUploader }>({
+  name: 'uploader',
+  addOptions: () => ({ upload: defaultUploader }),
+  addStorage() {
+    return { upload: this.options.upload }
+  }
+})
+const uploaderOf = (editor: Editor): ImageUploader =>
+  (editor.storage as unknown as Record<string, { upload?: ImageUploader } | undefined>).uploader?.upload ?? defaultUploader
+
 const SLASH_COMMANDS: SlashCommand[] = [
   { label: 'Text', hint: 'Plain paragraph', icon: <Type />, keywords: 'paragraph p', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
   { label: 'Heading 1', hint: 'Large section title', icon: <Heading1 />, keywords: 'h1 title', run: (e, r) => e.chain().focus().deleteRange(r).setHeading({ level: 1 }).run() },
@@ -94,13 +105,13 @@ const SLASH_COMMANDS: SlashCommand[] = [
       insertToggle(e, r, 'Photos')
       enterToggleBody(e)
       void pickImages().then((files) => {
-        if (files.length) return insertImages(e.view, files)
+        if (files.length) return insertImages(e.view, files, undefined, uploaderOf(e))
       })
     } },
   { label: 'Image', hint: 'Upload photos', icon: <ImageIcon />, keywords: 'photo picture img upload', run: (e, r) => {
       e.chain().focus().deleteRange(r).run()
       void pickImages().then((files) => {
-        if (files.length) return insertImages(e.view, files)
+        if (files.length) return insertImages(e.view, files, undefined, uploaderOf(e))
       })
     } },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
@@ -176,7 +187,14 @@ function mention(currentDocId: string) {
   })
 }
 
-export function buildExtensions(docId: string) {
+export interface EditorOptions {
+  /** Where pasted/dropped images go (default: Plannr's normal file storage) */
+  upload?: ImageUploader
+  /** @-links to notes/tickets/customers (off in the vault so vault text never feeds the links index) */
+  mentions?: boolean
+}
+
+export function buildExtensions(docId: string, options: EditorOptions = {}) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
@@ -186,7 +204,7 @@ export function buildExtensions(docId: string) {
       placeholder: ({ node }) => {
         if (node.type.name === 'heading') return 'Heading'
         if (node.type.name === 'detailsSummary') return 'Toggle title'
-        return "Type '/' for blocks, '@' to link a note, ticket or customer"
+        return options.mentions === false ? "Type '/' for headings, checklists, toggles, images…" : "Type '/' for blocks, '@' to link a note, ticket or customer"
       }
     }),
     TaskList,
@@ -199,6 +217,7 @@ export function buildExtensions(docId: string) {
     Highlight,
     FormField,
     SlashCommands,
-    mention(docId)
+    Uploader.configure({ upload: options.upload ?? defaultUploader }),
+    ...(options.mentions === false ? [] : [mention(docId)])
   ]
 }

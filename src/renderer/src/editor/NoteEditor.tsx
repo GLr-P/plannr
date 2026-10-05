@@ -4,7 +4,7 @@ import { BubbleMenu } from '@tiptap/react/menus'
 import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline } from 'lucide-react'
 import type { DocJSON, EntityType } from '../../../shared/api'
 import { openEntity } from '../actions'
-import { buildExtensions } from './extensions'
+import { buildExtensions, type EditorOptions } from './extensions'
 import { imageFiles, insertImages } from './upload'
 
 interface Props {
@@ -14,15 +14,17 @@ interface Props {
   editable: boolean
   onChange: (doc: DocJSON) => void
   onReady?: (editor: Editor) => void
+  /** Image storage and @-links, see EditorOptions */
+  options?: EditorOptions
 }
 
-export function NoteEditor({ docId, content, editable, onChange, onReady }: Props) {
+export function NoteEditor({ docId, content, editable, onChange, onReady, options }: Props) {
   // Latest callbacks without re-creating the editor.
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
   const editor = useEditor({
-    extensions: buildExtensions(docId),
+    extensions: buildExtensions(docId, options),
     content: content ?? '',
     editable,
     editorProps: {
@@ -30,7 +32,7 @@ export function NoteEditor({ docId, content, editable, onChange, onReady }: Prop
       handlePaste: (view, event) => {
         const files = imageFiles(event.clipboardData?.files)
         if (!files.length) return false
-        void insertImages(view, files)
+        void insertImages(view, files, undefined, options?.upload)
         return true
       },
       handleDrop: (view, event, _slice, moved) => {
@@ -39,7 +41,7 @@ export function NoteEditor({ docId, content, editable, onChange, onReady }: Prop
         if (!files.length) return false
         event.preventDefault()
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
-        void insertImages(view, files, pos)
+        void insertImages(view, files, pos, options?.upload)
         return true
       },
       handleClick: (_view, _pos, event) => {
