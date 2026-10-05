@@ -296,5 +296,9 @@ export const migrations: string[] = [
 
   /* 12: per-transaction "no tax" (amounts otherwise include tax) */ `
   ALTER TABLE transactions ADD COLUMN tax_exempt INTEGER NOT NULL DEFAULT 0;
+  `,
+
+  /* 13: payment already in QuickBooks as an invoice made there (its number); not sent as a sales receipt */ `
+  ALTER TABLE transactions ADD COLUMN qbo_invoice TEXT NOT NULL DEFAULT '';
   `
 ]

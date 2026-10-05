@@ -9,6 +9,7 @@ import { getSetting, setSetting } from './settings'
  * customers                    → Customer (matched by display name; renamed " (customer)" if the name is taken)
  * income transactions          → SalesReceipt (ticket payments carry the customer + repair description)
  * expense transactions         → Purchase (paid from the chosen bank/credit card account)
+ * payments marked with a QuickBooks invoice number are already there: not sent (a receipt sent earlier is deleted)
  * Plannr amounts include tax: lines send the pre-tax Amount plus TaxInclusiveAmt, and the tax total is set so
  * QuickBooks' total equals exactly what was paid. qbo_links remembers each record's QuickBooks Id + SyncToken.
  * The HTTP API is injected (QboApi) so this is unit-tested against a fake.
@@ -36,7 +37,7 @@ export class QboError extends Error {
   }
 }
 
-type LocalType = 'customer' | 'income' | 'expense'
+type LocalType = 'customer' | 'income' | 'expense' | 'invoice'
 interface Link {
   qbo_id: string
   sync_token: string
@@ -145,6 +146,7 @@ interface TxRow {
   category: string
   method: string
   tax_exempt: number
+  qbo_invoice: string
   updated_at: number
   deleted_at: number | null
   ticket_number: number | null
@@ -256,7 +258,7 @@ export async function syncQuickBooks(db: Db, api: QboApi): Promise<QboSyncResult
     // Transactions on/after the start date (and deletions of ones already sent)
     const txs = db
       .prepare(
-        `SELECT x.id, x.date, x.type, x.amount_cents, x.description, x.category, x.method, x.tax_exempt, x.updated_at, x.deleted_at,
+        `SELECT x.id, x.date, x.type, x.amount_cents, x.description, x.category, x.method, x.tax_exempt, x.qbo_invoice, x.updated_at, x.deleted_at,
                 t.number AS ticket_number, t.device, t.issue, t.customer_id
          FROM transactions x LEFT JOIN tickets t ON t.id = x.ticket_id
          WHERE x.date >= ? OR x.id IN (SELECT local_id FROM qbo_links WHERE local_type IN ('income', 'expense'))`
@@ -264,6 +266,28 @@ export async function syncQuickBooks(db: Db, api: QboApi): Promise<QboSyncResult
       .all(cfg.startDate) as unknown as TxRow[]
     for (const t of txs) {
       const link = getLink(db, t.type, t.id)
+      if (t.type === 'income' && t.qbo_invoice) {
+        // Invoiced in QuickBooks: the sale is already there. Remove our receipt if one went, and check the invoice exists.
+        try {
+          if (link) {
+            await api.remove('SalesReceipt', link.qbo_id, link.sync_token).catch((err) => {
+              if (!(err instanceof QboError && err.code === '610')) throw err // 610 = already deleted there
+            })
+            dropLink(db, 'income', t.id)
+            transactions++
+          }
+          const inv = getLink(db, 'invoice', t.id)
+          if (t.deleted_at === null && (!inv || inv.synced_at < t.updated_at)) {
+            const [found] = await api.query(`select * from Invoice where DocNumber = '${q(t.qbo_invoice)}'`)
+            if (!found) throw new Error(`Invoice ${t.qbo_invoice} isn’t in QuickBooks`)
+            setLink(db, 'invoice', t.id, found, t.updated_at)
+          }
+        } catch (err) {
+          problems.push(`Sale on ${t.date} ($${dollars(t.amount_cents).toFixed(2)}): ${err instanceof Error ? err.message : String(err)}`)
+        }
+        continue
+      }
+      if (t.type === 'income') dropLink(db, 'invoice', t.id) // unlinked again: it's sent as a receipt
       if (link && link.synced_at >= t.updated_at) continue
       try {
         if (t.deleted_at !== null || t.date < cfg.startDate || t.amount_cents === 0) {

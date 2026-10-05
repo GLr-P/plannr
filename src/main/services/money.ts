@@ -243,6 +243,7 @@ interface TxRow {
   ticket_id: string | null
   recurring_id: string | null
   tax_exempt: number
+  qbo_invoice: string
   updated_at: number
   ticket_number: number | null
   customer_name: string | null
@@ -265,6 +266,7 @@ const toTx = (r: TxRow): Transaction => ({
   ticketLabel: r.ticket_number ? [formatTicketNumber(r.ticket_number), r.customer_name].filter(Boolean).join(' · ') : '',
   recurringId: r.recurring_id,
   taxExempt: r.tax_exempt === 1,
+  qboInvoice: r.qbo_invoice,
   updatedAt: r.updated_at
 })
 
@@ -339,6 +341,7 @@ export function updateTransaction(db: Db, id: string, patch: Partial<Transaction
   if (patch.category !== undefined) set('category', patch.category.slice(0, 100))
   if (patch.method !== undefined) set('method', patch.method.slice(0, 50))
   if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
+  if (patch.qboInvoice !== undefined) set('qbo_invoice', patch.qboInvoice.trim().slice(0, 30))
   set('updated_at', now())
   params.push(id)
   db.prepare(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`).run(...params)

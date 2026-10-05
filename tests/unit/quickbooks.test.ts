@@ -15,6 +15,7 @@ class FakeQbo implements QboApi {
     SalesReceipt: [],
     Purchase: [],
     Vendor: [{ Id: 'v1', SyncToken: '0', DisplayName: 'Staples' }],
+    Invoice: [{ Id: 'inv-1', SyncToken: '0', DocNumber: '1002', TotalAmt: 157.5 }],
     PaymentMethod: [
       { Id: 'pm-cash', SyncToken: '0', Name: 'Cash' },
       { Id: 'pm-visa', SyncToken: '0', Name: 'Visa' }
@@ -43,6 +44,8 @@ class FakeQbo implements QboApi {
     let rows = this.store[entity] ?? []
     const byName = /DisplayName = '((?:[^'\\]|\\.)*)'/.exec(sql)
     if (byName) rows = rows.filter((r) => r.DisplayName === byName[1].replace(/\\'/g, "'"))
+    const byDoc = /DocNumber = '([^']*)'/.exec(sql)
+    if (byDoc) rows = rows.filter((r) => r.DocNumber === byDoc[1])
     return structuredClone(rows) as T[]
   }
   async create(entity: string, body: Record<string, unknown>) {
@@ -169,6 +172,27 @@ describe('transactions → QuickBooks', () => {
     money.updateTransaction(db, x.id, { taxExempt: false })
     await syncQuickBooks(db, qbo)
     expect(qbo.store.SalesReceipt[0].TxnTaxDetail).toEqual({ TotalTax: 17.26 })
+  })
+
+  it('a payment linked to a QuickBooks invoice is not sent; a receipt already sent is deleted; unknown numbers are reported', async () => {
+    const x = money.addTransaction(db, { type: 'income', amountCents: 15750, date: '2026-10-05' })
+    const y = money.addTransaction(db, { type: 'income', amountCents: 2000, date: '2026-10-05' })
+    await syncQuickBooks(db, qbo)
+    expect(qbo.store.SalesReceipt).toHaveLength(2)
+    await tick()
+    money.updateTransaction(db, x.id, { qboInvoice: ' 1002 ' })
+    money.updateTransaction(db, y.id, { qboInvoice: '9999' })
+    const r = await syncQuickBooks(db, qbo)
+    expect(qbo.store.SalesReceipt).toHaveLength(0)
+    expect(qbo.store.Invoice).toHaveLength(1) // never touched
+    expect(r.problems).toEqual(['Sale on 2026-10-05 ($20.00): Invoice 9999 isn’t in QuickBooks'])
+    qbo.calls = []
+    await syncQuickBooks(db, qbo)
+    expect(qbo.calls).toEqual([])
+    await tick()
+    money.updateTransaction(db, x.id, { qboInvoice: '' }) // unlinked: sent as a receipt again
+    await syncQuickBooks(db, qbo)
+    expect(qbo.store.SalesReceipt).toHaveLength(1)
   })
 
   it('expenses become purchases from the chosen account, matched to a same-name expense account', async () => {

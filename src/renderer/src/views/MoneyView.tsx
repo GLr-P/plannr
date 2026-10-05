@@ -491,6 +491,7 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
   const [query, setQuery] = useState('')
   const [list, setList] = useState<Transaction[]>([])
   const [adding, setAdding] = useState<TransactionType | null>(null)
+  const qboOn = useQboOn()
   const range = useMemo(() => monthRange(month), [month])
   const load = useCallback(async () => {
     setList(await api.money.transactions({ ...range, type: type === 'all' ? undefined : type, query }))
@@ -572,6 +573,7 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
                         {t.ticketLabel}
                       </button>
                     )}
+                    {qboOn && t.type === 'income' && <QboInvoiceLink tx={t} onChanged={load} />}
                   </td>
                   <td>{t.category}</td>
                   <td>
@@ -691,6 +693,7 @@ export function TransactionForm({
 export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ticketId: string; number: number; priceCents: number | null; onChanged?: () => void }) {
   const [payments, setPayments] = useState<Transaction[]>([])
   const [adding, setAdding] = useState(false)
+  const qboOn = useQboOn()
   const load = useCallback(async () => setPayments(await api.money.transactions({ ticketId, type: 'income' })), [ticketId])
   useEffect(() => {
     void load()
@@ -734,6 +737,7 @@ export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ti
                 {p.method}
                 {p.taxExempt && ' · no tax'}
               </span>
+              <span>{qboOn && <QboInvoiceLink tx={p} onChanged={load} />}</span>
               <span className="income">{money0(p.amountCents)}</span>
               <button
                 type="button"
@@ -753,6 +757,59 @@ export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ti
         </ul>
       )}
     </section>
+  )
+}
+
+/** True when QuickBooks is connected and set up (shows the "invoiced in QuickBooks" links). */
+function useQboOn(): boolean {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    void api.quickbooks.status().then((s) => setOn(s.connected && Boolean(s.config)))
+  }, [])
+  return on
+}
+
+/** Link a payment to the invoice made for it in QuickBooks, so Plannr doesn't send it a second time. */
+function QboInvoiceLink({ tx, onChanged }: { tx: Transaction; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(tx.qboInvoice)
+  if (editing) {
+    return (
+      <form
+        className="qbo-inv-form"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          await api.money.updateTransaction(tx.id, { qboInvoice: value })
+          setEditing(false)
+          onChanged()
+        }}
+      >
+        <input
+          autoFocus
+          value={value}
+          placeholder="Invoice no."
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
+          aria-label="QuickBooks invoice number"
+        />
+        <button type="submit" className="btn sm">
+          {value.trim() ? 'Link' : 'Unlink'}
+        </button>
+      </form>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={`link-btn tight ${tx.qboInvoice ? '' : 'qbo-inv-add'}`}
+      title={tx.qboInvoice ? 'Already in QuickBooks as this invoice, so Plannr doesn’t send it. Click to change.' : 'Made an invoice for this in QuickBooks? Link it so it isn’t sent twice.'}
+      onClick={() => {
+        setValue(tx.qboInvoice)
+        setEditing(true)
+      }}
+    >
+      {tx.qboInvoice ? `QuickBooks invoice ${tx.qboInvoice}` : 'Invoiced in QuickBooks?'}
+    </button>
   )
 }
 

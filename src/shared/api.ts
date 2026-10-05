@@ -424,6 +424,8 @@ export interface Transaction {
   recurringId: string | null
   /** No sales tax on this one (sent to QuickBooks with the Exempt tax code) */
   taxExempt: boolean
+  /** Number of the QuickBooks invoice this payment belongs to ('' = none); such payments aren't sent again */
+  qboInvoice: string
   updatedAt: number
 }
 
@@ -437,6 +439,7 @@ export interface TransactionInput {
   ticketId?: string | null
   recurringId?: string | null
   taxExempt?: boolean
+  qboInvoice?: string
 }
 
 export interface TransactionFilter {
