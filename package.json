@@ -1,7 +1,7 @@
 {
   "name": "plannr",
   "productName": "Plannr",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "description": "One simple app for running a small repair business: tickets, customers, calendar, money, notes and a vault",
   "license": "GPL-3.0-or-later",
   "homepage": "https://glr-p.github.io/plannr/",
