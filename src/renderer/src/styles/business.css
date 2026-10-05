@@ -607,20 +607,29 @@ input[type='date']::-webkit-calendar-picker-indicator {
   padding: 8px 12px;
   margin: 4px 0 18px;
 }
+/* Each field is a row: a fixed label column, then a box of the same width for every field, so forms line up. */
 .prose .ff {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
   vertical-align: middle;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 1em); /* leaves room for the space typed after a field, so it doesn't wrap onto its own line */
   margin: 1px 0;
 }
 .prose .ff-label {
-  font-weight: 600;
+  width: 180px;
+  flex-shrink: 0;
+  font-weight: 500;
   font-size: 0.9em;
+  line-height: 1.3;
   color: var(--text-muted);
-  white-space: nowrap;
+}
+.prose .ff input[type='text'],
+.prose .ff input[type='date'],
+.prose .ff select {
+  flex: 0 1 340px;
+  min-width: 0;
 }
 .prose .ff input[type='text'],
 .prose .ff input[type='date'],
@@ -635,11 +644,6 @@ input[type='date']::-webkit-calendar-picker-indicator {
   outline: none;
   min-height: 30px;
 }
-.prose .ff input[type='text'] {
-  field-sizing: content;
-  min-width: 14ch;
-  max-width: 100%;
-}
 .prose .ff input:focus,
 .prose .ff select:focus,
 .prose .ff textarea:focus {
@@ -650,6 +654,9 @@ input[type='date']::-webkit-calendar-picker-indicator {
   width: 17px;
   height: 17px;
   accent-color: var(--accent);
+}
+.prose .ff-textarea .ff-label {
+  width: auto;
 }
 .prose .ff-textarea {
   margin: 2px 0 8px;

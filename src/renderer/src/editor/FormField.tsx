@@ -94,7 +94,7 @@ function FieldView({ node, updateAttributes, deleteNode, editor }: NodeViewProps
       control = <input type="date" value={attrs.value} readOnly={!editable} onChange={(e) => setValue(e.target.value)} />
       break
     case 'textarea':
-      control = <textarea rows={2} value={attrs.value} readOnly={!editable} placeholder="…" onChange={(e) => setValue(e.target.value)} />
+      control = <textarea rows={2} value={attrs.value} readOnly={!editable} onChange={(e) => setValue(e.target.value)} />
       break
     default:
       control = (
@@ -103,7 +103,6 @@ function FieldView({ node, updateAttributes, deleteNode, editor }: NodeViewProps
           inputMode={attrs.kind === 'number' ? 'decimal' : undefined}
           value={attrs.value}
           readOnly={!editable}
-          placeholder="…"
           onChange={(e) => setValue(e.target.value)}
         />
       )
