@@ -75,6 +75,11 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
 
 Data lives in `%APPDATA%\Plannr\data` (`plannr.db` and `attachments/`).
 
+## Window pitfalls already hit
+
+- The custom title bar is a Windows drag strip (`-webkit-app-region: drag`). **Any overlay covering the top 44px must set `-webkit-app-region: no-drag`**; otherwise clicks there drag the window and buttons like Close stop working. Playwright's synthetic clicks skip Windows hit-testing, so normal tests can't catch this. `tests/e2e/realclick.spec.ts` (`PLANNR_SLOW=1`) clicks with the real mouse (`scripts/real-click.ps1`).
+- Keyboard events don't reach the page while Chromium's PDF viewer (an iframe) has focus. Overlays showing PDFs need clickable ways to close, not just Esc.
+
 ## TipTap pitfalls already hit
 
 - `editor.commands.focus()` is deferred by one frame. When moving focus programmatically before the user types, call `editor.view.focus()` first.

@@ -362,6 +362,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 /* Lightbox */
 .lightbox {
+  -webkit-app-region: no-drag; /* it covers the title bar drag strip; keep its buttons clickable */
   position: fixed;
   inset: 0;
   z-index: 200;

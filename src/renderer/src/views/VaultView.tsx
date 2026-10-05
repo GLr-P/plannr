@@ -783,6 +783,8 @@ function FilePreview({ file, onClose }: { file: VaultFile; onClose: () => void }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  const closeRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => closeRef.current?.focus(), [])
   const isImage = file.mime.startsWith('image/')
   const isPdf = file.mime === 'application/pdf'
   return (
@@ -796,12 +798,13 @@ function FilePreview({ file, onClose }: { file: VaultFile; onClose: () => void }
           <button type="button" className="btn sm" onClick={() => void api.vault.exportFile(file.id)}>
             <Download /> Save a copy
           </button>
-          <button type="button" className="icon-btn" aria-label="Close preview" onClick={onClose}>
+          <button ref={closeRef} type="button" className="icon-btn" aria-label="Close preview" title="Close (Esc)" onClick={onClose}>
             <X />
           </button>
         </span>
       </div>
-      <div className="file-preview-body">
+      {/* Clicking the dark area around the file closes it (the PDF viewer keeps keyboard focus once clicked, so Esc may not reach us) */}
+      <div className="file-preview-body" onClick={(e) => e.target === e.currentTarget && onClose()}>
         {isImage ? (
           <img src={file.url} alt={file.name} />
         ) : isPdf ? (

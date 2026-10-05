@@ -465,6 +465,8 @@
 
 /* File preview (images & PDFs, decrypted in memory only) */
 .file-preview {
+  /* Overlays cover the title bar, which is a window-drag strip; without this, clicks on the close button would drag the window instead. */
+  -webkit-app-region: no-drag;
   position: fixed;
   inset: 0;
   z-index: 200;
