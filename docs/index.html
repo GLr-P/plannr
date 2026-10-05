@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plannr: one app for your repair business</title>
+    <meta name="description" content="Tickets, customers, calendar, money, notes and a locked vault in one simple Windows app. Free and open source. Your data stays on your computer." />
+    <meta property="og:title" content="Plannr" />
+    <meta property="og:description" content="One simple app for running a small repair business on Windows." />
+    <meta property="og:image" content="https://glr-p.github.io/plannr/screenshots/home.png" />
+    <link rel="icon" href="icon.png" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-soft: #f6f6f4;
+        --text: #22221f;
+        --muted: #6d6d68;
+        --border: #e6e6e2;
+        --accent: #2f6ae0;
+        --accent-soft: rgba(47, 106, 224, 0.1);
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 18px 50px rgba(0, 0, 0, 0.12);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1b1b1d;
+          --bg-soft: #151517;
+          --text: #e8e8e6;
+          --muted: #a0a09c;
+          --border: #2d2d31;
+          --accent: #5b8cf0;
+          --accent-soft: rgba(91, 140, 240, 0.16);
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 50px rgba(0, 0, 0, 0.5);
+          color-scheme: dark;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      }
+      a {
+        color: var(--accent);
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 18px;
+        text-decoration: none;
+        color: var(--text);
+      }
+      .logo {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+      }
+      nav.links a {
+        color: var(--muted);
+        text-decoration: none;
+        margin-left: 22px;
+        font-size: 15px;
+      }
+      nav.links a:hover {
+        color: var(--text);
+      }
+      .hero {
+        text-align: center;
+        padding: 56px 0 28px;
+      }
+      .hero h1 {
+        font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+        font-size: clamp(34px, 5vw, 54px);
+        line-height: 1.12;
+        margin: 0 auto 16px;
+        max-width: 760px;
+        letter-spacing: -0.02em;
+      }
+      .hero p {
+        font-size: 19px;
+        color: var(--muted);
+        max-width: 640px;
+        margin: 0 auto 28px;
+      }
+      .buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        color: var(--text);
+        background: var(--bg);
+      }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .small {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .shot {
+        margin: 40px auto 0;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        max-width: 1000px;
+        background: var(--bg-soft);
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      section {
+        padding: 72px 0 0;
+      }
+      section h2 {
+        font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+        font-size: 30px;
+        margin: 0 0 8px;
+        text-align: center;
+      }
+      section .lead {
+        text-align: center;
+        color: var(--muted);
+        max-width: 620px;
+        margin: 0 auto 32px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        background: var(--bg);
+      }
+      .card h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 6px;
+        font-size: 17px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .ico {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .ico svg {
+        width: 18px;
+        height: 18px;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 20px;
+      }
+      .gallery figure {
+        margin: 0;
+      }
+      .gallery img {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        display: block;
+      }
+      .gallery figcaption {
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 8px;
+      }
+      .connect {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      ol.steps {
+        max-width: 640px;
+        margin: 0 auto;
+        padding-left: 22px;
+      }
+      ol.steps li {
+        margin: 8px 0;
+      }
+      .band {
+        background: var(--bg-soft);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 56px 0;
+        margin-top: 72px;
+      }
+      .band section {
+        padding: 0;
+      }
+      footer {
+        padding: 40px 0 56px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      kbd {
+        font: 13px 'Cascadia Code', Consolas, monospace;
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 5px;
+        padding: 1px 6px;
+        background: var(--bg);
+      }
+      @media (max-width: 640px) {
+        nav.links {
+          display: none;
+        }
+        .gallery {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a class="brand" href="#"><span class="logo">P</span> Plannr</a>
+        <nav class="links">
+          <a href="#features">Features</a>
+          <a href="#screenshots">Screenshots</a>
+          <a href="#install">Install</a>
+          <a href="https://github.com/GLr-P/plannr">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="hero">
+        <h1>One simple app for running your repair business</h1>
+        <p>Tickets and customers, a calendar, money, notes and a locked vault, all in one calm window. Free, open source, and your data stays on your computer.</p>
+        <div class="buttons">
+          <a class="btn primary" href="https://github.com/GLr-P/plannr/releases/latest">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+            Download for Windows
+          </a>
+          <a class="btn" href="https://github.com/GLr-P/plannr">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.29-1.69-1.29-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.7 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z" /></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="small">Windows 10 and 11 · Free under GPL-3.0 · No account, no subscription</div>
+        <div class="shot"><img src="screenshots/home.png" alt="Plannr's Home screen: what's coming up and open repair tickets" width="1320" height="820" /></div>
+      </div>
+
+      <section id="features">
+        <h2>Everything a small shop needs, nothing it doesn't</h2>
+        <p class="lead">Built for one-person repair businesses, simple enough to use from day one.</p>
+        <div class="grid">
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg></span>Tickets</h3>
+            <p>Every repair from drop-off to pickup: status, device, price, pickup date, before/after photos and a check-in form. Print intake slips, receipts and device labels.</p>
+          </div>
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>Customers</h3>
+            <p>Contact details and full repair history. Find anyone by name, email, ticket number or phone number in any format.</p>
+          </div>
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg></span>Calendar</h3>
+            <p>Month, week and day views. Drag a ticket onto a day to set its pickup. Windows reminders, and public holidays built in.</p>
+          </div>
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></svg></span>Money</h3>
+            <p>Payments with tax included or on top, expenses, bills and subscriptions with auto-pay, and who still owes you. CSV export.</p>
+          </div>
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8" /></svg></span>Notes</h3>
+            <p>Checklists, tables, callouts, toggles and photos. Link notes, tickets and customers with <kbd>@</kbd>. Starter templates for repair guides, suppliers and inventory.</p>
+          </div>
+          <div class="card">
+            <h3><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>Vault</h3>
+            <p>Passwords, cards and documents encrypted with your own passcode (AES-256). Locks itself when you step away.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenshots">
+        <h2>Calm, fast, and out of your way</h2>
+        <p class="lead">A clean layout with light and dark modes. Search everything with <kbd>Ctrl</kbd> <kbd>K</kbd>.</p>
+        <div class="gallery">
+          <figure><img src="screenshots/ticket.png" alt="A repair ticket with its check-in form" loading="lazy" /><figcaption>A ticket with its check-in form</figcaption></figure>
+          <figure><img src="screenshots/calendar.png" alt="The calendar with pickups and bills" loading="lazy" /><figcaption>Pickups, events and bills on one calendar</figcaption></figure>
+          <figure><img src="screenshots/money.png" alt="Money overview" loading="lazy" /><figcaption>What came in, what went out, who owes you</figcaption></figure>
+          <figure><img src="screenshots/note.png" alt="A repair guide note with a table and a warning" loading="lazy" /><figcaption>Notes with tables, callouts and templates</figcaption></figure>
+          <figure><img src="screenshots/ticket-dark.png" alt="Dark mode" loading="lazy" /><figcaption>Dark mode</figcaption></figure>
+          <figure><img src="screenshots/settings.png" alt="Layout settings" loading="lazy" /><figcaption>Make the menu and Home your own</figcaption></figure>
+        </div>
+      </section>
+
+      <section>
+        <h2>Connects to what you already use (optional)</h2>
+        <p class="lead">Each connection uses your own free developer key, so your data goes straight from your computer to the service. Step-by-step instructions are built in.</p>
+        <div class="connect">
+          <div class="card"><h3>Google Calendar</h3><p>Plannr events on your phone; your Google calendars inside Plannr.</p></div>
+          <div class="card"><h3>Zoho Mail</h3><p>Every email with a customer, right on their page and their tickets.</p></div>
+          <div class="card"><h3>QuickBooks Online</h3><p>Customers, payments and expenses go to your books automatically.</p></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="band">
+      <div class="wrap">
+        <section id="install">
+          <h2>Install in a minute</h2>
+          <ol class="steps">
+            <li>Download <strong>Plannr-Setup.exe</strong> from the <a href="https://github.com/GLr-P/plannr/releases/latest">latest release</a>.</li>
+            <li>Run it. If Windows says <em>“Windows protected your PC”</em>, click <strong>More info → Run anyway</strong> (the installer isn’t code-signed yet).</li>
+            <li>Plannr opens with a short welcome tour: your business name, what you want to use, and a few tips.</li>
+          </ol>
+          <p class="lead" style="margin-top: 24px">
+            Your data lives on your computer and is backed up every day to <em>Documents\Plannr Backups</em>. No account, no server, no tracking.
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <footer class="wrap">
+      Plannr is free software under the <a href="https://github.com/GLr-P/plannr/blob/main/LICENSE">GNU GPL v3</a>. ·
+      <a href="https://github.com/GLr-P/plannr">Source code</a> · <a href="https://github.com/GLr-P/plannr/issues">Report a problem</a>
+    </footer>
+  </body>
+</html>

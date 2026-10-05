@@ -29,6 +29,8 @@ npx vitest run -t "search"          # single unit test by name
 npx playwright test -g "drag"       # single e2e test (run `npm run build` first; e2e uses out/)
 npm run dist        # build + Windows installer → release/Plannr-Setup-<version>.exe (set CSC_IDENTITY_AUTO_DISCOVERY=false; unset ELECTRON_RUN_AS_NODE)
 PLANNR_EXE=release/win-unpacked/Plannr.exe npx playwright test   # run the e2e suite against the packaged app
+npx playwright test --config tests/marketing/playwright.config.ts   # regenerate docs/screenshots (demo data) and a preview of the website (test-results/site.png); build first
+PERF=1 npx playwright test --config tests/perf/playwright.config.ts  # startup timing
 ```
 
 `tests/e2e/background.spec.ts` is skipped unless `PLANNR_SLOW=1`. It shows a real Windows notification, checks close-to-tray, and waits about a minute for the reminder scheduler. Normal test runs (`PLANNR_DATA_DIR` set) disable the tray, close-to-tray, reminders and the Start-menu shortcut; `PLANNR_BACKGROUND=1` turns them back on. App icons come from `node scripts/make-icon.mjs` (writes `resources/`).
