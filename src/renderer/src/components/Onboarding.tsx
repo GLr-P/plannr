@@ -35,10 +35,10 @@ export async function maybeStartOnboarding(): Promise<void> {
 }
 
 const FEATURES: { id: string; icon: ReactNode; title: string; text: string }[] = [
-  { id: 'tickets', icon: <Wrench />, title: 'Tickets', text: 'Repairs from drop-off to pickup: status, photos, fill-in check-in forms, printing.' },
-  { id: 'customers', icon: <Users />, title: 'Customers', text: 'Contact details and full repair history for everyone.' },
-  { id: 'calendar', icon: <CalendarDays />, title: 'Calendar', text: 'Pickups, appointments and reminders. Drag tickets and notes onto a day.' },
-  { id: 'money', icon: <Wallet />, title: 'Money', text: 'Payments, expenses, bills and subscriptions, and who still owes you.' },
+  { id: 'tickets', icon: <Wrench />, title: 'Tickets', text: 'Jobs, repairs, orders or requests from start to finish: status, photos, fill-in forms, printing.' },
+  { id: 'customers', icon: <Users />, title: 'Customers', text: 'The people and companies you work with, and everything you’ve done for them.' },
+  { id: 'calendar', icon: <CalendarDays />, title: 'Calendar', text: 'Appointments, due dates and reminders. Drag notes and tickets onto a day.' },
+  { id: 'money', icon: <Wallet />, title: 'Money', text: 'Income, expenses, bills and subscriptions, and who still owes you.' },
   { id: 'vault', icon: <Lock />, title: 'Vault', text: 'Passwords, cards and documents, locked with your own passcode.' },
   { id: 'notes', icon: <FileText />, title: 'Notes', text: 'Notes with checklists, tables, toggles and photos, in folders and sections.' },
   { id: 'templates', icon: <LayoutTemplate />, title: 'Templates', text: 'Starting points for tickets and notes. Make your own anytime.' }
@@ -46,7 +46,7 @@ const FEATURES: { id: string; icon: ReactNode; title: string; text: string }[] =
 
 const CONNECTIONS: { icon: ReactNode; title: string; text: string }[] = [
   { icon: <CalendarDays />, title: 'Google Calendar', text: 'Your Plannr events on your phone, and your Google calendars inside Plannr.' },
-  { icon: <Mail />, title: 'Zoho Mail', text: 'Every email with a customer, right on their page and their tickets.' },
+  { icon: <Mail />, title: 'Zoho Mail', text: 'Every email with a customer, right on their page.' },
   { icon: <Receipt />, title: 'QuickBooks Online', text: 'Customers, payments and expenses go to your books automatically.' }
 ]
 
@@ -117,8 +117,8 @@ export function Onboarding() {
               <div className="onboard-logo">P</div>
               <h2>Welcome to Plannr</h2>
               <p>
-                One place for your repair business: tickets and customers, your calendar, money, notes and a locked vault. Everything stays on this
-                computer.
+                One place for everything you keep track of: notes, your calendar, customers and tickets, money, and a locked vault. Everything stays on
+                this computer.
               </p>
               <p className="muted">This takes about a minute. You can change everything later in Settings.</p>
             </div>
@@ -126,15 +126,15 @@ export function Onboarding() {
 
           {steps[step] === 'business' && (
             <>
-              <h2>About your business</h2>
-              <p className="muted">Used on printed slips and receipts, and for ticket numbers.</p>
+              <h2>About you</h2>
+              <p className="muted">Your business or your own name. It goes on printed slips and receipts, and sets your ticket numbers. Leave it blank if you like.</p>
               <div className="onboard-fields">
                 <label className="mfield">
-                  Business name
+                  Name
                   <input
                     autoFocus
                     value={name}
-                    placeholder="e.g. Acme Repairs"
+                    placeholder="e.g. Acme Studio"
                     aria-label="Business name"
                     onChange={(e) => {
                       setName(e.target.value)

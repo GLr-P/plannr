@@ -23,6 +23,7 @@ import * as qbo from './quickbooks-client'
 import * as qboSync from './services/quickbooks'
 import type { QuickBooksSync } from './quickbooks-sync'
 import type { GoogleSync } from './google-sync'
+import type { Updater } from './updater'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -40,6 +41,7 @@ export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: 
 export interface ApiHooks {
   googleSync: GoogleSync
   qboSync: QuickBooksSync
+  updater: Updater
   backupDir: () => string
   /** Closes the database, puts the snapshot back and restarts Plannr */
   restoreAndRestart: (file: string) => Promise<void>
@@ -361,6 +363,11 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     print: {
       // Tests write the page to a file instead of opening the print dialog.
       ticket: async (id, kind) => printTicket(db, dataDir, id, kind, process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined)
+    },
+    updates: {
+      status: async () => hooks.updater.status,
+      check: async () => hooks.updater.check(),
+      install: async () => hooks.updater.install()
     },
     app: {
       info: async () => ({ version: app.getVersion(), dataDir, tests: Boolean(process.env.PLANNR_DATA_DIR) && process.env.PLANNR_ONBOARDING !== '1' }),

@@ -24,6 +24,7 @@ import { useUi } from './store/ui'
 import { loadDisplay, useDisplay } from './store/display'
 import { useAppearance } from './lib/appearance'
 import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
+import { initUpdates } from './store/update'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -111,15 +112,20 @@ export function App() {
   useGlobalShortcuts()
   useAppearance()
   useEffect(() => {
+    const stopUpdates = initUpdates()
     void loadDisplay()
       .then(() => useData.getState().refresh())
       .then(() => maybeStartOnboarding())
     // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
-    return window.plannrEvents.onNavigate((target) => {
+    const stopNavigate = window.plannrEvents.onNavigate((target) => {
       if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
       else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
       else openEntity(target.type, target.id)
     })
+    return () => {
+      stopNavigate()
+      stopUpdates()
+    }
   }, [])
 
   return (

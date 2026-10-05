@@ -25,7 +25,7 @@ test('walks through: business name sets the ticket prefix, unticked parts leave 
   await shot(page, 'o1-welcome')
   await next()
 
-  await tour().getByLabel('Business name').fill('Acme Repairs')
+  await tour().getByLabel('Business name').fill('Acme Repairs') // the "Name" box (labelled for screen readers)
   await expect(tour().getByLabel('Ticket number prefix')).toHaveValue('AR-')
   await expect(tour()).toContainText('AR-0001')
   await shot(page, 'o2-business')

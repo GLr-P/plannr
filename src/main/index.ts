@@ -18,7 +18,8 @@ import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
 import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
-import { APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
+import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
+import { Updater } from './updater'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
 const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
@@ -168,7 +169,10 @@ if (!app.requestSingleInstanceLock()) {
     // QuickBooks: customers, ticket payments and expenses (only once connected and set up).
     const qboSync = new QuickBooksSync(db)
     if (!isTest) qboSync.start()
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync }))
+    // Updates from GitHub Releases (tests point PLANNR_UPDATE_URL at a local server and never run the installer).
+    const updater = new Updater(getWindow, quit, isTest ? join(dataDir, 'update-ready.json') : undefined)
+    if (!isTest) updater.start(db)
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater }))
     // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
     if (!isTest) {
       const autoBackup = (): void => {
@@ -196,6 +200,7 @@ if (!app.requestSingleInstanceLock()) {
       createTray(getWindow, quit)
       startReminders(db, getWindow)
       ensureStartMenuShortcut()
+      adoptLoginItem()
     }
   })
 

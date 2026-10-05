@@ -108,3 +108,13 @@ export const getOpenAtLogin = (): boolean => app.getLoginItemSettings(loginItem(
 export function setOpenAtLogin(enabled: boolean): void {
   app.setLoginItemSettings({ openAtLogin: enabled, ...loginItem() })
 }
+
+/**
+ * "Start with Windows" was turned on in another copy of Plannr (e.g. the one run from source before installing):
+ * the installed app takes the entry over, so Windows starts this copy instead.
+ */
+export function adoptLoginItem(): void {
+  if (process.platform !== 'win32' || !app.isPackaged) return
+  const s = app.getLoginItemSettings(loginItem())
+  if (!s.openAtLogin && s.launchItems?.some((i) => i.name === APP_ID)) setOpenAtLogin(true)
+}

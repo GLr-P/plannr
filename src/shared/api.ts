@@ -733,6 +733,24 @@ export interface BusinessInfo {
 
 export type PrintKind = 'intake' | 'receipt' | 'label'
 
+// ---------- Updates ----------
+
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'installing' | 'error'
+  /** This copy's version */
+  current: string
+  /** Newest published version, once checked */
+  latest: string | null
+  /** Release page with what's new */
+  notesUrl: string | null
+  /** 0–1 while downloading */
+  progress: number
+  error: string | null
+  /** False when running from source: updates install only in the installed app */
+  canInstall: boolean
+  checkedAt: number | null
+}
+
 // ---------- Backups ----------
 
 export interface BackupInfo {
@@ -957,6 +975,12 @@ export interface PlannrApi {
     /** Opens the Windows print dialog for a ticket printout */
     ticket(id: string, kind: PrintKind): Promise<void>
   }
+  updates: {
+    status(): Promise<UpdateStatus>
+    check(): Promise<UpdateStatus>
+    /** Downloads, verifies and installs the new version, then restarts Plannr */
+    install(): Promise<UpdateStatus>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -1031,6 +1055,7 @@ export const API_SHAPE = {
   display: ['get', 'set'],
   business: ['get', 'set'],
   print: ['ticket'],
+  updates: ['status', 'check', 'install'],
   app: ['info', 'openDataFolder', 'setTheme', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 

@@ -13,6 +13,7 @@ import { BusinessSettings } from '../components/BusinessSettings'
 import { HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
+import { UpdateSettings } from '../components/UpdateSettings'
 import { Keyboard, Sparkles } from 'lucide-react'
 
 const TABS = [
@@ -87,6 +88,8 @@ export function SettingsView() {
           </section>
 
           <LookSettings />
+
+          <UpdateSettings />
 
           <section className="setting">
             <div>

@@ -1,4 +1,4 @@
-import type { EntityType, PlannrApi } from '../../shared/api'
+import type { EntityType, PlannrApi, UpdateStatus } from '../../shared/api'
 
 export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string }
 
@@ -9,6 +9,7 @@ declare global {
       onNavigate: (callback: (target: NavigateTarget) => void) => () => void
       onVaultLocked: (callback: () => void) => () => void
       onCalendarChanged: (callback: () => void) => () => void
+      onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
     }
   }
 }

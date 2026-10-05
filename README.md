@@ -1,21 +1,25 @@
 # Plannr
 
-**One simple app for running a small repair business on Windows:** tickets and customers, a calendar, money, notes and a locked vault, all in one window. Everything stays on your computer.
+**A free, open-source organizer for Windows.** Notes, a calendar, customers, jobs and tickets, money and a locked vault in one calm window. Everything stays on your computer.
 
-[**⬇ Download for Windows**](https://github.com/GLr-P/plannr/releases/latest) · [Website](https://glr-p.github.io/plannr/) · Free and open source (GPL-3.0)
+[**⬇ Download for Windows**](https://github.com/GLr-P/plannr/releases/latest) · [Website](https://glr-p.github.io/plannr/) · Open source (GPL-3.0)
 
 ![Plannr home screen](docs/screenshots/home.png)
+
+Plannr started as the one app a small business owner wanted instead of five: somewhere to write things down, see the week ahead, keep track of people and work in progress, and know where the money went. It works just as well for freelancers, side projects, a household, or anyone who wants their stuff in one place.
 
 ## What's inside
 
 | | |
 |---|---|
-| **Tickets** | Every repair from drop-off to pickup: status, device, problem, price, pickup date, before/after photos, and a check-in form (passcode, condition, accessories…) from a template you can change. Print an intake slip, a receipt or a device label. |
-| **Customers** | Contact details and the full repair history for each customer. Search by name, email, phone number in any format, or ticket number. |
-| **Calendar** | Month, week and day views. Drag a ticket onto a day to set its pickup. Reminders pop up in Windows. Public holidays included. |
-| **Money** | Ticket payments (tax included, tax on top, or no tax), expenses, bills and subscriptions with auto-pay, who still owes you, and monthly totals. CSV export. |
-| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos. `@` links notes, tickets and customers together. Folders, your own sidebar sections, icons and colours. Seven starter templates (repair guide, supplier, inventory, meeting notes…). |
+| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
+| **Calendar** | Month, week and day views. Drag notes and tickets onto a day. Reminders pop up in Windows. Public holidays included. |
+| **Customers** | The people and companies you work with: their details and everything you've done for them. Search by name, email or phone number in any format. |
+| **Tickets** | Track jobs, repairs, orders or requests from start to finish: status, pickup date, price, photos and a fill-in form from a template you design. Print a slip, a receipt or a label. Rename the statuses to fit your work. |
+| **Money** | Income (tax included, tax on top, or no tax), expenses, bills and subscriptions with auto-pay, who still owes you, and monthly totals. CSV export. |
 | **Vault** | Passwords, cards and documents, encrypted with your own passcode (AES-256). Locks itself when you step away. |
+
+Don't need some of it? Untick it during the welcome tour (or later in Settings) and it leaves the menu.
 
 Optional connections, if you use them:
 
@@ -29,13 +33,13 @@ Each connection uses your own free developer key, so your data goes straight fro
 
 | | |
 |---|---|
-| ![A repair ticket](docs/screenshots/ticket.png) | ![Calendar](docs/screenshots/calendar.png) |
-| ![Money overview](docs/screenshots/money.png) | ![A note with a table and a callout](docs/screenshots/note.png) |
+| ![A note with a table and a callout](docs/screenshots/note.png) | ![Calendar](docs/screenshots/calendar.png) |
+| ![A ticket with its fill-in form](docs/screenshots/ticket.png) | ![Money overview](docs/screenshots/money.png) |
 | ![Dark mode](docs/screenshots/ticket-dark.png) | ![Settings: layout](docs/screenshots/settings.png) |
 
 ## Make it yours
 
-Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu into any order and hide what you don't use. Choose what Home shows. Pick your own ticket number prefix, status names, currency and payment methods. A short welcome tour sets the basics the first time you open it.
+Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu into any order, hide what you don't use, and choose what Home shows. Name your own sidebar sections, and give notes and folders icons and colours. Pick your own ticket numbers, status names, currency and payment methods.
 
 ## Install
 
@@ -43,11 +47,13 @@ Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu 
 2. Run it. Windows may say *"Windows protected your PC"* because the installer isn't code-signed yet: click **More info → Run anyway**.
 3. Plannr opens with a one-minute welcome tour.
 
+Plannr updates itself: when a new version is out, an **Update** button appears at the top of the window (or use Settings → General → Check for updates).
+
 Works on Windows 10 and 11 (64-bit). Your data lives in `%APPDATA%\Plannr\data`, and Plannr backs it up every day to `Documents\Plannr Backups` (you can change the folder or restore a backup in Settings). Uninstalling keeps your data.
 
 ## Privacy
 
-Plannr has no account, no server and no tracking. Nothing leaves your computer unless you connect Google, Zoho or QuickBooks, and then only to that service. Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
+Plannr has no account, no server and no tracking. Nothing leaves your computer unless you connect Google, Zoho or QuickBooks, and then only to that service. The only other thing it contacts is GitHub, to check for updates (you can turn that off). Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
 
 ## For developers
 
