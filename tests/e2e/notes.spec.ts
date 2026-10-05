@@ -144,8 +144,7 @@ test('creates a folder and moves a note into it by drag and drop', async () => {
   await row.dragTo(folder)
   await expect(row.locator('.chip')).toHaveText('Clients')
 
-  await folder.locator('.chevron').click()
-  await expect(page.locator('.sidebar')).toContainText('Supplier list')
+  await expect(page.locator('.sidebar')).toContainText('Supplier list') // the folder opens to show what was dropped in
   await folder.click()
   await expect(page.locator('.note-row')).toHaveCount(1)
   await shot(page, '06-folder')
@@ -182,6 +181,25 @@ test('right-click: rename a folder, give it an icon and colour, move a note out 
   await expect(page.locator('.note-row', { hasText: 'Supplier list' }).locator('.chip')).toHaveText('Customers A-Z')
   await renamed.click()
   await expect(page.locator('.note-row')).toHaveCount(1)
+})
+
+test('organise the sidebar: reorder the menu, add a section, drag a folder into it', async () => {
+  const menu = () => page.locator('.sidebar > .nav-item .nav-label').allTextContents()
+  const tickets = page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first()
+  await page.locator('.sidebar .nav-item', { hasText: 'Calendar' }).first().dragTo(tickets, { targetPosition: { x: 40, y: 4 } })
+  await expect.poll(async () => (await menu()).slice(0, 3)).toEqual(['Home', 'Calendar', 'Tickets'])
+
+  await page.locator('.add-section').click()
+  await page.getByLabel('New name').fill('Work')
+  await page.keyboard.press('Enter')
+  const work = page.locator('.section-header', { hasText: 'Work' })
+  await expect(work).toBeVisible()
+  await page.locator('.sidebar .nav-item', { hasText: 'Customers A-Z' }).dragTo(work)
+  await expect(page.locator('.sidebar-group', { has: work }).locator('.nav-item', { hasText: 'Customers A-Z' })).toBeVisible()
+  await expect(page.locator('.section-header', { hasText: 'Folders' })).toHaveCount(0) // empty built-in sections hide
+
+  await expect(page.locator('.sidebar-divider + .nav-item')).toContainText('Vault') // Vault sits apart at the bottom
+  await shot(page, '06c-sections')
 })
 
 test('moves a note to trash and restores it', async () => {

@@ -307,5 +307,21 @@ export const migrations: string[] = [
   ALTER TABLE notes ADD COLUMN color TEXT NOT NULL DEFAULT '';
   ALTER TABLE folders ADD COLUMN icon TEXT NOT NULL DEFAULT '';
   ALTER TABLE folders ADD COLUMN color TEXT NOT NULL DEFAULT '';
+  `,
+
+  /* 15: sidebar sections (Pinned, Folders and your own), folders inside folders, manual order */ `
+  CREATE TABLE sidebar_sections (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    sort REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  INSERT INTO sidebar_sections (id, name, sort, created_at, updated_at) VALUES ('pinned', 'Pinned', 1, 0, 0), ('folders', 'Folders', 2, 0, 0);
+  ALTER TABLE notes ADD COLUMN section_id TEXT;
+  ALTER TABLE notes ADD COLUMN sort REAL NOT NULL DEFAULT 0;
+  UPDATE notes SET section_id = 'pinned' WHERE pinned = 1;
+  ALTER TABLE folders ADD COLUMN section_id TEXT NOT NULL DEFAULT 'folders';
+  ALTER TABLE folders ADD COLUMN parent_id TEXT;
   `
 ]

@@ -230,7 +230,9 @@ export function IconPicker({ icon, color, onChange }: { icon: string; color: str
           placeholder="Or an emoji (Win + .)"
           aria-label="Emoji icon"
           onChange={(e) => {
-            const v = [...e.target.value.trim()].slice(-8).join('')
+            // Keep just the last emoji typed (one character as you see it), so it never spills over the name.
+            const parts = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(e.target.value.trim())]
+            const v = parts[parts.length - 1]?.segment ?? ''
             setEmoji(v)
             if (v) apply({ ...value, icon: v })
           }}

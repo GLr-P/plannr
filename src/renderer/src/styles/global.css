@@ -909,9 +909,12 @@ kbd {
   place-items: center;
   width: 16px;
   height: 16px;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
   font-size: 14px;
   line-height: 1;
   flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .doc-title {
   width: 100%;
@@ -1408,4 +1411,72 @@ kbd {
 .saved-flash {
   font-weight: 400;
   margin-left: 6px;
+}
+
+/* ---------- Sidebar: drag to organise ---------- */
+.nav-item.drop-before::before,
+.nav-item.drop-after::after,
+.section-header.drop-before::before,
+.section-header.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.nav-item.drop-before::before,
+.section-header.drop-before::before {
+  top: -1px;
+}
+.nav-item.drop-after::after,
+.section-header.drop-after::after {
+  bottom: -1px;
+}
+.nav-item.drop-inside,
+.section-header.drop-inside {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.section-header {
+  position: relative;
+  border-radius: var(--radius-sm);
+}
+.section-header .nav-input {
+  margin: 2px 0;
+}
+.section-empty {
+  padding-left: 30px;
+}
+.add-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  margin-top: 10px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.sidebar:hover .add-section,
+.add-section:focus-visible {
+  opacity: 1;
+}
+.add-section:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.add-section svg {
+  width: 13px;
+  height: 13px;
+}
+.sidebar-divider {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--border);
 }

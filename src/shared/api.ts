@@ -20,6 +20,10 @@ export interface Folder {
   icon: string
   /** Colour id from the palette (e.g. "blue"); '' = default */
   color: string
+  /** Sidebar section it's shown in (top-level folders only) */
+  sectionId: string
+  /** Folder it's inside, or null */
+  parentId: string | null
   sort: number
   createdAt: number
   updatedAt: number
@@ -35,6 +39,10 @@ export interface NoteSummary {
   icon: string
   /** Colour id from the palette; '' = default */
   color: string
+  /** Sidebar section it's shown in (Pinned or one you added); null = not in the sidebar unless it's in a folder */
+  sectionId: string | null
+  /** Order within its section/folder in the sidebar */
+  sort: number
   preview: string
   createdAt: number
   updatedAt: number
@@ -628,6 +636,20 @@ export interface QboStatus {
   problems: string[]
 }
 
+// ---------- Sidebar organisation ----------
+
+export interface SidebarSection {
+  id: string
+  name: string
+  /** Pinned and Folders: can be renamed, not removed */
+  builtin: boolean
+}
+export interface SidebarRef {
+  type: 'note' | 'folder'
+  id: string
+}
+export type SidebarDest = { sectionId: string } | { folderId: string }
+
 // ---------- Business details & printing ----------
 
 /** Shown on printouts (intake slip, receipt, label). */
@@ -730,7 +752,8 @@ export interface PlannrApi {
   }
   folders: {
     list(): Promise<Folder[]>
-    create(name: string): Promise<Folder>
+    /** In a section (default Folders) or inside another folder */
+    create(name: string, place?: { sectionId?: string; parentId?: string | null }): Promise<Folder>
     rename(id: string, name: string): Promise<void>
     /** Icon and colour ('' = default) */
     style(id: string, style: { icon?: string; color?: string }): Promise<void>
@@ -853,6 +876,15 @@ export interface PlannrApi {
     /** Restores a snapshot (current data is saved first) and restarts Plannr */
     restore(file: string): Promise<void>
   }
+  sidebar: {
+    sections(): Promise<SidebarSection[]>
+    createSection(name: string): Promise<SidebarSection>
+    renameSection(id: string, name: string): Promise<void>
+    removeSection(id: string): Promise<void>
+    reorderSections(ids: string[]): Promise<void>
+    /** Move a note/folder into a section or folder; `order` = that place's full new item order */
+    move(item: SidebarRef, dest: SidebarDest, order: SidebarRef[]): Promise<void>
+  }
   business: {
     get(): Promise<BusinessInfo>
     set(patch: Partial<BusinessInfo>): Promise<BusinessInfo>
@@ -928,6 +960,7 @@ export const API_SHAPE = {
   zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message'],
   quickbooks: ['status', 'configureKey', 'connect', 'disconnect', 'options', 'createItem', 'setConfig', 'syncNow'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
+  sidebar: ['sections', 'createSection', 'renameSection', 'removeSection', 'reorderSections', 'move'],
   business: ['get', 'set'],
   print: ['ticket'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']

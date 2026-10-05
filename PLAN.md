@@ -118,6 +118,7 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
 8. **Cleaner sidebar.** **Done (2026-10-05).** Notes is one menu item (hover for + note / + folder). Pinned and Folders only appear when used. Recent notes are off by default, with a setting to show them. Trash sits at the bottom with Templates and Settings. Folders show their icon, which turns into the expand arrow on hover.
 9. **Optimize and polish everything,** and add features that are missing. **In progress (2026-10-05).** Done so far:
    - Right-click menus on notes and folders: rename, icon (picker or emoji) and colour, pin, move to a folder, delete. Clicking the icon by a note's title changes it too.
+   - Organise the sidebar: drag the main menu into any order; Vault sits apart at the bottom. Sections: Pinned, Folders and your own (add, rename, drag to reorder, remove). Drag notes and folders to reorder them, into folders (folders can nest), or onto a section. Right-click also offers "Move to section".
    - Ticket form fields line up (one label column, boxes the same width).
    - Undo after deleting notes, tickets, customers, payments, transactions and bills.
    - Business details in Settings (logo, contact, GST/HST name, rate and number, terms). Tickets print an intake slip (passcodes are never printed), a receipt (tax split out) and a device label (Brother, Dymo or 4×6).

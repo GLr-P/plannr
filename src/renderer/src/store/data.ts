@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { Folder, NoteSummary } from '../../../shared/api'
+import type { Folder, NoteSummary, SidebarSection } from '../../../shared/api'
 import { api } from '../api'
 
 /** App-wide cache of lightweight lists (sidebar, home, search suggestions). */
 interface DataState {
   notes: NoteSummary[]
   folders: Folder[]
+  sections: SidebarSection[]
   loaded: boolean
   counts: { open: number; ready: number }
   refreshCounts: () => Promise<void>
@@ -16,12 +17,13 @@ interface DataState {
 export const useData = create<DataState>((set, get) => ({
   notes: [],
   folders: [],
+  sections: [],
   loaded: false,
   counts: { open: 0, ready: 0 },
   refreshCounts: async () => set({ counts: await api.tickets.counts() }),
   refresh: async () => {
-    const [notes, folders, counts] = await Promise.all([api.notes.list(), api.folders.list(), api.tickets.counts()])
-    set({ notes, folders, counts, loaded: true })
+    const [notes, folders, sections, counts] = await Promise.all([api.notes.list(), api.folders.list(), api.sidebar.sections(), api.tickets.counts()])
+    set({ notes, folders, sections, counts, loaded: true })
   },
   upsertNote: (note) => {
     const others = get().notes.filter((n) => n.id !== note.id)

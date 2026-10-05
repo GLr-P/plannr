@@ -16,6 +16,8 @@ interface NoteRow {
   tags: string
   icon: string
   color: string
+  section_id: string | null
+  sort: number
   preview: string
   created_at: number
   updated_at: number
@@ -25,7 +27,7 @@ interface NoteRow {
 }
 
 const SUMMARY_COLS =
-  'id, title, folder_id, pinned, tags, icon, color, substr(content_text, 1, 200) AS preview, created_at, updated_at, deleted_at'
+  'id, title, folder_id, pinned, tags, icon, color, section_id, sort, substr(content_text, 1, 200) AS preview, created_at, updated_at, deleted_at'
 
 function toSummary(r: NoteRow): NoteSummary {
   return {
@@ -36,6 +38,8 @@ function toSummary(r: NoteRow): NoteSummary {
     tags: JSON.parse(r.tags) as string[],
     icon: r.icon,
     color: r.color,
+    sectionId: r.section_id,
+    sort: r.sort,
     preview: r.preview,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -127,7 +131,8 @@ export function updateNote(db: Db, id: string, patch: NoteUpdate): NoteSummary {
       params.push(patch.folderId)
     }
     if (patch.pinned !== undefined) {
-      sets.push('pinned = ?')
+      // Pinning puts it in the Pinned section (unless it's already in a section); unpinning takes it out of the sidebar.
+      sets.push('pinned = ?', patch.pinned ? "section_id = COALESCE(section_id, 'pinned')" : 'section_id = NULL')
       params.push(patch.pinned ? 1 : 0)
     }
     if (patch.tags !== undefined) {
@@ -158,7 +163,7 @@ export function updateNote(db: Db, id: string, patch: NoteUpdate): NoteSummary {
 
 export function trashNote(db: Db, id: string): void {
   tx(db, () => {
-    db.prepare('UPDATE notes SET deleted_at = ?, pinned = 0 WHERE id = ?').run(now(), id)
+    db.prepare('UPDATE notes SET deleted_at = ?, pinned = 0, section_id = NULL WHERE id = ?').run(now(), id)
     reindex(db, id)
   })
 }

@@ -5,6 +5,7 @@ import type { Db } from './db'
 import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
 import * as notes from './services/notes'
 import * as folders from './services/folders'
+import * as sidebar from './services/sidebar'
 import * as customers from './services/customers'
 import * as tickets from './services/tickets'
 import * as photos from './services/photos'
@@ -144,7 +145,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     },
     folders: {
       list: async () => folders.listFolders(db),
-      create: async (name) => folders.createFolder(db, name),
+      create: async (name, place) => folders.createFolder(db, name, place),
       rename: async (id, name) => folders.renameFolder(db, id, name),
       style: async (id, style) => folders.styleFolder(db, id, style),
       remove: async (id) => folders.removeFolder(db, id)
@@ -333,6 +334,14 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         await shell.openPath(hooks.backupDir())
       },
       restore: async (file) => hooks.restoreAndRestart(file)
+    },
+    sidebar: {
+      sections: async () => sidebar.listSections(db),
+      createSection: async (name) => sidebar.createSection(db, name),
+      renameSection: async (id, name) => sidebar.renameSection(db, id, name),
+      removeSection: async (id) => sidebar.removeSection(db, id),
+      reorderSections: async (ids) => sidebar.reorderSections(db, ids),
+      move: async (item, dest, order) => sidebar.moveInSidebar(db, item, dest, order)
     },
     business: {
       get: async () => getBusiness(db),
