@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, FileText, Pin, Plus, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type TicketSummary } from '../../../shared/api'
+import { CalendarDays, FileText, Flag, Pin, Plus, Wrench } from 'lucide-react'
+import { formatTicketNumber, type CalendarEvent, type Holiday, type TicketSummary } from '../../../shared/api'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
 import { StatusPill } from '../components/common'
@@ -29,8 +29,10 @@ export function HomeView() {
   const recent = [...notes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 8)
   const [tickets, setTickets] = useState<TicketSummary[]>([])
   const [upcoming, setUpcoming] = useState<CalendarEvent[]>([])
+  const [holidays, setHolidays] = useState<Holiday[]>([])
   useEffect(() => {
     void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
+    void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
   }, [])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
@@ -50,10 +52,20 @@ export function HomeView() {
         </div>
       </header>
 
-      {upcoming.length > 0 && (
+      {(upcoming.length > 0 || holidays.length > 0) && (
         <section>
           <h2 className="section-title">Coming up</h2>
           <ul className="ticket-history">
+            {holidays.map((h) => (
+              <li key={h.id}>
+                <button type="button" className="history-row" onClick={() => go({ view: 'calendar', date: h.date })}>
+                  <Flag className="row-lead holiday-flag" />
+                  <span className="upcoming-day">{dayLabel(h.date)}</span>
+                  <span className="history-main">{h.title}</span>
+                  <span className="history-date">{h.observance ? 'Observance' : 'Holiday'}</span>
+                </button>
+              </li>
+            ))}
             {upcoming.map((e) => (
               <li key={e.id}>
                 <button type="button" className="history-row" onClick={() => go({ view: 'calendar', date: e.date, eventId: e.id })}>

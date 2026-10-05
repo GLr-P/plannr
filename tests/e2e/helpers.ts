@@ -8,11 +8,12 @@ export const shotsDir = join(root, 'test-results', 'screens')
 mkdirSync(shotsDir, { recursive: true })
 
 /** Launches the built app (out/) with an isolated data folder. */
-export async function launch(dataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
+export async function launch(dataDir: string, extraEnv: Record<string, string> = {}): Promise<{ app: ElectronApplication; page: Page }> {
   const env: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   delete env.ELECTRON_RUN_AS_NODE // set by VS Code; would make Electron act as plain Node
   env.PLANNR_DATA_DIR = dataDir
+  Object.assign(env, extraEnv)
   const app = await electron.launch({ args: [root], env })
   const page = await app.firstWindow()
   await page.waitForSelector('.sidebar')

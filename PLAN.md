@@ -51,7 +51,8 @@ Personal all-in-one organizer and business tool for Nano Tech Services (a small 
 - Month, week and day views. **Drag a customer or ticket from the sidebar onto a day** to create a linked event, for example "Example Customer picking up". You can edit the text.
 - Reminders default to **the day before and the day of**, as Windows notifications. Plannr keeps running in the tray so reminders fire even when the window is closed.
 - Clicking an event opens the linked ticket or note and shows why it's linked.
-- Two-way **Google Calendar** sync (phase 6).
+- Public holidays from Google (done in phase 3, no setup needed).
+- Two-way **Google Calendar** sync of your own events (phase 6; the owner wants this, so plan it then).
 
 ### Money
 - Bills and recurring bills with due-date reminders, income and payments, plus links between ticket payments and tickets.
@@ -88,6 +89,7 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - "On the calendar" on linked pages and "Coming up" on Home
    - Windows notifications (day before at 9 AM, day of at 8 AM), close-to-tray, and a Start-with-Windows option
    - An app icon and a Start menu shortcut
+   - Public holidays from Google’s holiday calendars (public feed, so no sign-in needed): pick a country or turn them off, optionally hide observances; refreshed weekly
 4. **Vault**
 5. **Money**
 6. **Integrations:** Google Calendar, Zoho Mail and QuickBooks. These need you to do a one-time sign-up for free developer credentials with each service; Claude will give step-by-step instructions.

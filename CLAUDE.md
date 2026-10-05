@@ -55,6 +55,7 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - `kind = 'pickup'` events mirror a ticket's `pickup_on` both ways: `updateTicket` calls `syncPickupFromTicket`, and moving, converting or deleting a pickup event updates the ticket. A ticket has at most one pickup event, and it's hidden while the ticket is trashed.
   - Native drops onto the calendar find their date and time with `document.elementsFromPoint` (`[data-date]`, `.fc-timegrid-slot[data-time]`), because FullCalendar's own external-drag API doesn't handle HTML5 drag.
   - `calendar.drop` applies the rules: a ticket becomes or moves its pickup; a customer or note becomes a linked event.
+- **Holidays** (`services/holidays.ts`): Google's public holiday calendars are downloaded as an iCal feed with no API key (`holidayFeedUrl`), parsed by `parseIcs`, and cached in the `holidays` table. They refresh weekly, and on startup when stale. They show as read-only calendar events (ids prefixed `holiday:`). Tests set `PLANNR_HOLIDAY_FIXTURE` to the saved real feed in `tests/fixtures/us-holidays.ics` so they never need the internet.
 - **Background** (`main/background.ts`):
   - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
   - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.

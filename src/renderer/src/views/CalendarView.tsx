@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { ChevronLeft, ChevronRight, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type TicketSummary } from '../../../shared/api'
+import { ChevronLeft, ChevronRight, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
+import { formatTicketNumber, type CalendarEvent, type Holiday, type TicketSummary } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { DRAG_MIME, openEntity, readDrag } from '../actions'
@@ -24,6 +24,9 @@ const pad = (n: number): string => String(n).padStart(2, '0')
 const isoDate = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const hhmm = (d: Date): string => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
+/** The date being viewed, so leaving the calendar and coming back keeps your place. */
+let lastViewed: string | undefined
+
 type Popover =
   | { kind: 'edit'; event: CalendarEvent; anchor: PopoverAnchor }
   | { kind: 'new'; date: string; startTime: string | null; anchor: PopoverAnchor }
@@ -38,13 +41,16 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [title, setTitle] = useState('')
   const [range, setRange] = useState<{ from: string; to: string } | null>(null)
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [holidays, setHolidays] = useState<Holiday[]>([])
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
 
   const reload = useCallback(async () => {
     if (!range) return
-    setEvents(await api.calendar.range(range.from, range.to))
+    const [evs, hols] = await Promise.all([api.calendar.range(range.from, range.to), api.holidays.range(range.from, range.to)])
+    setEvents(evs)
+    setHolidays(hols)
     setVersion((v) => v + 1)
   }, [range])
   useEffect(() => {
@@ -61,8 +67,20 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   }, [date, eventId])
 
   const fcEvents: FcEventInput[] = useMemo(
-    () =>
-      events.map((e) => ({
+    () => [
+      // Holidays (from Google's public holiday calendar): read-only, listed first in each day
+      ...holidays.map((h) => ({
+        id: h.id,
+        title: h.title,
+        start: h.date,
+        allDay: true,
+        editable: false,
+        order: 0,
+        classNames: ['ev-holiday', h.observance ? 'ev-observance' : ''],
+        extendedProps: { holiday: h }
+      })),
+      ...events.map((e) => ({
+        order: 1,
         id: e.id,
         title: e.title || '(untitled)',
         start: e.startTime ? `${e.date}T${e.startTime}` : e.date,
@@ -70,8 +88,9 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         allDay: !e.startTime,
         classNames: [`ev-${e.kind}`, e.linkDone ? 'ev-done' : ''],
         extendedProps: { ev: e }
-      })),
-    [events]
+      }))
+    ],
+    [events, holidays]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -105,6 +124,14 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   }
 
   const renderEvent = (arg: EventContentArg) => {
+    const holiday = arg.event.extendedProps.holiday as Holiday | undefined
+    if (holiday)
+      return (
+        <div className="ev-chip" title={`${holiday.title}${holiday.observance ? ' (observance)' : ' (holiday)'}`}>
+          <Flag className="ev-icon" />
+          <span className="ev-title">{holiday.title}</span>
+        </div>
+      )
     const ev = arg.event.extendedProps.ev as CalendarEvent
     return (
       <div className="ev-chip" title={ev.linkTitle ? `${ev.title}\n${ev.linkTitle}` : ev.title}>
@@ -182,7 +209,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
             ref={calRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={view}
-            initialDate={date}
+            initialDate={date ?? lastViewed}
             headerToolbar={false}
             height="100%"
             editable
@@ -197,19 +224,22 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
             eventContent={renderEvent}
             datesSet={(arg) => {
               setTitle(arg.view.title)
+              lastViewed = isoDate(arg.view.calendar.getDate()) // today, unless you navigated elsewhere
               const last = new Date(arg.end)
               last.setDate(last.getDate() - 1)
               setRange({ from: isoDate(arg.start), to: isoDate(last) })
             }}
+            eventOrder="order,start,title"
             eventClick={(info) => {
               info.jsEvent.preventDefault()
+              if (info.event.extendedProps.holiday) return // holidays are read-only
               const r = info.el.getBoundingClientRect()
               setPopover({ kind: 'edit', event: info.event.extendedProps.ev as CalendarEvent, anchor: { x: r.right, y: r.top } })
             }}
             eventDidMount={(info) => {
               // Double-click opens the linked ticket/customer/note directly.
-              const ev = info.event.extendedProps.ev as CalendarEvent
-              if (ev.linkType && ev.linkId && !ev.linkDeleted) info.el.addEventListener('dblclick', () => openEntity(ev.linkType!, ev.linkId!))
+              const ev = info.event.extendedProps.ev as CalendarEvent | undefined
+              if (ev?.linkType && ev.linkId && !ev.linkDeleted) info.el.addEventListener('dblclick', () => openEntity(ev.linkType!, ev.linkId!))
             }}
             dateClick={(info) => {
               const timed = !info.allDay

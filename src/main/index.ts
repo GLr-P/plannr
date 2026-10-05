@@ -3,7 +3,8 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
-import { createApi, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
+import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
+import { holidaysStale, refreshHolidays } from './services/holidays'
 import { getSetting, setSetting } from './services/settings'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
@@ -117,6 +118,14 @@ if (!app.requestSingleInstanceLock()) {
 
     registerIpc(createApi(db, dataDir, getWindow))
     createWindow()
+    // Keep holidays fresh (weekly). Tests only do this when given a saved feed (no internet in tests).
+    if (!isTest || process.env.PLANNR_HOLIDAY_FIXTURE) {
+      const updateHolidays = (): void => {
+        if (holidaysStale(db)) void refreshHolidays(db, fetchText)
+      }
+      updateHolidays()
+      setInterval(updateHolidays, 6 * 60 * 60 * 1000)
+    }
     if (background) {
       createTray(getWindow, quit)
       startReminders(db, getWindow)

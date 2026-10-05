@@ -3,6 +3,7 @@ import { FolderOpen, Monitor, Moon, Sun } from 'lucide-react'
 import type { AppInfo, ThemePref } from '../../../shared/api'
 import { api } from '../api'
 import { useTheme } from '../theme'
+import { HolidaySettings } from '../components/HolidaySettings'
 
 export function SettingsView() {
   const { pref, setPref } = useTheme()
@@ -75,6 +76,8 @@ export function SettingsView() {
           }}
         />
       </section>
+
+      <HolidaySettings />
 
       <section className="setting">
         <div>

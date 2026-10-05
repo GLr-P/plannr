@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, net, shell } from 'electron'
+import { readFileSync } from 'node:fs'
 import type { Db } from './db'
 import { API_SHAPE, type PlannrApi, type Theme } from '../shared/api'
 import * as notes from './services/notes'
@@ -9,6 +10,7 @@ import * as photos from './services/photos'
 import * as templates from './services/templates'
 import { backlinks } from './services/links'
 import * as calendar from './services/calendar'
+import * as holidays from './services/holidays'
 import { getOpenAtLogin, setOpenAtLogin } from './background'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
@@ -73,6 +75,15 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       forLink: async (id) => calendar.eventsForLink(db, id),
       drop: async (item, date, startTime) => calendar.dropItem(db, item, date, startTime ?? null)
     },
+    holidays: {
+      range: async (from, to) => holidays.listHolidays(db, from, to),
+      status: async () => holidays.holidayStatus(db),
+      configure: async (opts) => {
+        holidays.setHolidayPrefs(db, opts)
+        return holidays.holidaysStale(db) ? holidays.refreshHolidays(db, fetchText) : holidays.holidayStatus(db)
+      },
+      refresh: async () => holidays.refreshHolidays(db, fetchText)
+    },
     folders: {
       list: async () => folders.listFolders(db),
       create: async (name) => folders.createFolder(db, name),
@@ -118,4 +129,12 @@ export function registerIpc(api: PlannrApi): void {
       ipcMain.handle(`${ns}:${method}`, (_event, ...args: unknown[]) => impl[method](...args))
     }
   }
+}
+
+/** Downloads text (holiday feeds). PLANNR_HOLIDAY_FIXTURE points tests at a saved feed instead of the internet. */
+export async function fetchText(url: string): Promise<string> {
+  if (process.env.PLANNR_HOLIDAY_FIXTURE) return readFileSync(process.env.PLANNR_HOLIDAY_FIXTURE, 'utf8')
+  const res = await net.fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.text()
 }

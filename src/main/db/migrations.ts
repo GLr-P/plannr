@@ -174,5 +174,17 @@ export const migrations: string[] = [
          t.pickup_on, 'pickup', 'ticket', t.id, t.updated_at, t.updated_at
   FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id
   WHERE t.pickup_on IS NOT NULL AND t.deleted_at IS NULL;
+  `,
+
+  /* 5: public holidays, cached from Google's holiday calendar feeds (read-only, refreshed weekly) */ `
+  CREATE TABLE holidays (
+    region TEXT NOT NULL,
+    uid TEXT NOT NULL,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    observance INTEGER NOT NULL DEFAULT 0, -- 1 = observance (e.g. Daylight Saving), 0 = public holiday
+    PRIMARY KEY (region, uid)
+  );
+  CREATE INDEX holidays_date ON holidays(date);
   `
 ]

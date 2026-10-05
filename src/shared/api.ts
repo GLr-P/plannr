@@ -242,6 +242,43 @@ export interface EventUpdate {
   kind?: EventKind
 }
 
+// ---------- Holidays (Google's public holiday calendars) ----------
+
+export const HOLIDAY_REGIONS = [
+  { id: 'en.usa', label: 'United States' },
+  { id: 'en.canadian', label: 'Canada' },
+  { id: 'en.uk', label: 'United Kingdom' },
+  { id: 'en.australian', label: 'Australia' },
+  { id: 'en.new_zealand', label: 'New Zealand' },
+  { id: 'en.irish', label: 'Ireland' },
+  { id: 'en.mexican', label: 'Mexico' },
+  { id: 'en.brazilian', label: 'Brazil' },
+  { id: 'en.german', label: 'Germany' },
+  { id: 'en.french', label: 'France' },
+  { id: 'en.spain', label: 'Spain' },
+  { id: 'en.italian', label: 'Italy' },
+  { id: 'en.indian', label: 'India' },
+  { id: 'en.philippines', label: 'Philippines' },
+  { id: 'en.japanese', label: 'Japan' }
+] as const
+export const DEFAULT_HOLIDAY_REGION = 'en.usa'
+
+export interface Holiday {
+  id: string
+  date: string
+  title: string
+  observance: boolean
+}
+
+export interface HolidayStatus {
+  /** null = holidays turned off */
+  region: string | null
+  showObservances: boolean
+  count: number
+  fetchedAt: number | null
+  error: string | null
+}
+
 export type ThemePref = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -319,6 +356,14 @@ export interface PlannrApi {
     get(key: string): Promise<unknown>
     set(key: string, value: unknown): Promise<void>
   }
+  holidays: {
+    /** Holidays in [from, to] for the chosen region (observances only if enabled) */
+    range(from: string, to: string): Promise<Holiday[]>
+    status(): Promise<HolidayStatus>
+    /** Change region (null = off) and/or observances; downloads the region's holidays */
+    configure(opts: { region?: string | null; showObservances?: boolean }): Promise<HolidayStatus>
+    refresh(): Promise<HolidayStatus>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -337,6 +382,7 @@ export const API_SHAPE = {
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],
   calendar: ['range', 'get', 'create', 'update', 'remove', 'forLink', 'drop'],
+  holidays: ['range', 'status', 'configure', 'refresh'],
   folders: ['list', 'create', 'rename', 'remove'],
   search: ['query'],
   files: ['save', 'open'],

@@ -421,3 +421,53 @@
 .switch.on .switch-knob {
   transform: translateX(18px);
 }
+
+/* Holidays (read-only, from Google) */
+.fc .ev-holiday,
+.fc .ev-holiday.fc-daygrid-block-event,
+.fc .ev-holiday.fc-daygrid-dot-event {
+  background: rgba(234, 88, 12, 0.13);
+  cursor: default;
+}
+.fc .ev-holiday .ev-chip {
+  color: rgb(194, 65, 12);
+}
+.fc .ev-observance .ev-chip {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.fc .ev-observance {
+  background: var(--bg-subtle) !important;
+}
+:root[data-theme='dark'] .fc .ev-holiday .ev-chip {
+  color: rgb(251, 146, 60);
+}
+:root[data-theme='dark'] .fc .ev-observance .ev-chip {
+  color: var(--text-muted);
+}
+.holiday-flag {
+  color: rgb(234, 88, 12);
+}
+.holiday-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.select {
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  padding: 0 8px;
+  outline: none;
+  cursor: pointer;
+}
+.select:focus {
+  border-color: var(--accent);
+}
+.holiday-observances {
+  margin-top: 8px;
+}
+.holiday-status {
+  margin-top: 6px !important;
+}
