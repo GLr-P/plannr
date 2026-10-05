@@ -155,7 +155,15 @@ export class Updater {
       // The installer starts Plannr again afterwards; don't pass on the test-only "pretend to be older" setting.
       const env = { ...process.env }
       delete env.PLANNR_UPDATE_PRETEND_VERSION
-      spawn(file, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore', env }).unref()
+      const child = spawn(file, ['--updated', '/S', '--force-run'], { detached: true, stdio: 'ignore', env })
+      // Only quit once the installer is really running: Windows (e.g. Smart App Control) can refuse to start it.
+      await new Promise<void>((resolve, reject) => {
+        child.once('spawn', () => resolve())
+        child.once('error', (err) =>
+          reject(new Error(`Windows didn’t let the installer run (${err.message}). Download the new version from the website instead.`))
+        )
+      })
+      child.unref()
       setTimeout(() => this.quit(), 800) // let the installer start, then get out of its way
     } catch (err) {
       this.set({ state: 'error', error: friendly(err) })
