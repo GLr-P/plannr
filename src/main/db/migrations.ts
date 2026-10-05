@@ -292,5 +292,9 @@ export const migrations: string[] = [
     synced_at INTEGER NOT NULL, -- the local updated_at that was sent
     PRIMARY KEY (local_type, local_id)
   );
+  `,
+
+  /* 12: per-transaction "no tax" (amounts otherwise include tax) */ `
+  ALTER TABLE transactions ADD COLUMN tax_exempt INTEGER NOT NULL DEFAULT 0;
   `
 ]

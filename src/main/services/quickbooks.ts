@@ -144,6 +144,7 @@ interface TxRow {
   description: string
   category: string
   method: string
+  tax_exempt: number
   updated_at: number
   deleted_at: number | null
   ticket_number: number | null
@@ -152,8 +153,11 @@ interface TxRow {
   customer_id: string | null
 }
 
-function salesReceipt(t: TxRow, cfg: QboConfig, customerQboId: string | null, paymentMethods: Map<string, string>): Record<string, unknown> {
-  const { net, tax } = splitTax(t.amount_cents, cfg.taxRate)
+/** Tax code + rate for a transaction: the configured one, or Exempt (0%) for "no tax" ones. */
+type TaxFor = (t: TxRow, code: string, rate: number) => Promise<{ code: string; rate: number }>
+
+function salesReceipt(t: TxRow, cfg: QboConfig, tax0: { code: string; rate: number }, customerQboId: string | null, paymentMethods: Map<string, string>): Record<string, unknown> {
+  const { net, tax } = splitTax(t.amount_cents, tax0.rate)
   const repair = t.ticket_number ? [formatTicketNumber(t.ticket_number), t.device, t.issue].filter(Boolean).join(' · ') : ''
   const methodId = paymentMethods.get(t.method.trim().toLowerCase())
   return {
@@ -165,7 +169,7 @@ function salesReceipt(t: TxRow, cfg: QboConfig, customerQboId: string | null, pa
         DetailType: 'SalesItemLineDetail',
         Amount: dollars(net),
         Description: (repair || t.description || 'Sale').slice(0, 4000),
-        SalesItemLineDetail: { ItemRef: { value: cfg.itemId }, TaxCodeRef: { value: cfg.taxCodeId }, TaxInclusiveAmt: dollars(t.amount_cents) }
+        SalesItemLineDetail: { ItemRef: { value: cfg.itemId }, TaxCodeRef: { value: tax0.code }, TaxInclusiveAmt: dollars(t.amount_cents) }
       }
     ],
     TxnTaxDetail: { TotalTax: dollars(tax) },
@@ -174,8 +178,8 @@ function salesReceipt(t: TxRow, cfg: QboConfig, customerQboId: string | null, pa
   }
 }
 
-function purchase(t: TxRow, cfg: QboConfig, expenseAccounts: Map<string, string>): Record<string, unknown> {
-  const { net, tax } = splitTax(t.amount_cents, cfg.purchaseTaxRate)
+function purchase(t: TxRow, cfg: QboConfig, tax0: { code: string; rate: number }, expenseAccounts: Map<string, string>): Record<string, unknown> {
+  const { net, tax } = splitTax(t.amount_cents, tax0.rate)
   const account = expenseAccounts.get(t.category.trim().toLowerCase()) ?? cfg.expenseAccountId
   return {
     TxnDate: t.date,
@@ -187,7 +191,7 @@ function purchase(t: TxRow, cfg: QboConfig, expenseAccounts: Map<string, string>
         DetailType: 'AccountBasedExpenseLineDetail',
         Amount: dollars(net),
         Description: (t.description || t.category || 'Expense').slice(0, 4000),
-        AccountBasedExpenseLineDetail: { AccountRef: { value: account }, TaxCodeRef: { value: cfg.purchaseTaxCodeId }, TaxInclusiveAmt: dollars(t.amount_cents) }
+        AccountBasedExpenseLineDetail: { AccountRef: { value: account }, TaxCodeRef: { value: tax0.code }, TaxInclusiveAmt: dollars(t.amount_cents) }
       }
     ],
     TxnTaxDetail: { TotalTax: dollars(tax) },
@@ -236,10 +240,23 @@ export async function syncQuickBooks(db: Db, api: QboApi): Promise<QboSyncResult
       ).map((a) => [a.Name.trim().toLowerCase(), a.Id])
     )
 
+    // "No tax" transactions use QuickBooks' Exempt code (looked up once, only when needed)
+    let exempt: Promise<string> | null = null
+    const taxFor: TaxFor = async (t, code, rate) => {
+      if (!t.tax_exempt) return { code, rate }
+      exempt ??= api.query<{ Id: string; Name: string; Active?: boolean }>('select * from TaxCode').then((codes) => {
+        const active = codes.filter((c) => c.Active !== false)
+        const found = [/^exempt$/i, /exempt/i, /zero/i, /out of scope/i].map((re) => active.find((c) => re.test(c.Name))).find(Boolean)
+        if (!found) throw new Error('No “Exempt” tax code in QuickBooks')
+        return found.Id
+      })
+      return { code: await exempt, rate: 0 }
+    }
+
     // Transactions on/after the start date (and deletions of ones already sent)
     const txs = db
       .prepare(
-        `SELECT x.id, x.date, x.type, x.amount_cents, x.description, x.category, x.method, x.updated_at, x.deleted_at,
+        `SELECT x.id, x.date, x.type, x.amount_cents, x.description, x.category, x.method, x.tax_exempt, x.updated_at, x.deleted_at,
                 t.number AS ticket_number, t.device, t.issue, t.customer_id
          FROM transactions x LEFT JOIN tickets t ON t.id = x.ticket_id
          WHERE x.date >= ? OR x.id IN (SELECT local_id FROM qbo_links WHERE local_type IN ('income', 'expense'))`
@@ -259,7 +276,10 @@ export async function syncQuickBooks(db: Db, api: QboApi): Promise<QboSyncResult
         }
         if (t.type === 'expense' && !expensesReady(cfg)) continue
         const customerQboId = t.customer_id ? (customerIds.get(t.customer_id) ?? getLink(db, 'customer', t.customer_id)?.qbo_id ?? null) : null
-        const body = t.type === 'income' ? salesReceipt(t, cfg, customerQboId, paymentMethods) : purchase(t, cfg, expenseAccounts)
+        const body =
+          t.type === 'income'
+            ? salesReceipt(t, cfg, await taxFor(t, cfg.taxCodeId, cfg.taxRate), customerQboId, paymentMethods)
+            : purchase(t, cfg, await taxFor(t, cfg.purchaseTaxCodeId, cfg.purchaseTaxRate), expenseAccounts)
         const entity = link
           ? await api.update(ENTITY[t.type], { ...body, Id: link.qbo_id, SyncToken: link.sync_token, sparse: true })
           : await api.create(ENTITY[t.type], body)

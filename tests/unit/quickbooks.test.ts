@@ -159,6 +159,18 @@ describe('transactions → QuickBooks', () => {
     })
   })
 
+  it('a "no tax" payment goes with the Exempt code and no tax split; switching it back re-sends it taxed', async () => {
+    const x = money.addTransaction(db, { type: 'income', amountCents: 15000, date: '2026-10-05', taxExempt: true })
+    await syncQuickBooks(db, qbo)
+    const [sr] = qbo.store.SalesReceipt
+    expect(sr.TxnTaxDetail).toEqual({ TotalTax: 0 })
+    expect((sr.Line as Record<string, unknown>[])[0]).toMatchObject({ Amount: 150, SalesItemLineDetail: { TaxCodeRef: { value: 't-ex' }, TaxInclusiveAmt: 150 } })
+    await tick()
+    money.updateTransaction(db, x.id, { taxExempt: false })
+    await syncQuickBooks(db, qbo)
+    expect(qbo.store.SalesReceipt[0].TxnTaxDetail).toEqual({ TotalTax: 17.26 })
+  })
+
   it('expenses become purchases from the chosen account, matched to a same-name expense account', async () => {
     money.addTransaction(db, { type: 'expense', amountCents: 5650, category: 'Parts', description: 'Screen', method: 'Card', date: '2026-10-05' })
     money.addTransaction(db, { type: 'expense', amountCents: 1000, category: 'Coffee', date: '2026-10-05' })

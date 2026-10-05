@@ -422,6 +422,8 @@ export interface Transaction {
   /** e.g. "NT-0007 · Jane Doe" when linked to a ticket */
   ticketLabel: string
   recurringId: string | null
+  /** No sales tax on this one (sent to QuickBooks with the Exempt tax code) */
+  taxExempt: boolean
   updatedAt: number
 }
 
@@ -434,6 +436,7 @@ export interface TransactionInput {
   method?: string
   ticketId?: string | null
   recurringId?: string | null
+  taxExempt?: boolean
 }
 
 export interface TransactionFilter {

@@ -242,6 +242,7 @@ interface TxRow {
   method: string
   ticket_id: string | null
   recurring_id: string | null
+  tax_exempt: number
   updated_at: number
   ticket_number: number | null
   customer_name: string | null
@@ -263,6 +264,7 @@ const toTx = (r: TxRow): Transaction => ({
   ticketId: r.ticket_id,
   ticketLabel: r.ticket_number ? [formatTicketNumber(r.ticket_number), r.customer_name].filter(Boolean).join(' · ') : '',
   recurringId: r.recurring_id,
+  taxExempt: r.tax_exempt === 1,
   updatedAt: r.updated_at
 })
 
@@ -304,8 +306,8 @@ export function addTransaction(db: Db, input: TransactionInput, today = localDat
   const id = newId()
   const t = now()
   db.prepare(
-    `INSERT INTO transactions (id, date, type, amount_cents, description, category, method, ticket_id, recurring_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO transactions (id, date, type, amount_cents, description, category, method, ticket_id, recurring_id, tax_exempt, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     isDate(input.date) ? input.date : today,
@@ -316,6 +318,7 @@ export function addTransaction(db: Db, input: TransactionInput, today = localDat
     (input.method ?? '').slice(0, 50),
     input.ticketId ?? null,
     input.recurringId ?? null,
+    input.taxExempt ? 1 : 0,
     t,
     t
   )
@@ -335,6 +338,7 @@ export function updateTransaction(db: Db, id: string, patch: Partial<Transaction
   if (patch.description !== undefined) set('description', patch.description.slice(0, 300))
   if (patch.category !== undefined) set('category', patch.category.slice(0, 100))
   if (patch.method !== undefined) set('method', patch.method.slice(0, 50))
+  if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
   set('updated_at', now())
   params.push(id)
   db.prepare(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`).run(...params)

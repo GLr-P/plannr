@@ -574,7 +574,10 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
                     )}
                   </td>
                   <td>{t.category}</td>
-                  <td>{t.method}</td>
+                  <td>
+                    {t.method}
+                    {t.taxExempt && <span className="muted"> · no tax</span>}
+                  </td>
                   <td className={`num ${t.type}`}>{t.type === 'income' ? '+' : '−'}{money0(t.amountCents)}</td>
                   <td className="num">
                     <span className="row-actions">
@@ -597,6 +600,8 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
   )
 }
 
+type TaxMode = 'included' | 'added' | 'exempt'
+
 export function TransactionForm({
   type,
   defaultDate,
@@ -618,14 +623,23 @@ export function TransactionForm({
   const [category, setCategory] = useState(ticketId ? 'Repairs' : '')
   const [method, setMethod] = useState(type === 'income' ? 'Cash' : 'Card')
   const [categories, setCategories] = useState<string[]>([])
+  const taxPref = useUi((s) => s.prefs.taxMode) as TaxMode | undefined
+  const setPref = useUi((s) => s.setPref)
+  const [taxMode, setTaxMode] = useState<TaxMode>(taxPref ?? 'included')
+  const [taxRate, setTaxRate] = useState(0)
   useEffect(() => {
     void api.money.categories().then(setCategories)
-  }, [])
-  const cents = parseMoney(amount)
+    void api.quickbooks.status().then((s) => setTaxRate((type === 'income' ? s.config?.taxRate : s.config?.purchaseTaxRate) ?? 0))
+  }, [type])
+  const entered = parseMoney(amount)
+  const mode: TaxMode = taxMode === 'added' && !taxRate ? 'included' : taxMode
+  // "+ tax": the amount typed is before tax; what's recorded is what was actually paid.
+  const cents = entered && mode === 'added' ? Math.round(entered * (1 + taxRate / 100)) : entered
 
   const save = async (): Promise<void> => {
     if (!cents) return
-    await api.money.addTransaction({ type, date, description, amountCents: cents, category, method, ticketId: ticketId ?? null })
+    await api.money.addTransaction({ type, date, description, amountCents: cents, category, method, ticketId: ticketId ?? null, taxExempt: mode === 'exempt' })
+    setPref('taxMode', taxMode)
     onDone(true)
   }
 
@@ -652,6 +666,12 @@ export function TransactionForm({
           </datalist>
         </>
       )}
+      <select value={mode} onChange={(e) => setTaxMode(e.target.value as TaxMode)} aria-label="Tax">
+        <option value="included">Tax included</option>
+        {taxRate > 0 && <option value="added">+ {taxRate}% tax</option>}
+        <option value="exempt">No tax</option>
+      </select>
+      {mode === 'added' && cents ? <span className="small muted">= {money0(cents)} with tax</span> : null}
       <select value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Payment method">
         {PAYMENT_METHODS.map((m) => (
           <option key={m}>{m}</option>
@@ -710,7 +730,10 @@ export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ti
           {payments.map((p) => (
             <li key={p.id}>
               <span>{formatDay(p.date)}</span>
-              <span className="muted">{p.method}</span>
+              <span className="muted">
+                {p.method}
+                {p.taxExempt && ' · no tax'}
+              </span>
               <span className="income">{money0(p.amountCents)}</span>
               <button
                 type="button"
