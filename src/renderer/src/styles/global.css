@@ -1095,3 +1095,18 @@ kbd {
 .integration-fields .btn {
   align-self: flex-start;
 }
+
+.qbo-setup .mfield select,
+.qbo-setup .mfield input {
+  font-size: 13.5px;
+}
+.qbo-problems {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+}
+.qbo-problems ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}

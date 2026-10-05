@@ -281,5 +281,16 @@ export const migrations: string[] = [
     PRIMARY KEY (calendar_id, event_id)
   );
   CREATE INDEX google_events_date ON google_events(date);
+  `,
+
+  /* 11: QuickBooks Online: which QuickBooks record each Plannr customer/transaction became */ `
+  CREATE TABLE qbo_links (
+    local_type TEXT NOT NULL,   -- customer | income | expense
+    local_id TEXT NOT NULL,
+    qbo_id TEXT NOT NULL,
+    sync_token TEXT NOT NULL,   -- QuickBooks version (needed to update/delete)
+    synced_at INTEGER NOT NULL, -- the local updated_at that was sent
+    PRIMARY KEY (local_type, local_id)
+  );
   `
 ]

@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
-import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type Theme } from '../shared/api'
+import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
 import * as notes from './services/notes'
 import * as folders from './services/folders'
 import * as customers from './services/customers'
@@ -18,6 +18,9 @@ import * as backups from './services/backup'
 import * as google from './services/google'
 import * as googleClient from './google-client'
 import * as zoho from './zoho-client'
+import * as qbo from './quickbooks-client'
+import * as qboSync from './services/quickbooks'
+import type { QuickBooksSync } from './quickbooks-sync'
 import type { GoogleSync } from './google-sync'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
@@ -31,6 +34,7 @@ export const themeColors: Record<Theme, { bg: string; titlebar: string; symbol: 
 
 export interface ApiHooks {
   googleSync: GoogleSync
+  qboSync: QuickBooksSync
   backupDir: () => string
   /** Closes the database, puts the snapshot back and restarts Plannr */
   restoreAndRestart: (file: string) => Promise<void>
@@ -48,6 +52,20 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       calendars,
       selected: google.selectedCalendarIds(db) ?? calendars.filter((c) => c.primary).map((c) => c.id)
     }
+  }
+  const qboStatus = (): QboStatus => ({
+    configured: qbo.qboConfigured(db),
+    connected: qbo.qboConnected(db),
+    companyName: qbo.companyName(db),
+    config: qboSync.getConfig(db),
+    lastSyncAt: (getSetting(db, 'qbo.lastSyncAt') as number | null) ?? null,
+    error: (getSetting(db, 'qbo.error') as string | null) ?? null,
+    problems: (getSetting(db, 'qbo.problems') as string[] | null) ?? []
+  })
+  /** Money or customer data changed: let QuickBooks know soon. */
+  const moneyChanged = <T>(value: T): T => {
+    hooks.qboSync.schedule()
+    return value
   }
   /** Calendar data changed locally: let Google know soon. */
   const changed = <T>(value: T): T => {
@@ -74,9 +92,9 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     customers: {
       list: async (opts) => customers.listCustomers(db, opts),
       get: async (id) => customers.getCustomer(db, id),
-      create: async (input) => customers.createCustomer(db, input),
-      update: async (id, patch) => customers.updateCustomer(db, id, patch),
-      trash: async (id) => customers.trashCustomer(db, id)
+      create: async (input) => moneyChanged(customers.createCustomer(db, input)),
+      update: async (id, patch) => moneyChanged(customers.updateCustomer(db, id, patch)),
+      trash: async (id) => moneyChanged(customers.trashCustomer(db, id))
     },
     tickets: {
       list: async (filter) => tickets.listTickets(db, filter),
@@ -195,12 +213,12 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       createRecurring: async (kind) => money.createRecurring(db, kind),
       updateRecurring: async (id, patch) => money.updateRecurring(db, id, patch),
       removeRecurring: async (id) => money.removeRecurring(db, id),
-      markPaid: async (id, opts) => money.markPaid(db, id, opts),
+      markPaid: async (id, opts) => moneyChanged(money.markPaid(db, id, opts)),
       skip: async (id) => money.skip(db, id),
       transactions: async (filter) => money.listTransactions(db, filter),
-      addTransaction: async (input) => money.addTransaction(db, input),
-      updateTransaction: async (id, patch) => money.updateTransaction(db, id, patch),
-      removeTransaction: async (id) => money.removeTransaction(db, id),
+      addTransaction: async (input) => moneyChanged(money.addTransaction(db, input)),
+      updateTransaction: async (id, patch) => moneyChanged(money.updateTransaction(db, id, patch)),
+      removeTransaction: async (id) => moneyChanged(money.removeTransaction(db, id)),
       summary: async (month) => (money.processAutopay(db), money.summary(db, month)),
       occurrences: async (from, to) => money.occurrences(db, from, to),
       categories: async () => money.categories(db),
@@ -256,6 +274,38 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       },
       search: async (email) => zoho.search(db, email),
       message: async (folderId, messageId) => zoho.message(db, folderId, messageId)
+    },
+    quickbooks: {
+      status: async () => qboStatus(),
+      configureKey: async (input) => {
+        qbo.configureKey(db, input)
+        return qboStatus()
+      },
+      connect: async () => {
+        await qbo.connect(db, getWindow())
+        return qboStatus()
+      },
+      disconnect: async () => {
+        await qbo.disconnect(db)
+        qboSync.clearQboData(db)
+        return qboStatus()
+      },
+      options: async () => qboSync.loadOptions(qbo.qboApi(db), qbo.companyName(db) ?? ''),
+      createItem: async (incomeAccountId) => {
+        const api = qbo.qboApi(db)
+        const [existing] = await api.query("select * from Item where Name = 'Repair services'")
+        const item = existing ?? (await api.create('Item', { Name: 'Repair services', Type: 'Service', IncomeAccountRef: { value: incomeAccountId } }))
+        return { id: item.Id, name: 'Repair services' }
+      },
+      setConfig: async (config) => {
+        setSetting(db, 'qbo.config', config)
+        hooks.qboSync.schedule(1_000)
+        return qboStatus()
+      },
+      syncNow: async () => {
+        await hooks.qboSync.run().catch(() => undefined) // problems show in status
+        return qboStatus()
+      }
     },
     backup: {
       status: async () => backupStatus(),

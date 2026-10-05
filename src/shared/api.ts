@@ -563,6 +563,55 @@ export interface ZohoMessageContent {
   link: string
 }
 
+// ---------- QuickBooks Online ----------
+
+/** Where things go in QuickBooks (picked in Settings after connecting). Amounts in Plannr include tax. */
+export interface QboConfig {
+  /** Service item used on sales receipts (e.g. "Repair services") */
+  itemId: string
+  /** Sales tax code + its total rate in % (e.g. HST ON = 13) */
+  taxCodeId: string
+  taxRate: number
+  /** Bank or credit card account expenses are paid from */
+  paymentAccountId: string
+  paymentAccountType: string
+  /** Expense account when no QuickBooks account matches the Plannr category */
+  expenseAccountId: string
+  purchaseTaxCodeId: string
+  purchaseTaxRate: number
+  /** Only transactions on/after this date are sent (YYYY-MM-DD) */
+  startDate: string
+}
+
+export interface QboOption {
+  id: string
+  name: string
+  /** Account type, or tax rate % for tax codes */
+  detail?: string
+  rate?: number
+}
+
+export interface QboOptions {
+  companyName: string
+  items: QboOption[]
+  incomeAccounts: QboOption[]
+  taxCodes: QboOption[]
+  paymentAccounts: QboOption[]
+  expenseAccounts: QboOption[]
+}
+
+export interface QboStatus {
+  configured: boolean
+  connected: boolean
+  companyName: string | null
+  /** Where-things-go choices made (sync runs only when complete) */
+  config: QboConfig | null
+  lastSyncAt: number | null
+  error: string | null
+  /** Records that failed last sync (others still synced) */
+  problems: string[]
+}
+
 // ---------- Backups ----------
 
 export interface BackupInfo {
@@ -736,6 +785,19 @@ export interface PlannrApi {
     search(email: string): Promise<ZohoMessage[]>
     message(folderId: string, messageId: string): Promise<ZohoMessageContent>
   }
+  quickbooks: {
+    status(): Promise<QboStatus>
+    configureKey(input: { clientId: string; clientSecret: string }): Promise<QboStatus>
+    /** Opens QuickBooks sign-in in a Plannr window */
+    connect(): Promise<QboStatus>
+    disconnect(): Promise<QboStatus>
+    /** Lists from QuickBooks for the where-things-go choices */
+    options(): Promise<QboOptions>
+    /** Creates a "Repair services" service item on the chosen income account; returns its id */
+    createItem(incomeAccountId: string): Promise<QboOption>
+    setConfig(config: QboConfig): Promise<QboStatus>
+    syncNow(): Promise<QboStatus>
+  }
   backup: {
     status(): Promise<BackupStatus>
     runNow(): Promise<BackupStatus>
@@ -808,6 +870,7 @@ export const API_SHAPE = {
   ],
   google: ['status', 'importClient', 'connect', 'disconnect', 'syncNow', 'setCalendars', 'events'],
   zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message'],
+  quickbooks: ['status', 'configureKey', 'connect', 'disconnect', 'options', 'createItem', 'setConfig', 'syncNow'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   app: ['info', 'openDataFolder', 'setTheme', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

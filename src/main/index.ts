@@ -1,6 +1,7 @@
 import { app, BrowserWindow, nativeTheme, net, Notification, powerMonitor, protocol, shell } from 'electron'
 import { VaultSession } from './vault-session'
 import { GoogleSync } from './google-sync'
+import { QuickBooksSync } from './quickbooks-sync'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -155,7 +156,10 @@ if (!app.requestSingleInstanceLock()) {
     // Google Calendar sync (only does anything once connected). The calendar refreshes when a sync brings changes.
     const googleSync = new GoogleSync(db, () => mainWindow?.webContents.send('calendar-changed'))
     if (!isTest) googleSync.start()
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync }))
+    // QuickBooks: customers, ticket payments and expenses (only once connected and set up).
+    const qboSync = new QuickBooksSync(db)
+    if (!isTest) qboSync.start()
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync }))
     // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
     if (!isTest) {
       const autoBackup = (): void => {
