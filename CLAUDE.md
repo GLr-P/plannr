@@ -37,6 +37,13 @@ PERF=1 npx playwright test --config tests/perf/playwright.config.ts  # startup t
 
 E2E tests run serially in one app session with an isolated temp data dir (`PLANNR_DATA_DIR`), and save screenshots to `test-results/screens/`. **Open the screenshots and look at them**; several real bugs were caught only that way. The Desktop shortcut `Plannr.lnk` runs `node_modules/electron/dist/electron.exe` on this folder (the built `out/`), so rebuild after changes for the shortcut to pick them up.
 
+## Releasing (public repo GLr-P/plannr)
+
+- Commit emails use `241555371+GLr-P@users.noreply.github.com` (set in this repo's git config); never commit the owner's personal email or real customer data. Website screenshots come from the demo-data script (tests/marketing).
+- To release: bump `version` in package.json, run `npm run check`, run `npm run dist` (with `CSC_IDENTITY_AUTO_DISCOVERY=false` and `ELECTRON_RUN_AS_NODE` unset), push, then `"C:Program FilesGitHub CLIgh.exe" release create vX.Y.Z release/Plannr-Setup-X.Y.Z.exe --title ... --notes-file ...`.
+- Don't mark releases as pre-release: the Download buttons link to `/releases/latest`, which skips pre-releases.
+- The website is docs/index.html (GitHub Pages from main /docs). Ask the owner before any outward-facing step.
+
 ## Architecture
 
 Electron with three processes, plus code shared by them:
