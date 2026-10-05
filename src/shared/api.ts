@@ -199,9 +199,14 @@ export interface TicketPhoto {
   url: string
 }
 
+export type TemplateKind = 'ticket' | 'note'
+
 export interface TemplateSummary {
   id: string
   name: string
+  kind: TemplateKind
+  /** Icon for notes made from it (picker name or emoji) */
+  icon: string
   updatedAt: number
 }
 
@@ -697,7 +702,8 @@ export interface PlannrApi {
   notes: {
     list(opts?: NoteListOptions): Promise<NoteSummary[]>
     get(id: string): Promise<Note | null>
-    create(input?: { title?: string; folderId?: string | null }): Promise<Note>
+    /** `templateId`: start as a copy of a note template */
+    create(input?: { title?: string; folderId?: string | null; templateId?: string | null }): Promise<Note>
     update(id: string, patch: NoteUpdate): Promise<NoteSummary>
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
@@ -728,10 +734,11 @@ export interface PlannrApi {
     setKind(id: string, kind: PhotoKind): Promise<void>
   }
   templates: {
-    list(): Promise<TemplateSummary[]>
+    /** Ticket templates unless another kind is asked for */
+    list(kind?: TemplateKind): Promise<TemplateSummary[]>
     get(id: string): Promise<Template | null>
-    create(input?: { name?: string; content?: DocJSON | null }): Promise<Template>
-    update(id: string, patch: { name?: string; content?: DocJSON }): Promise<void>
+    create(input?: { name?: string; content?: DocJSON | null; kind?: TemplateKind; icon?: string }): Promise<Template>
+    update(id: string, patch: { name?: string; content?: DocJSON; icon?: string }): Promise<void>
     remove(id: string): Promise<void>
   }
   links: {

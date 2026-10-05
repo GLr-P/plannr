@@ -9,11 +9,13 @@ import {
   LayoutList,
   Palette,
   Pencil,
+  LayoutTemplate,
   Pin,
   PinOff,
   Plus,
   Trash2
 } from 'lucide-react'
+import { showToast } from './lib/toast'
 import type { Folder, NoteSummary, SidebarSection } from '../../shared/api'
 import { api } from './api'
 import { useData } from './store/data'
@@ -85,6 +87,15 @@ export function noteMenu(note: NoteSummary, opts: { renameKey?: string } = {}): 
           onSelect: () => placeItem({ type: 'note', id: note.id }, { folderId: f.id })
         }))
       ]
+    },
+    {
+      label: 'Save as template',
+      icon: <LayoutTemplate />,
+      onSelect: async () => {
+        const full = await api.notes.get(note.id)
+        const t = await api.templates.create({ kind: 'note', name: note.title || 'Untitled', content: full?.content ?? null, icon: note.icon })
+        showToast(`Saved as the note template “${t.name}” (New note ▾)`, { label: 'Open', run: () => go({ view: 'template', id: t.id }) })
+      }
     },
     'separator',
     { label: 'Move to trash', icon: <Trash2 />, danger: true, onSelect: () => trashNote(note.id) }

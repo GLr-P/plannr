@@ -6,6 +6,9 @@ import type { DocJSON, EntityType } from '../../../shared/api'
 import { openEntity } from '../actions'
 import { buildExtensions, type EditorOptions } from './extensions'
 import { imageFiles, insertImages } from './upload'
+import { TextSelection } from '@tiptap/pm/state'
+import { openMenu } from '../components/ContextMenu'
+import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, Rows3, Table2, Trash2 } from 'lucide-react'
 
 interface Props {
   /** Id of the note/ticket/template being edited (excluded from its own @-mentions) */
@@ -22,6 +25,7 @@ export function NoteEditor({ docId, content, editable, onChange, onReady, option
   // Latest callbacks without re-creating the editor.
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const editorRef = useRef<Editor | null>(null)
 
   const editor = useEditor({
     extensions: buildExtensions(docId, options),
@@ -43,6 +47,30 @@ export function NoteEditor({ docId, content, editable, onChange, onReady, option
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
         void insertImages(view, files, pos, options?.upload)
         return true
+      },
+      handleDOMEvents: {
+        // Right-click inside a table: add/remove rows and columns.
+        contextmenu: (view, event) => {
+          const editor = editorRef.current
+          if (!editor || !editor.isEditable) return false
+          const at = view.posAtCoords({ left: event.clientX, top: event.clientY })
+          if (!at) return false
+          if (!(event.target as HTMLElement).closest('td, th')) return false
+          view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at.pos))))
+          const run = (fn: (c: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) => () => void fn(editor.chain().focus()).run()
+          openMenu(event, [
+            { label: 'Add row above', icon: <ArrowUpToLine />, onSelect: run((c) => c.addRowBefore()) },
+            { label: 'Add row below', icon: <ArrowDownToLine />, onSelect: run((c) => c.addRowAfter()) },
+            { label: 'Add column left', icon: <ArrowLeftToLine />, onSelect: run((c) => c.addColumnBefore()) },
+            { label: 'Add column right', icon: <ArrowRightToLine />, onSelect: run((c) => c.addColumnAfter()) },
+            'separator',
+            { label: 'Header row on/off', icon: <Table2 />, onSelect: run((c) => c.toggleHeaderRow()) },
+            { label: 'Delete row', icon: <Rows3 />, onSelect: run((c) => c.deleteRow()) },
+            { label: 'Delete column', icon: <Columns3 />, onSelect: run((c) => c.deleteColumn()) },
+            { label: 'Delete table', icon: <Trash2 />, danger: true, onSelect: run((c) => c.deleteTable()) }
+          ])
+          return true
+        }
       },
       handleClick: (_view, _pos, event) => {
         const target = event.target as HTMLElement
@@ -70,6 +98,7 @@ export function NoteEditor({ docId, content, editable, onChange, onReady, option
   }, [editor, editable])
 
   useEffect(() => {
+    editorRef.current = editor
     if (editor) onReady?.(editor)
   }, [editor, onReady])
 

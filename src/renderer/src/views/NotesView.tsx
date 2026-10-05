@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Pin, PinOff, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react'
+import { FileText, Pin, PinOff, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import type { NoteSummary } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go, type NotesFilter } from '../store/nav'
-import { DRAG_MIME, newNote, togglePin, trashNote } from '../actions'
+import { DRAG_MIME, togglePin, trashNote } from '../actions'
 import { noteTitle, relativeTime } from '../lib/format'
 import { ConfirmButton } from '../components/common'
 import { openMenu } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { noteMenu } from '../menus'
+import { NewNoteButton } from '../components/NewNoteButton'
 
 export function NotesView({ filter }: { filter: NotesFilter }) {
   const allNotes = useData((s) => s.notes)
@@ -48,13 +49,7 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
         <div className="list-header-actions">
           {folder && <DeleteFolderButton id={folder.id} />}
           {!isTrash && (
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => void newNote(filter.kind === 'folder' ? filter.id : null)}
-            >
-              <Plus /> New note
-            </button>
+            <NewNoteButton primary folderId={filter.kind === 'folder' ? filter.id : null} />
           )}
         </div>
       </div>

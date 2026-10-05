@@ -116,15 +116,19 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
 
 ## Next (requested 2026-10-05, in this order)
 8. **Cleaner sidebar.** **Done (2026-10-05).** Notes is one menu item (hover for + note / + folder). Pinned and Folders only appear when used. Recent notes are off by default, with a setting to show them. Trash sits at the bottom with Templates and Settings. Folders show their icon, which turns into the expand arrow on hover.
-9. **Optimize and polish everything,** and add features that are missing. **In progress (2026-10-05).** Done so far:
+9. **Optimize and polish everything,** and add features that are missing. **Done (2026-10-05).**
    - Right-click menus on notes and folders: rename, icon (picker or emoji) and colour, pin, move to a folder, delete. Clicking the icon by a note's title changes it too.
    - Organise the sidebar: drag the main menu into any order; Vault sits apart at the bottom. Sections: Pinned, Folders and your own (add, rename, drag to reorder, remove). Drag notes and folders to reorder them, into folders (folders can nest), or onto a section. Right-click also offers "Move to section".
    - Ticket form fields line up (one label column, boxes the same width).
    - Undo after deleting notes, tickets, customers, payments, transactions and bills.
    - Business details in Settings (logo, contact, GST/HST name, rate and number, terms). Tickets print an intake slip (passcodes are never printed), a receipt (tax split out) and a device label (Brother, Dymo or 4×6).
    - Fixed: the first click on a collapsed folder did nothing; payments and expenses now each remember their own tax choice.
-   - Noted for customization or sharing: the "NT-" ticket prefix and CAD currency are hard-coded, and Settings is one long page that needs sections.
-10. **More to create:** note types and more templates.
+   - Settings in tabs (General, Business, Connected accounts, Backups & data). Keyboard shortcuts list (Ctrl+/), Ctrl+T new ticket, Ctrl+1–6 follow the menu order, Ctrl+, Settings.
+   - Startup measured at about 0.4 s to a usable window (PERF=1 script in tests/perf), so code-splitting isn't worth it.
+   - Noted for customization or sharing: the "NT-" ticket prefix and CAD currency are hard-coded.
+10. **More to create:** note types and more templates. **Done (2026-10-05).**
+   - Note templates: 7 starters (Meeting notes, Checklist, Repair guide, Supplier, Inventory, Weekly plan, Daily log), each with its own icon. Pick one from **New note ▾**, or right-click a note → Save as template. The Templates page has Ticket and Note tabs.
+   - New blocks: Table (right-click a cell to add or delete rows and columns, or toggle the header row; columns resize) and Callout (info, tip, warning, important, note; click the icon to change it).
 11. **Customization:** as much as sensible (sidebar, sections, colours, layout and so on).
 12. **For other people:** an optional first-run tutorial (pick which parts you want: tickets, money, vault and so on; shows how to connect Zoho, QuickBooks and Google), then a GitHub page with a description and a download.
 **Later:** cloud sync to the desktop PC, a phone app, and ChatGPT/Claude integration (summarize a ticket, draft customer emails, ask questions about your notes).

@@ -116,7 +116,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       setKind: async (id, kind) => photos.setPhotoKind(db, id, kind)
     },
     templates: {
-      list: async () => templates.listTemplates(db),
+      list: async (kind) => templates.listTemplates(db, kind),
       get: async (id) => templates.getTemplate(db, id),
       create: async (input) => templates.createTemplate(db, input),
       update: async (id, patch) => templates.updateTemplate(db, id, patch),

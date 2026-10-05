@@ -97,17 +97,27 @@ export function getNoteSummary(db: Db, id: string): NoteSummary {
   return toSummary(row)
 }
 
-export function createNote(db: Db, input: { title?: string; folderId?: string | null } = {}): Note {
+export function createNote(db: Db, input: { title?: string; folderId?: string | null; templateId?: string | null } = {}): Note {
   const id = newId()
   const t = now()
+  const template = input.templateId
+    ? (db.prepare("SELECT content_json, icon FROM templates WHERE id = ? AND kind = 'note' AND deleted_at IS NULL").get(input.templateId) as
+        | { content_json: string | null; icon: string }
+        | undefined)
+    : undefined
+  const content = template?.content_json ? (JSON.parse(template.content_json) as DocJSON) : null
   tx(db, () => {
-    db.prepare('INSERT INTO notes (id, title, folder_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO notes (id, title, folder_id, icon, content_json, content_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
       id,
       input.title?.trim() ?? '',
       input.folderId ?? null,
+      template?.icon ?? '',
+      content ? JSON.stringify(content) : null,
+      extractText(content),
       t,
       t
     )
+    if (content) setLinks(db, 'note', id, extractMentions(content))
     reindex(db, id)
   })
   return getNote(db, id)!

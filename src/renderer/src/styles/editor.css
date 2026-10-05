@@ -288,3 +288,115 @@
   background: none;
   padding: 0 8px;
 }
+
+/* ---------- Callouts ---------- */
+.prose .callout {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 14px 10px 10px;
+  border-radius: var(--radius);
+  background: var(--callout-bg, var(--bg-subtle));
+  border: 1px solid var(--callout-border, var(--border));
+}
+.prose .callout-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--callout-fg, var(--text-muted));
+}
+.prose .callout-icon:not(:disabled):hover {
+  background: var(--hover);
+}
+.prose .callout-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.prose .callout-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 2px;
+}
+.prose .callout-body > div > :first-child {
+  margin-top: 0;
+}
+.prose .callout-body > div > :last-child {
+  margin-bottom: 0;
+}
+.prose .callout-info {
+  --callout-bg: rgba(37, 99, 235, 0.07);
+  --callout-border: rgba(37, 99, 235, 0.22);
+  --callout-fg: var(--c-blue);
+}
+.prose .callout-tip {
+  --callout-bg: rgba(22, 163, 74, 0.07);
+  --callout-border: rgba(22, 163, 74, 0.22);
+  --callout-fg: var(--c-green);
+}
+.prose .callout-warning {
+  --callout-bg: rgba(202, 138, 4, 0.09);
+  --callout-border: rgba(202, 138, 4, 0.3);
+  --callout-fg: var(--c-yellow);
+}
+.prose .callout-danger {
+  --callout-bg: rgba(220, 38, 38, 0.07);
+  --callout-border: rgba(220, 38, 38, 0.25);
+  --callout-fg: var(--c-red);
+}
+.prose .callout-note {
+  --callout-bg: var(--bg-subtle);
+  --callout-border: var(--border);
+  --callout-fg: var(--text-muted);
+}
+
+/* ---------- Tables ---------- */
+.prose .tableWrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.prose table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+.prose table td,
+.prose table th {
+  position: relative;
+  min-width: 60px;
+  border: 1px solid var(--border-strong);
+  padding: 5px 9px;
+  vertical-align: top;
+  text-align: left;
+}
+.prose table th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.prose table td > p,
+.prose table th > p {
+  margin: 0;
+}
+.prose table .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+.prose table .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: -2px;
+  right: -2px;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.prose.resize-cursor {
+  cursor: col-resize;
+}

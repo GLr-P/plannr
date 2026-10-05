@@ -323,5 +323,10 @@ export const migrations: string[] = [
   UPDATE notes SET section_id = 'pinned' WHERE pinned = 1;
   ALTER TABLE folders ADD COLUMN section_id TEXT NOT NULL DEFAULT 'folders';
   ALTER TABLE folders ADD COLUMN parent_id TEXT;
+  `,
+
+  /* 16: note templates (templates were ticket-only), with an icon for notes made from them */ `
+  ALTER TABLE templates ADD COLUMN kind TEXT NOT NULL DEFAULT 'ticket';
+  ALTER TABLE templates ADD COLUMN icon TEXT NOT NULL DEFAULT '';
   `
 ]

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, DollarSign, FileText, Flag, Pin, Plus, Wrench } from 'lucide-react'
+import { CalendarDays, DollarSign, FileText, Flag, Pin, Wrench } from 'lucide-react'
 import { formatTicketNumber, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
 import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
 import { StatusPill } from '../components/common'
 import { NewTicketButton } from './TicketsView'
+import { NewNoteButton } from '../components/NewNoteButton'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
-import { newNote } from '../actions'
 import { openMenu } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { noteMenu } from '../menus'
@@ -51,9 +51,7 @@ export function HomeView() {
           <p className="muted">{today}</p>
         </div>
         <div className="header-actions">
-          <button type="button" className="btn" onClick={() => void newNote()}>
-            <Plus /> New note
-          </button>
+          <NewNoteButton />
           <NewTicketButton />
         </div>
       </header>

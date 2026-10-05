@@ -13,6 +13,7 @@ import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
 import { ensureStarterTemplate } from './services/templates'
+import { ensureStarterNoteTemplates } from './services/note-templates'
 import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
 import { APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
@@ -120,6 +121,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
     ensureStarterTemplate(db)
+    ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)
 
     // plannr://file/<id> serves stored attachments (images in notes, ticket photos…).

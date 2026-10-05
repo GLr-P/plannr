@@ -8,6 +8,8 @@ import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-detai
 import Highlight from '@tiptap/extension-highlight'
 import Mention from '@tiptap/extension-mention'
 import Suggestion from '@tiptap/suggestion'
+import { TableKit } from '@tiptap/extension-table'
+import { Callout } from './Callout'
 import {
   ChevronRight,
   Code,
@@ -21,7 +23,9 @@ import {
   ListChecks,
   ListOrdered,
   Minus,
+  MessageSquareWarning,
   Quote,
+  Table as TableIcon,
   Type
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -116,6 +120,10 @@ const SLASH_COMMANDS: SlashCommand[] = [
     } },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },
+  { label: 'Table', hint: 'Rows and columns (right-click to add more)', icon: <TableIcon />, keywords: 'table grid rows columns spreadsheet', run: (e, r) =>
+      e.chain().focus().deleteRange(r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  { label: 'Callout', hint: 'Coloured box for tips and warnings', icon: <MessageSquareWarning />, keywords: 'callout note tip warning info box alert', run: (e, r) =>
+      e.chain().focus().deleteRange(r).insertContent({ type: 'callout', attrs: { tone: 'info' }, content: [{ type: 'paragraph' }] }).run() },
   { label: 'Quote', hint: 'Quoted text', icon: <Quote />, keywords: 'blockquote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
   { label: 'Code', hint: 'Code or command block', icon: <Code />, keywords: 'codeblock pre', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
   { label: 'Divider', hint: 'Horizontal line', icon: <Minus />, keywords: 'hr line separator rule', run: (e, r) => e.chain().focus().deleteRange(r).setHorizontalRule().run() }
@@ -216,6 +224,8 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     ToggleKeys,
     Highlight,
     FormField,
+    Callout,
+    TableKit.configure({ table: { resizable: true } }),
     SlashCommands,
     Uploader.configure({ upload: options.upload ?? defaultUploader }),
     ...(options.mentions === false ? [] : [mention(docId)])

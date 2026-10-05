@@ -31,7 +31,7 @@ describe('migrations', () => {
   it('are idempotent', () => {
     migrate(db)
     const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
-    expect(user_version).toBe(15)
+    expect(user_version).toBe(16)
   })
 })
 

@@ -1,36 +1,45 @@
 import type { Db } from '../db'
 import { newId, now } from '../db'
-import type { DocJSON, Template, TemplateSummary } from '../../shared/api'
+import type { DocJSON, Template, TemplateKind, TemplateSummary } from '../../shared/api'
+import { cleanIcon } from './folders'
 import { getSetting, setSetting } from './settings'
 
 interface TemplateRow {
   id: string
   name: string
+  kind: TemplateKind
+  icon: string
   content_json: string | null
   updated_at: number
 }
 
+const toSummary = (r: TemplateRow): TemplateSummary => ({ id: r.id, name: r.name, kind: r.kind, icon: r.icon, updatedAt: r.updated_at })
+
 const DEFAULT_KEY = 'defaultTemplateId'
 
-export function listTemplates(db: Db): TemplateSummary[] {
-  const rows = db.prepare('SELECT id, name, updated_at FROM templates WHERE deleted_at IS NULL ORDER BY name COLLATE NOCASE').all() as unknown as TemplateRow[]
-  return rows.map((r) => ({ id: r.id, name: r.name, updatedAt: r.updated_at }))
+export function listTemplates(db: Db, kind: TemplateKind = 'ticket'): TemplateSummary[] {
+  const rows = db
+    .prepare('SELECT id, name, kind, icon, updated_at FROM templates WHERE deleted_at IS NULL AND kind = ? ORDER BY name COLLATE NOCASE')
+    .all(kind) as unknown as TemplateRow[]
+  return rows.map(toSummary)
 }
 
 export function getTemplate(db: Db, id: string): Template | null {
-  const r = db.prepare('SELECT id, name, content_json, updated_at FROM templates WHERE id = ? AND deleted_at IS NULL').get(id) as
+  const r = db.prepare('SELECT id, name, kind, icon, content_json, updated_at FROM templates WHERE id = ? AND deleted_at IS NULL').get(id) as
     | TemplateRow
     | undefined
   if (!r) return null
-  return { id: r.id, name: r.name, updatedAt: r.updated_at, content: r.content_json ? (JSON.parse(r.content_json) as DocJSON) : null }
+  return { ...toSummary(r), content: r.content_json ? (JSON.parse(r.content_json) as DocJSON) : null }
 }
 
-export function createTemplate(db: Db, input: { name?: string; content?: DocJSON | null } = {}): Template {
+export function createTemplate(db: Db, input: { name?: string; content?: DocJSON | null; kind?: TemplateKind; icon?: string } = {}): Template {
   const id = newId()
   const t = now()
-  db.prepare('INSERT INTO templates (id, name, content_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)').run(
+  db.prepare('INSERT INTO templates (id, name, kind, icon, content_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
     id,
     input.name?.trim() || 'New template',
+    input.kind === 'note' ? 'note' : 'ticket',
+    cleanIcon(input.icon ?? ''),
     input.content ? JSON.stringify(input.content) : null,
     t,
     t
@@ -38,9 +47,13 @@ export function createTemplate(db: Db, input: { name?: string; content?: DocJSON
   return getTemplate(db, id)!
 }
 
-export function updateTemplate(db: Db, id: string, patch: { name?: string; content?: DocJSON }): void {
+export function updateTemplate(db: Db, id: string, patch: { name?: string; content?: DocJSON; icon?: string }): void {
   const sets: string[] = []
   const params: (string | number)[] = []
+  if (patch.icon !== undefined) {
+    sets.push('icon = ?')
+    params.push(cleanIcon(patch.icon))
+  }
   if (patch.name !== undefined) {
     sets.push('name = ?')
     params.push(patch.name.slice(0, 200))

@@ -1,7 +1,7 @@
 import type { DocJSON, EntityType } from '../../shared/api'
 import type { LinkTarget } from './links'
 
-const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary'])
+const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader'])
 const ENTITY_TYPES = new Set<EntityType>(['note', 'customer', 'ticket'])
 
 /** Plain text of a document, one line per block; used for search and previews. */
