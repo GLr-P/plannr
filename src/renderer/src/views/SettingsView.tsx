@@ -10,6 +10,7 @@ import { GoogleSettings } from '../components/GoogleSettings'
 import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
+import { DataPortability } from '../components/DataPortability'
 import { CaptureSetting, HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
@@ -184,6 +185,7 @@ export function SettingsView() {
       {tab === 'data' && (
         <>
           <BackupSettings />
+          <DataPortability />
 
           <section className="setting">
             <div>

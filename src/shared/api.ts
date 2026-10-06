@@ -1185,6 +1185,13 @@ export interface PlannrApi {
     /** Opens the Windows print dialog for a ticket printout */
     ticket(id: string, kind: PrintKind): Promise<void>
   }
+  data: {
+    /** Pick a folder (or give one, in tests); writes notes as Markdown and the rest as CSV. Null if cancelled. */
+    exportAll(folder?: string): Promise<{ folder: string; notes: number; files: number } | null>
+    /** Pick a CSV of contacts (or give a path, in tests). Null if cancelled. */
+    importContacts(file?: string): Promise<{ added: number; skipped: number } | null>
+    openFolder(folder: string): Promise<void>
+  }
   updates: {
     status(): Promise<UpdateStatus>
     check(): Promise<UpdateStatus>
@@ -1276,6 +1283,7 @@ export const API_SHAPE = {
   display: ['get', 'set'],
   business: ['get', 'set'],
   print: ['ticket'],
+  data: ['exportAll', 'importContacts', 'openFolder'],
   updates: ['status', 'check', 'install'],
   app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

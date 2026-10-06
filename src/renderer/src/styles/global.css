@@ -2251,3 +2251,11 @@ kbd {
   color: var(--c-green);
   font-weight: 600;
 }
+
+.export-done {
+  color: var(--c-green);
+  margin-top: 6px;
+}
+.export-done .path {
+  color: var(--text);
+}

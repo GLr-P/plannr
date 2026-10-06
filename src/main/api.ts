@@ -9,6 +9,7 @@ import * as sidebar from './services/sidebar'
 import * as items from './services/items'
 import { moneyReport } from './services/reports'
 import * as tasks from './services/tasks'
+import { exportAll, importContacts } from './services/portability'
 import * as customers from './services/customers'
 import * as tickets from './services/tickets'
 import * as photos from './services/photos'
@@ -395,6 +396,33 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     print: {
       // Tests write the page to a file instead of opening the print dialog.
       ticket: async (id, kind) => printTicket(db, dataDir, id, kind, process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined)
+    },
+    data: {
+      exportAll: async (folder) => {
+        let out = folder
+        if (!out) {
+          const win = getWindow()
+          const options = { title: 'Choose where to save the export', properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[] }
+          const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+          if (r.canceled || !r.filePaths[0]) return null
+          out = r.filePaths[0]
+        }
+        return exportAll(db, dataDir, out)
+      },
+      importContacts: async (file) => {
+        let path = file
+        if (!path) {
+          const win = getWindow()
+          const options = { title: 'Choose a CSV file of contacts', properties: ['openFile'] as 'openFile'[], filters: [{ name: 'CSV', extensions: ['csv', 'txt'] }] }
+          const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+          if (r.canceled || !r.filePaths[0]) return null
+          path = r.filePaths[0]
+        }
+        return moneyChanged(importContacts(db, readFileSync(path, 'utf8')))
+      },
+      openFolder: async (folder) => {
+        await shell.openPath(folder)
+      }
     },
     updates: {
       status: async () => hooks.updater.status,
