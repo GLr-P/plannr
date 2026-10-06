@@ -148,7 +148,9 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    8. Import contacts from CSV; export everything to Markdown and CSV
 14. **Phone and second PC:** sync between devices. Decided: a free Cloudflare sync service the owner runs (Worker + D1), end-to-end encrypted; the phone is a web app added to the iPhone Home Screen with everything the PC has (money, vault, notes, tasks, calendar, tickets, customers). **Built and tested (2026-10-05)**: the sync engine and service, Settings → Sync & devices (QR code to add a phone, join link for a second PC), and the phone web app (same screens with a phone layout, offline, camera for ticket photos). The service is **deployed (2026-10-06)** at https://plannr-sync.nanotechservices.workers.dev (owner's Cloudflare account; `server/wrangler.toml` is local only; redeploy with `npx wrangler@4 deploy` in server/ after `npm run build:web`). Remaining: a signed Plannr build so the PC can update to a version with sync (the owner applied to SignPath Foundation; waiting for approval as of 2026-10-06. Once approved: add the SIGNPATH_ORGANIZATION_ID variable and SIGNPATH_API_TOKEN secret on GitHub, then push a version tag).
 
-**Later:** a built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).
+**Later:**
+- A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).
+- **Sync for other Plannr users** (requested 2026-10-06): a guided setup inside Plannr (Settings → Sync & devices) that deploys the sync service to the user's own free Cloudflare account, so people who download Plannr get sync without running commands. Decided over one shared service run by the owner (uptime, limits and cost would fall on the owner). Today only the owner's service exists, and creating a space on it needs the owner's setup code.
 
 ## Quality rules Claude follows
 - Plan each feature before coding, and keep changes small and complete.
