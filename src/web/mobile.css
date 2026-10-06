@@ -480,3 +480,15 @@ button,
     flex: 1 1 140px;
   }
 }
+
+/* Fill-in fields: the label goes above its box on a narrow screen */
+@media (max-width: 760px) {
+  .prose .ff {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .prose .ff > .ff-label {
+    width: 100%;
+    padding-top: 0;
+  }
+}

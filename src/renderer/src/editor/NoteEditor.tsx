@@ -6,7 +6,7 @@ import type { DocJSON, EntityType } from '../../../shared/api'
 import { openEntity } from '../actions'
 import { buildExtensions, type EditorOptions } from './extensions'
 import { imageFiles, insertFiles, insertImages, otherFiles } from './upload'
-import { TextSelection } from '@tiptap/pm/state'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { openMenu } from '../components/ContextMenu'
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, Rows3, Table2, Trash2 } from 'lucide-react'
 
@@ -158,7 +158,8 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
       editor={editor}
       options={{ placement: 'top', offset: 8, onHide: () => setLinkMode(false) }}
       shouldShow={({ editor: e, state }) =>
-        !state.selection.empty && e.isEditable && !e.isActive('image') && !e.isActive('codeBlock')
+        // Only for selected text: not for a selected fill-in field, file or picture (nothing to format there)
+        !state.selection.empty && !(state.selection instanceof NodeSelection) && e.isEditable && !e.isActive('image') && !e.isActive('codeBlock')
       }
     >
       <div className="bubble">
