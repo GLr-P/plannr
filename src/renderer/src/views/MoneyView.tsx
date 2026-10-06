@@ -14,6 +14,7 @@ import {
   type TransactionType
 } from '../../../shared/api'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { useUi } from '../store/ui'
 import { useAutosave } from '../lib/useAutosave'
@@ -116,10 +117,11 @@ export function MoneyView({ itemId }: { itemId?: string }) {
 
 function Overview({ month, onMonth, onOpenItem }: { month: string; onMonth: (m: string) => void; onOpenItem: (id: string) => void }) {
   const [s, setS] = useState<MoneySummary | null>(null)
+  const remote = useData((s) => s.remote) // changed on another device
   const load = useCallback(async () => setS(await api.money.summary(month)), [month])
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, remote])
   if (!s) return null
   const net = s.incomeCents - s.expenseCents
 
@@ -226,11 +228,12 @@ function Recurring({ openId }: { openId?: string }) {
   const [open, setOpen] = useState<string | null>(openId ?? null)
   const [showCancelled, setShowCancelled] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
+  const remote = useData((s) => s.remote) // changed on another device
   const load = useCallback(async () => setItems(await api.money.recurring()), [])
   useEffect(() => {
     void load()
     void api.money.categories().then(setCategories)
-  }, [load])
+  }, [load, remote])
   useEffect(() => {
     if (openId) setOpen(openId)
   }, [openId])
@@ -504,10 +507,11 @@ function Transactions({ month, onMonth }: { month: string; onMonth: (m: string) 
   const load = useCallback(async () => {
     setList(await api.money.transactions({ ...range, type: type === 'all' ? undefined : type, query }))
   }, [range, type, query])
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     const t = setTimeout(() => void load(), 60)
     return () => clearTimeout(t)
-  }, [load])
+  }, [load, remote])
 
   const income = list.filter((t) => t.type === 'income').reduce((s, t) => s + t.amountCents, 0)
   const expense = list.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amountCents, 0)
@@ -708,10 +712,11 @@ export function TicketPayments({ ticketId, number, priceCents, onChanged }: { ti
   const [payments, setPayments] = useState<Transaction[]>([])
   const [adding, setAdding] = useState(false)
   const qboOn = useQboOn()
+  const remote = useData((s) => s.remote) // changed on another device
   const load = useCallback(async () => setPayments(await api.money.transactions({ ticketId, type: 'income' })), [ticketId])
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, remote])
   const paid = payments.reduce((s, p) => s + p.amountCents, 0)
   const owed = Math.max(0, (priceCents ?? 0) - paid)
 

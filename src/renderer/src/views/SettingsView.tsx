@@ -11,6 +11,7 @@ import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
 import { DataPortability } from '../components/DataPortability'
+import { SyncSettings } from '../components/SyncSettings'
 import { CaptureSetting, HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'business', label: 'Business' },
   { id: 'tickets', label: 'Tickets' },
   { id: 'accounts', label: 'Connected accounts' },
+  { id: 'sync', label: 'Sync & devices' },
   { id: 'data', label: 'Backups & data' }
 ] as const
 type Tab = (typeof TABS)[number]['id']
@@ -181,6 +183,8 @@ export function SettingsView() {
           <QuickBooksSettings />
         </>
       )}
+
+      {tab === 'sync' && <SyncSettings />}
 
       {tab === 'data' && (
         <>

@@ -8,6 +8,9 @@ interface DataState {
   folders: Folder[]
   sections: SidebarSection[]
   loaded: boolean
+  /** Goes up when another device's changes arrive (or a quick capture is saved): lists reload */
+  remote: number
+  bumpRemote: () => void
   counts: { open: number; ready: number; lowStock: number; dueTasks: number }
   refreshCounts: () => Promise<void>
   refresh: () => Promise<void>
@@ -19,6 +22,8 @@ export const useData = create<DataState>((set, get) => ({
   folders: [],
   sections: [],
   loaded: false,
+  remote: 0,
+  bumpRemote: () => set({ remote: get().remote + 1 }),
   counts: { open: 0, ready: 0, lowStock: 0, dueTasks: 0 },
   refreshCounts: async () => {
     const [tickets, lowStock, dueTasks] = await Promise.all([api.tickets.counts(), api.parts.lowCount(), api.tasks.dueCount()])

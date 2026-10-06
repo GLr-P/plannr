@@ -916,6 +916,21 @@ export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice'
 
 // ---------- Updates ----------
 
+export interface SyncStatus {
+  enabled: boolean
+  /** The sync server's address, while on */
+  server: string | null
+  syncing: boolean
+  lastSyncAt: number | null
+  error: string | null
+  /** Changes on this device not sent yet */
+  pending: number
+  /** Files from other devices still downloading */
+  filesWaiting: number
+  /** Where the server keeps files: 'r2' (Cloudflare R2) or 'd1' (in the database), once known */
+  fileStore: 'r2' | 'd1' | null
+}
+
 export interface UpdateStatus {
   state: 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'installing' | 'error'
   /** This copy's version */
@@ -1192,6 +1207,18 @@ export interface PlannrApi {
     importContacts(file?: string): Promise<{ added: number; skipped: number } | null>
     openFolder(folder: string): Promise<void>
   }
+  sync: {
+    status(): Promise<SyncStatus>
+    /** First device: create a sync space on your server (its address and the setup code chosen when it was deployed) */
+    setup(server: string, setupCode: string): Promise<SyncStatus>
+    /** Join with a link from a device that already syncs */
+    join(link: string): Promise<SyncStatus>
+    /** The link (and QR code) that adds another device; null while off */
+    link(): Promise<string | null>
+    syncNow(): Promise<SyncStatus>
+    /** Stop syncing on this device (nothing is deleted) */
+    disconnect(): Promise<SyncStatus>
+  }
   updates: {
     status(): Promise<UpdateStatus>
     check(): Promise<UpdateStatus>
@@ -1284,6 +1311,7 @@ export const API_SHAPE = {
   business: ['get', 'set'],
   print: ['ticket'],
   data: ['exportAll', 'importContacts', 'openFolder'],
+  sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
   updates: ['status', 'check', 'install'],
   app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

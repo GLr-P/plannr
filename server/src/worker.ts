@@ -59,6 +59,14 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+// Creates the tables on first use (once per worker instance; cheap when they exist), so deploying needs no extra step.
+let schemaReady: Promise<unknown> | null = null
+const ensureSchema = (db: D1Database): Promise<unknown> =>
+  (schemaReady ??= db.batch(SCHEMA.split(';').map((s) => s.trim()).filter(Boolean).map((s) => db.prepare(s))).catch((err) => {
+    schemaReady = null
+    throw err
+  }))
+
 const validId = (s: string): boolean => /^[A-Za-z0-9_-]{8,128}$/.test(s)
 
 export default {
@@ -69,6 +77,7 @@ export default {
       return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Plannr sync service', { headers: CORS })
     }
     try {
+      await ensureSchema(env.DB)
       return await api(request, env, url)
     } catch (err) {
       return json({ error: err instanceof Error ? err.message : String(err) }, 500)

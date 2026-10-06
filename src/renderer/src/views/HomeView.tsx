@@ -41,13 +41,14 @@ export function HomeView() {
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [dueTasks, setDueTasks] = useState<Task[]>([])
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void upcomingBills(7).then(setBills)
     void api.tasks.list().then((list) => setDueTasks(list.filter((t) => t.dueDate && t.dueDate <= addDays(todayISO(), 1)).slice(0, 8)))
     void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
     void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
-  }, [])
+  }, [remote])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   const blocks: Record<HomeSection, ReactNode> = {

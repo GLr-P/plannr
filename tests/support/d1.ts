@@ -34,3 +34,21 @@ export function fakeServer(ownerSecret = 'owner-secret'): { env: Env; fetch: (pa
   const env: Env = { DB: fakeD1(), OWNER_SECRET: ownerSecret }
   return { env, fetch: (path, init) => worker.fetch(new Request(`https://sync.test${path}`, init), env) }
 }
+
+/** The sync service on a local port (for end-to-end tests with real app windows). */
+export async function serveHttp(srv: ReturnType<typeof fakeServer>): Promise<{ url: string; close: () => Promise<void> }> {
+  const { createServer } = await import('node:http')
+  const server = createServer(async (req, res) => {
+    const chunks: Buffer[] = []
+    for await (const c of req) chunks.push(c as Buffer)
+    const body = chunks.length && req.method !== 'GET' && req.method !== 'HEAD' ? Buffer.concat(chunks) : undefined
+    const headers: Record<string, string> = {}
+    for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers[k] = v
+    const out = await srv.fetch(req.url ?? '/', { method: req.method, headers, body })
+    res.writeHead(out.status, Object.fromEntries(out.headers.entries()))
+    res.end(Buffer.from(await out.arrayBuffer()))
+  })
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+  const port = (server.address() as { port: number }).port
+  return { url: `http://127.0.0.1:${port}`, close: () => new Promise((r) => server.close(() => r())) }
+}

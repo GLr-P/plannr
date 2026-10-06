@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import type { CustomerSummary } from '../../../shared/api'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { DRAG_MIME, newCustomer } from '../actions'
 import { formatDay } from '../lib/format'
@@ -10,6 +11,7 @@ export function CustomersView() {
   const [query, setQuery] = useState('')
   const [customers, setCustomers] = useState<CustomerSummary[] | null>(null)
 
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     let cancelled = false
     const t = setTimeout(async () => {
@@ -20,7 +22,7 @@ export function CustomersView() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [query])
+  }, [query, remote])
 
   return (
     <div className="page list-page wide">

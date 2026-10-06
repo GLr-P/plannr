@@ -6,3 +6,7 @@ out/
 playwright-report/
 release/
 test-results/
+
+# Sync service: your own Cloudflare config and local state
+server/wrangler.toml
+server/.wrangler/

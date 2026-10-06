@@ -10,6 +10,7 @@ import {
   type TicketSummary
 } from '../../../shared/api'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { DRAG_MIME, newTicket } from '../actions'
 import { formatDay, formatMoney } from '../lib/format'
@@ -37,6 +38,7 @@ export function TicketsView() {
   const { status, query, from, to } = useFilters()
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null)
 
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     let cancelled = false
     const t = setTimeout(async () => {
@@ -53,7 +55,7 @@ export function TicketsView() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [status, query, from, to])
+  }, [status, query, from, to, remote])
 
   const filtered = Boolean(query || from || to)
 

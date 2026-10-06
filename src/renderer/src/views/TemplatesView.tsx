@@ -6,6 +6,7 @@ import { ItemIcon } from '../lib/icons'
 import { IconPicker, openPanel } from '../components/ContextMenu'
 import { newNote } from '../actions'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { useAutosave } from '../lib/useAutosave'
 import { relativeTime } from '../lib/format'
@@ -26,9 +27,10 @@ export function TemplatesView() {
     setTemplates(list)
     setDefaultId(kind === 'ticket' ? (list.some((t) => t.id === saved) ? saved : (list[0]?.id ?? null)) : null)
   }, [kind])
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, remote])
 
   return (
     <div className="page list-page">

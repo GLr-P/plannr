@@ -18,10 +18,11 @@ export function InventoryView() {
     setParts(await api.parts.list({ query, lowOnly }))
     void useData.getState().refreshCounts()
   }, [query, lowOnly])
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     const t = setTimeout(() => void load(), 60)
     return () => clearTimeout(t)
-  }, [load])
+  }, [load, remote])
 
   const value = parts.reduce((s, p) => s + Math.max(0, p.qty) * p.costCents, 0)
   const low = parts.filter((p) => p.reorderAt > 0 && p.qty <= p.reorderAt).length

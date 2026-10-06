@@ -2259,3 +2259,38 @@ kbd {
 .export-done .path {
   color: var(--text);
 }
+
+/* Settings → Sync & devices */
+.dot-error {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger, #dc2626);
+}
+.warn-text {
+  color: var(--c-orange);
+}
+.path.inline {
+  margin-top: 0;
+}
+.sync-add {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.sync-qr {
+  width: 180px;
+  height: 180px;
+  flex: none;
+  border-radius: 8px;
+}
+.sync-link {
+  flex: 1;
+  min-width: 240px;
+}
+.sync-link .path {
+  word-break: break-all;
+  user-select: all;
+}

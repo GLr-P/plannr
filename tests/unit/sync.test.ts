@@ -125,19 +125,20 @@ describe('sync between devices', () => {
   it('files travel encrypted: the server never sees their contents; the other device downloads them', async () => {
     const id = '0123456789abcdef0123456789abcdef'
     const t = Date.now()
-    a.db.prepare("INSERT INTO files (id, name, mime, size, sha256, rel_path, created_at, updated_at) VALUES (?, 'board.png', 'image/png', 4, 'x', 'attachments/01/x.png', ?, ?)").run(id, t, t)
-    a.blobs.data.set(`file:${id}`, new Uint8Array([9, 8, 7, 6]))
+    a.db.prepare("INSERT INTO files (id, name, mime, size, sha256, rel_path, created_at, updated_at) VALUES (?, 'board.png', 'image/png', 40, 'x', 'attachments/01/x.png', ?, ?)").run(id, t, t)
+    const secret = new TextEncoder().encode('Customer passcode is 4417, back cover')
+    a.blobs.data.set(`file:${id}`, secret)
     await a.engine.sync()
     const stored = srv.env.DB.prepare('SELECT data FROM blobs').all<{ data: Uint8Array }>()
     const raw = (await stored).results[0].data
-    expect([...raw]).not.toContain(9) // sealed (well, almost surely: 4 known bytes vs random ciphertext)
-    expect(raw.length).toBeGreaterThan(4 + 12)
+    expect(Buffer.from(raw).toString('latin1')).not.toContain('passcode') // sealed
+    expect(raw.length).toBe(secret.length + 12 + 16) // IV + contents + tag
 
     await b.engine.sync()
     const missing = await b.engine.missingBlobs()
     expect(missing.map((m) => m.id)).toEqual([id])
     await b.engine.downloadBlob('file', id, missing[0].row)
-    expect([...b.blobs.data.get(`file:${id}`)!]).toEqual([9, 8, 7, 6])
+    expect(new TextDecoder().decode(b.blobs.data.get(`file:${id}`)!)).toBe('Customer passcode is 4417, back cover')
   })
 
   it('the server stores only sealed rows, and refuses a wrong code or setup secret', async () => {

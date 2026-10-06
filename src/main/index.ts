@@ -21,6 +21,7 @@ import type { Theme, ThemePref } from '../shared/api'
 import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
+import { DesktopSync } from './sync/desktop'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
 const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
@@ -173,7 +174,19 @@ if (!app.requestSingleInstanceLock()) {
     // Updates from GitHub Releases (tests point PLANNR_UPDATE_URL at a local server and never run the installer).
     const updater = new Updater(getWindow, quit, isTest ? join(dataDir, 'update-ready.json') : undefined)
     if (!isTest) updater.start(db)
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater, theme: effectiveTheme }))
+    // Sync with your other devices (phone, second PC) through your own sync server, once turned on in Settings.
+    const sync = new DesktopSync(db, dataDir, (touched) => {
+      const win = getWindow()
+      win?.webContents.send('data-changed')
+      if (touched.has('events')) {
+        win?.webContents.send('calendar-changed')
+        googleSync.schedule()
+      }
+      if (touched.has('transactions') || touched.has('customers') || touched.has('tickets')) qboSync.schedule()
+    })
+    void sync.start()
+    app.on('browser-window-focus', () => sync.poke())
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater, sync, theme: effectiveTheme }))
     // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
     if (!isTest) {
       const autoBackup = (): void => {

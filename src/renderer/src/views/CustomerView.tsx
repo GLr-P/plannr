@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Mail, MapPin, Phone } from 'lucide-react'
 import { formatTicketNumber, type Customer, type CustomerInput, type TicketSummary } from '../../../shared/api'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { useAutosave } from '../lib/useAutosave'
 import { formatDay, formatMoney } from '../lib/format'
@@ -44,9 +45,10 @@ function CustomerPage({ customer }: { customer: Customer }) {
     setC((cur) => ({ ...cur, updatedAt: saved.updatedAt }))
   })
 
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void api.tickets.list({ customerId: customer.id }).then(setTickets)
-  }, [customer.id])
+  }, [customer.id, remote])
 
   const set = (patch: CustomerInput): void => {
     setC((cur) => ({ ...cur, ...patch }))

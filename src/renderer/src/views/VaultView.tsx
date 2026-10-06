@@ -37,6 +37,7 @@ import {
   type VaultStatus
 } from '../../../shared/api'
 import { api } from '../api'
+import { useData } from '../store/data'
 import { useAutosave } from '../lib/useAutosave'
 import { ConfirmButton, SaveIndicator } from '../components/common'
 import { NoteEditor } from '../editor/NoteEditor'
@@ -310,10 +311,11 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
   const [menu, setMenu] = useState<'new' | 'settings' | null>(null)
   const [toast, setToast] = useState('')
   const reload = useCallback(async () => setItems(await api.vault.list()), [])
+  const remote = useData((s) => s.remote) // changed on another device
 
   useEffect(() => {
     void reload()
-  }, [reload])
+  }, [reload, remote])
 
   // Using the vault keeps it unlocked (checked at most every 20 s).
   useEffect(() => {

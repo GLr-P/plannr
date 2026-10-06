@@ -28,6 +28,7 @@ import * as qboSync from './services/quickbooks'
 import type { QuickBooksSync } from './quickbooks-sync'
 import type { GoogleSync } from './google-sync'
 import type { Updater } from './updater'
+import type { DesktopSync } from './sync/desktop'
 import { DEFAULT_CAPTURE_SHORTCUT, hideCapture, openCapture, registerCaptureShortcut } from './capture'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
@@ -47,6 +48,7 @@ export interface ApiHooks {
   googleSync: GoogleSync
   qboSync: QuickBooksSync
   updater: Updater
+  sync: DesktopSync
   /** Current light/dark theme (for the quick capture box) */
   theme: () => 'light' | 'dark'
   backupDir: () => string
@@ -423,6 +425,18 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       openFolder: async (folder) => {
         await shell.openPath(folder)
       }
+    },
+    sync: {
+      status: async () => hooks.sync.status(),
+      setup: async (server, setupCode) => hooks.sync.setup(server, setupCode),
+      join: async (link) => {
+        const status = await hooks.sync.join(link)
+        getWindow()?.webContents.send('data-changed')
+        return status
+      },
+      link: async () => hooks.sync.link(),
+      syncNow: async () => hooks.sync.syncNow(),
+      disconnect: async () => hooks.sync.disconnect()
     },
     updates: {
       status: async () => hooks.updater.status,

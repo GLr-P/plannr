@@ -47,9 +47,10 @@ export function TasksView() {
     setChecklists(c)
     void useData.getState().refreshCounts()
   }, [showDone, showTickets])
+  const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, remote])
 
   const add = async (): Promise<void> => {
     if (!title.trim()) return

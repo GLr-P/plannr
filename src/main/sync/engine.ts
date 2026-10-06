@@ -150,12 +150,55 @@ export class SyncEngine {
     return this.transport.json('GET', `${this.base()}/hello`)
   }
 
-  /** Marks everything on this device as changed, so it all goes up (first sync of the first device). */
-  markAllDirty(): void {
-    const t = Date.now()
+  /**
+   * Marks everything on this device as changed, so it all goes up. The first device uses now; a device joining with
+   * data of its own uses 1, so where both have the same row (fixed ids like the Pinned section) the space's copy wins.
+   */
+  markAllDirty(t = Date.now()): void {
     for (const tbl of SYNCED_TABLES) this.db.prepare(`INSERT OR IGNORE INTO sync_dirty (tbl, id, changed_at) SELECT ?, id, ? FROM ${tbl}`).run(tbl, t)
     const keys = SYNCED_SETTINGS.map(() => '?').join(', ')
     this.db.prepare(`INSERT OR IGNORE INTO sync_dirty (tbl, id, changed_at) SELECT 'settings', key, ? FROM settings WHERE key IN (${keys})`).run(t, ...SYNCED_SETTINGS)
+  }
+
+  /** True when this device has nothing of its own yet (only what Plannr creates by itself on first start). */
+  isFresh(): boolean {
+    const own = ['notes', 'customers', 'tickets', 'transactions', 'recurring', 'events', 'tasks', 'parts', 'files', 'vault_keys']
+    return own.every((t) => !this.db.prepare(`SELECT 1 FROM ${t} LIMIT 1`).get())
+  }
+
+  /** Removes this device's rows (starter templates, sections…) without telling the server, before joining a space. */
+  wipeLocal(): void {
+    this.db.exec('PRAGMA foreign_keys = OFF')
+    this.db.exec('BEGIN')
+    try {
+      this.setState('applying', '1')
+      for (const t of [...SYNCED_TABLES].reverse()) this.db.prepare(`DELETE FROM ${t}`).run()
+      this.db.exec('DELETE FROM sync_dirty; DELETE FROM sync_uploaded')
+      this.setState('applying', null)
+      this.setState('lastSeq', '0')
+      this.db.exec('COMMIT')
+    } catch (err) {
+      this.db.exec('ROLLBACK')
+      throw err
+    } finally {
+      this.db.exec('PRAGMA foreign_keys = ON')
+    }
+  }
+
+  /** Whether the space holds a live row (reads the server's log without writing anything here). */
+  async remoteHas(tbl: string, id: string): Promise<boolean> {
+    let since = 0
+    for (;;) {
+      const page = await this.transport.json<{ changes: { seq: number; tbl: string; id: string; data: string }[]; more: boolean }>(
+        'GET',
+        `${this.base()}/pull?since=${since}&limit=1000`
+      )
+      for (const c of page.changes) {
+        if (c.tbl === tbl && c.id === id) return JSON.parse(await openText(this.k.enc, c.data, `${c.tbl}:${c.id}`)) !== null
+      }
+      if (!page.more || !page.changes.length) return false
+      since = page.changes[page.changes.length - 1].seq
+    }
   }
 
   pendingCount(): number {

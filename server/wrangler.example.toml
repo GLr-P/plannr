@@ -1,0 +1,21 @@
+# Plannr sync service: copy to wrangler.toml and fill in database_id (see server/README.md).
+name = "plannr-sync"
+main = "src/worker.ts"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "plannr-sync"
+database_id = "PUT-YOUR-DATABASE-ID-HERE"
+
+# Optional: Cloudflare R2 for files over ~60 MB (needs R2 turned on in your Cloudflare account).
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "plannr-sync-files"
+
+# The phone web app, served from the same address. /api/* always goes to the sync service.
+[assets]
+directory = "../out/web"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
