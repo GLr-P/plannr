@@ -4,6 +4,7 @@
  */
 import { API_SHAPE, type PlannrApi } from '../shared/api'
 import type { WebExtras } from './worker'
+import { activeProfileId, profilesState, removeFromList, setActive, updateProfile } from './profiles'
 
 export type WorkerRequest = { id: number; ns: string; method: string; args: unknown[] }
 export type WorkerReply = { id: number; ok: true; value: unknown } | { id: number; ok: false; error: string } | { event: string }
@@ -37,6 +38,7 @@ let nextId = 1
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
 
 export const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'plannr-db' })
+worker.postMessage({ init: activeProfileId() }) // which profile's database to open
 worker.onmessage = (e: MessageEvent<WorkerReply>) => {
   const msg = e.data
   if ('event' in msg) {
@@ -59,7 +61,7 @@ export function call<T>(ns: string, method: string, ...args: unknown[]): Promise
   })
 }
 
-export const web = new Proxy({} as WebExtras & { boot(): Promise<{ persistent: boolean; joined: boolean }> }, {
+export const web = new Proxy({} as WebExtras & { boot(): Promise<{ persistent: boolean; joined: boolean; keyId: string | null }> }, {
   get:
     (_t, method: string) =>
     (...args: unknown[]) =>
@@ -119,6 +121,25 @@ export function installApi(): void {
     return true
   }
   p.print.ticket = async (id, kind) => printHtml(await web.printHtml(id, kind))
+  // Profiles are kept by the page (see profiles.ts); a profile is added by opening its join link from the PC.
+  p.profiles = {
+    list: async () => profilesState(),
+    add: async () => {
+      throw new Error('To add a profile, open its link from your PC: Settings → Sync & devices → Show code and link.')
+    },
+    update: async (id, patch) => updateProfile(id, patch),
+    remove: async (id) => {
+      removeFromList(id)
+      await web.removeProfileData(id)
+    },
+    switch: async (id) => {
+      setActive(id)
+      location.replace('/') // the database worker opens the chosen profile
+    },
+    copyNote: async () => {
+      throw new Error('Copying notes between profiles works in Plannr on your PC.')
+    }
+  }
   ;(window as unknown as { plannr: PlannrApi }).plannr = p
 
   const on = (event: string) => (callback: () => void) => {

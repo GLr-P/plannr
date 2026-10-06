@@ -112,7 +112,7 @@ const cleanError = (err: unknown): string => (err instanceof Error ? err.message
 /** "Copy to profile" / "Move to profile" (with its pictures and files), when there's another profile. */
 function profileEntries(note: NoteSummary): MenuEntry[] {
   const others = otherProfiles()
-  if (others.length === 0) return []
+  if (others.length === 0 || document.documentElement.classList.contains('is-web')) return [] // the phone holds one profile's data at a time
   const send = async (targetId: string, name: string, move: boolean): Promise<void> => {
     try {
       await api.profiles.copyNote(note.id, targetId, move)

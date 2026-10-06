@@ -116,3 +116,18 @@ describe('copying notes between profiles', () => {
     expect(notes.getNote(a.db, note.id)!.deletedAt).not.toBeNull()
   })
 })
+
+describe('join links name their profile', () => {
+  const key = 'A'.repeat(43)
+  it('round-trips the name and colour, and still reads old links', async () => {
+    const { joinLink, parseJoinLink, keyFingerprint } = await import('../../src/shared/sync-crypto')
+    const link = joinLink('https://sync.example.dev/', key, { name: 'Side job & more', color: '#16a34a' })
+    expect(link).toBe(`https://sync.example.dev/#join=${key}&name=Side%20job%20%26%20more&color=16a34a`)
+    expect(parseJoinLink(link)).toEqual({ serverUrl: 'https://sync.example.dev', key, profile: { name: 'Side job & more', color: '#16a34a' } })
+    expect(parseJoinLink(`https://sync.example.dev/#join=${key}`)).toEqual({ serverUrl: 'https://sync.example.dev', key, profile: null })
+    expect(parseJoinLink(`https://sync.example.dev/#join=${key.slice(1)}`)).toBeNull()
+    expect(await keyFingerprint(key)).toBe(await keyFingerprint(key))
+    expect(await keyFingerprint(key)).not.toBe(await keyFingerprint('B'.repeat(43)))
+    expect(await keyFingerprint(key)).not.toContain(key.slice(0, 8))
+  })
+})

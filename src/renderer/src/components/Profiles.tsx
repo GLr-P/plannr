@@ -38,12 +38,12 @@ function openSettings(): void {
 export function ProfileSwitcher() {
   const state = useProfiles((s) => s.state)
   useEffect(() => {
-    if (!isWeb()) void useProfiles.getState().load()
+    void useProfiles.getState().load()
   }, [])
   const active = state?.profiles.find((p) => p.id === state.active)
   const several = (state?.profiles.length ?? 0) > 1
 
-  if (isWeb() || !state)
+  if (!state)
     return (
       <span className="brand">
         <span className="brand-mark">P</span>
@@ -131,6 +131,7 @@ export function AddProfileDialog() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!open) return null
+  if (isWeb()) return <AddOnPhone onClose={() => set(false)} />
 
   const add = async (thenOpen: boolean): Promise<void> => {
     try {
@@ -188,6 +189,33 @@ export function AddProfileDialog() {
   )
 }
 
+/** On the phone a profile comes from the PC: each profile there has its own link. */
+function AddOnPhone({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <div className="dialog add-profile" role="dialog" aria-label="Add a profile" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2>Add a profile</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <ol className="web-steps">
+          <li>On your PC, open the profile you want (click its name at the top left).</li>
+          <li>Go to Settings → Sync & devices → Show code and link (turn on syncing there first if it isn’t on yet).</li>
+          <li>Scan the code with your phone’s Camera, or open the link on this phone.</li>
+        </ol>
+        <p className="muted">It’s added as a separate profile here. Switch between profiles from the top of the menu.</p>
+        <div className="dialog-actions">
+          <button type="button" className="btn primary" onClick={onClose}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** Settings → General → Profiles */
 export function ProfilesSetting() {
   const state = useProfiles((s) => s.state)
@@ -209,8 +237,9 @@ export function ProfilesSetting() {
       <div>
         <h3>Profiles</h3>
         <p className="muted">
-          Each profile is completely separate: notes, customers, tickets, money, vault, backups, sync and connected accounts. Reminders from
-          every profile still pop up. To copy a note across, right-click it → Copy to profile.
+          {isWeb()
+            ? 'Each profile is completely separate, with its own sync. Add one with its link from your PC (Settings → Sync & devices, with that profile open).'
+            : 'Each profile is completely separate: notes, customers, tickets, money, vault, backups, sync and connected accounts. Reminders from every profile still pop up. To copy a note across, right-click it → Copy to profile.'}
         </p>
       </div>
       <ul className="profile-list">
@@ -276,12 +305,12 @@ function ProfileRow({
       )}
       {!first && !open && (
         <ConfirmButton
-          title={`Remove ${profile.name} from this PC? Its notes, customers, money and vault go to the Recycle Bin.`}
+          title={isWeb() ? `Remove ${profile.name} from this phone? It stays on your PC and its other devices.` : `Remove ${profile.name} from this PC? Its notes, customers, money and vault go to the Recycle Bin.`}
           label="Remove"
           onConfirm={async () => {
             await api.profiles.remove(profile.id)
             await useProfiles.getState().load()
-            showToast(`Removed ${profile.name} (its folder is in the Recycle Bin)`)
+            showToast(isWeb() ? `Removed ${profile.name} from this phone` : `Removed ${profile.name} (its folder is in the Recycle Bin)`)
           }}
         />
       )}

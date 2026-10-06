@@ -455,3 +455,28 @@ button,
     margin-bottom: 10px;
   }
 }
+
+@media (max-width: 760px) {
+  .drawer-profile {
+    display: block;
+    padding: 0 4px 10px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer-profile .brand-switch {
+    max-width: 100%;
+    height: 40px;
+    margin: 0;
+    font-size: 16px;
+  }
+  .drawer-profile .brand-chevron {
+    opacity: 1;
+  }
+  .profile-row {
+    flex-wrap: wrap;
+  }
+  .profile-name {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+}

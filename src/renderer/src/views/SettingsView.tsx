@@ -82,7 +82,7 @@ export function SettingsView() {
 
       {tab === 'general' && (
         <>
-          {pc && <ProfilesSetting />}
+          {info && <ProfilesSetting />}
 
           <section className="setting">
             <div>

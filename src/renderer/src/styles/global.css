@@ -2391,3 +2391,6 @@ kbd {
 .dialog.add-profile .dialog-head {
   margin-bottom: 0;
 }
+.drawer-profile {
+  display: none; /* phone only: there the title bar has no room for the profile switcher */
+}

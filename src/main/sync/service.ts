@@ -4,7 +4,7 @@ import type { Db } from '../db'
 import { newId } from '../db'
 import { getSetting, setSetting } from '../services/settings'
 import { SyncEngine, type BlobKind, type BlobStore, type SyncTransport } from './engine'
-import { joinLink, newSyncKey, parseJoinLink, validSyncKey } from '../../shared/sync-crypto'
+import { joinLink, keyFingerprint, newSyncKey, parseJoinLink, validSyncKey, type LinkProfile } from '../../shared/sync-crypto'
 import { afterPull } from './upkeep'
 import type { SyncStatus } from '../../shared/api'
 
@@ -259,10 +259,16 @@ export class SyncService {
     return this.status()
   }
 
-  /** The link that adds another device (shown as a QR code for the phone). */
-  link(): string | null {
+  /** The link that adds another device (shown as a QR code for the phone); it names the profile it belongs to. */
+  link(profile?: LinkProfile | null): string | null {
     const c = this.config()
-    return c ? joinLink(c.server, c.key) : null
+    return c ? joinLink(c.server, c.key, profile) : null
+  }
+
+  /** A short fingerprint of this space's key, so a phone can tell which of its profiles a join link is for. */
+  async keyId(): Promise<string | null> {
+    const c = this.config()
+    return c ? keyFingerprint(c.key) : null
   }
 
   /** Stops syncing on this device. Everything stays here, and on the other devices. */

@@ -33,22 +33,30 @@ const fetchText = async (url: string): Promise<string> => {
   return res.text()
 }
 
-async function openStorage(): Promise<{ db: Db; persistent: boolean }> {
+type Pool = { unlink(name: string): boolean; reserveMinimumCapacity(n: number): Promise<number> }
+let pool: Pool | null = null
+
+/** Each profile's database files (the first profile keeps the original names). */
+const profileFiles = (profile: string): { db: string; files: string } =>
+  profile === 'main' ? { db: '/plannr.db', files: '/files.db' } : { db: `/p-${profile}.db`, files: `/p-${profile}-files.db` }
+
+async function openStorage(profile: string): Promise<{ db: Db; persistent: boolean }> {
   const sqlite3 = await sqlite3InitModule()
-  let pool: Awaited<ReturnType<typeof sqlite3.installOpfsSAHPoolVfs>> | null = null
   const hasStorage = typeof navigator.storage?.getDirectory === 'function'
   // Just after a reload the previous page may still hold the storage for a moment: try again for a few seconds.
   for (let attempt = 0; hasStorage && !pool; attempt++) {
     try {
       pool = await sqlite3.installOpfsSAHPoolVfs({ name: 'plannr', initialCapacity: 12 })
+      await pool.reserveMinimumCapacity(48) // room for several profiles (a database and its journal each, twice)
     } catch (err) {
       if (attempt >= 25) throw new Error(`Plannr couldn’t open its storage. If it’s open in another tab, close that one and reload. (${String(err)})`)
       await new Promise((r) => setTimeout(r, 200))
     }
   }
-  useSqlite(sqlite3, pool)
-  useFileStore(new DatabaseSync(pool ? '/files.db' : ':memory:'))
-  const db = new DatabaseSync(pool ? '/plannr.db' : ':memory:') as unknown as Db
+  useSqlite(sqlite3, pool as Parameters<typeof useSqlite>[1])
+  const names = profileFiles(profile)
+  useFileStore(new DatabaseSync(pool ? names.files : ':memory:'))
+  const db = new DatabaseSync(pool ? names.db : ':memory:') as unknown as Db
   db.exec('PRAGMA foreign_keys = ON; PRAGMA synchronous = NORMAL;')
   migrate(db)
   return { db, persistent: Boolean(pool) }
@@ -204,7 +212,15 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
     csv: async (from: string, to: string) => transactionsCsv(db, from, to),
     fieldValue: async (id: string, field: string) => vault.fieldValue(id, field),
     /** The page became visible again: catch up */
-    poke: async () => sync.poke()
+    poke: async () => sync.poke(),
+    /** Which sync space this profile joined (a fingerprint, not the key) */
+    keyId: async () => sync.keyId(),
+    /** Deletes a removed profile's data from this phone */
+    removeProfileData: async (profile: string) => {
+      if (profile === 'main' || profile === activeProfile) throw new Error('Can’t remove that profile')
+      const names = profileFiles(profile)
+      for (const name of [names.db, names.files]) for (const f of [name, `${name}-journal`, `${name}-wal`]) pool?.unlink(f)
+    }
   }
   return { api, web, sync }
 }
@@ -215,12 +231,18 @@ export interface WebExtras {
   csv(from: string, to: string): Promise<string>
   fieldValue(id: string, field: string): Promise<string>
   poke(): Promise<void>
+  keyId(): Promise<string | null>
+  removeProfileData(profile: string): Promise<void>
 }
 
 // ---------- start-up and the message loop ----------
 
-const ready = (async () => {
-  const { db, persistent } = await openStorage()
+// The page says which profile to open first (see profiles.ts).
+let activeProfile = 'main'
+let begin: (profile: string) => void = () => undefined
+const ready = new Promise<string>((resolve) => (begin = resolve)).then(async (profile) => {
+  activeProfile = profile
+  const { db, persistent } = await openStorage(profile)
   if (getSetting(db, 'onboarded') === null) setSetting(db, 'onboarded', true) // the tour is for the PC
   loadDisplayPrefs(db)
   ensureSearchIndex(db)
@@ -228,14 +250,15 @@ const ready = (async () => {
   await built.sync.start() // loads the saved sync key, so boot knows whether this phone is connected
   if (holidaysStale(db)) void refreshHolidays(db, fetchText).catch(() => undefined)
   return { ...built, persistent }
-})()
+})
 
-self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
+self.onmessage = async (e: MessageEvent<WorkerRequest | { init: string }>) => {
+  if ('init' in e.data) return begin(/^[a-z0-9-]{1,40}$/.test(e.data.init) ? e.data.init : 'main')
   const { id, ns, method, args } = e.data
   try {
     const { api, web, persistent } = await ready
     let value: unknown
-    if (ns === '_web' && method === 'boot') value = { persistent, joined: (await api.sync.status()).enabled }
+    if (ns === '_web' && method === 'boot') value = { persistent, joined: (await api.sync.status()).enabled, keyId: await web.keyId() }
     else if (ns === '_web') value = await (web as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[method](...args)
     else value = await (api as unknown as Record<string, Record<string, (...a: unknown[]) => Promise<unknown>>>)[ns][method](...args)
     const transfer =

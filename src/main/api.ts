@@ -280,7 +280,12 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         getWindow()?.webContents.send('data-changed')
         return status
       },
-      link: async () => hooks.sync.link(),
+      link: async () => {
+        // Named after the open profile, so a phone with several profiles knows which one this is.
+        const { active, profiles } = await hooks.profiles.list()
+        const profile = profiles.find((p) => p.id === active)
+        return hooks.sync.link(profile)
+      },
       syncNow: async () => hooks.sync.syncNow(),
       disconnect: async () => hooks.sync.disconnect()
     },

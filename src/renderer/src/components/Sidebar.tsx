@@ -1,3 +1,4 @@
+import { ProfileSwitcher } from './Profiles'
 import { useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react'
 import {
   CalendarDays,
@@ -477,6 +478,9 @@ export function Sidebar() {
         if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('sidebar-spacer')) openMenu(e, sidebarMenu())
       }}
     >
+      <div className="drawer-profile">
+        <ProfileSwitcher />
+      </div>
       {order.filter((id) => !hidden.includes(id)).map((id) => nav[id])}
 
       {sections.map((s) => {

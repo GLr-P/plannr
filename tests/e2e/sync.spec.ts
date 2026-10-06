@@ -49,7 +49,7 @@ test('turn on, add a second PC with the link, and changes go both ways (files to
   await page.getByRole('button', { name: 'Show code and link' }).click()
   await expect(page.locator('.sync-qr')).toBeVisible()
   const link = (await page.locator('.sync-link .path').textContent())!
-  expect(link).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/#join=[A-Za-z0-9_-]{43}$/)
+  expect(link).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/#join=[A-Za-z0-9_-]{43}&name=Main&color=[0-9a-f]{6}$/)
   await shot(page, 's1-sync-on')
 
   // Second PC (fresh): joins and receives everything, without a second set of starter templates.

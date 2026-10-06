@@ -79,10 +79,33 @@ export async function openText(key: CryptoKey, sealed: string, aad: string): Pro
   return dec.decode(await openBytes(key, fromB64url(sealed), aad))
 }
 
-/** The link that adds a device: the web app's address with the key after # (never sent to the server). */
-export const joinLink = (serverUrl: string, key: string): string => `${serverUrl.replace(/\/+$/, '')}/#join=${key}`
+/** Which profile a join link belongs to (shown on the phone, which can hold several) */
+export interface LinkProfile {
+  name: string
+  color: string
+}
 
-export function parseJoinLink(text: string): { serverUrl: string; key: string } | null {
-  const m = /^(https?:\/\/[^#\s]+?)\/?#join=([A-Za-z0-9_-]{43})\s*$/.exec(text.trim())
-  return m ? { serverUrl: m[1], key: m[2] } : null
+/**
+ * The link that adds a device: the web app's address with the key after # (never sent to the server),
+ * plus the profile's name and colour so a phone can tell its profiles apart.
+ */
+export function joinLink(serverUrl: string, key: string, profile?: LinkProfile | null): string {
+  const base = `${serverUrl.replace(/\/+$/, '')}/#join=${key}`
+  if (!profile?.name) return base
+  return `${base}&name=${encodeURIComponent(profile.name)}${/^#[0-9a-f]{6}$/i.test(profile.color) ? `&color=${profile.color.slice(1)}` : ''}`
+}
+
+export function parseJoinLink(text: string): { serverUrl: string; key: string; profile: LinkProfile | null } | null {
+  const m = /^(https?:\/\/[^#\s]+?)\/?#join=([A-Za-z0-9_-]{43})((?:&[a-z]+=[^&\s]*)*)\s*$/.exec(text.trim())
+  if (!m) return null
+  const params = new URLSearchParams(m[3].slice(1))
+  const name = (params.get('name') ?? '').replace(/\s+/g, ' ').trim().slice(0, 60)
+  const color = /^[0-9a-f]{6}$/i.test(params.get('color') ?? '') ? `#${params.get('color')}` : '#3b82f6'
+  return { serverUrl: m[1], key: m[2], profile: name ? { name, color } : null }
+}
+
+/** A short, one-way fingerprint of a sync key (tells spaces apart without storing the key itself). */
+export async function keyFingerprint(key: string): Promise<string> {
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`plannr-space:${key}`)))
+  return Array.from(hash.slice(0, 12), (b) => b.toString(16).padStart(2, '0')).join('')
 }
