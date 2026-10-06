@@ -158,6 +158,14 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Sync: each profile is its own encrypted space on the same service; only the open profile syncs on the PC. Join links now carry the profile's name and colour (`#join=<key>&name=…&color=…`; old links still parse).
    - Phone (`src/web/profiles.ts`): the list is in localStorage; each profile is its own pair of databases in the OPFS pool (first profile keeps `/plannr.db`/`/files.db`, others `/p-<id>.db`). The page tells the worker which profile to open (`{ init }` message). Opening another profile's join link adds it as a new profile (spaces told apart by `keyFingerprint`, never storing the key); opening a known one just switches to it. The switcher sits at the top of the drawer. Copying notes between profiles is PC-only.
    - **When releasing this:** redeploy the sync service (`npm run build:web`, then `npx wrangler@4 deploy` in server/) at the same time, since the deployed phone app is older and can't read the new join links.
+16. **Customizable fill-in fields (requested 2026-10-06):** **Done (2026-10-06).** Fields were too rigid (one per line, label left, fixed size). Now each field's gear menu sets:
+   - Width: full (one per line, label column lines up), half or third (side by side when placed on the same line), small (sits inside a sentence, e.g. "Deliver on [date] between [time] and [time]").
+   - Label left, above or hidden; placeholder; a hint under the box; height for long text.
+   - Types: short/long text, number, money (currency symbol inside), date, time, phone, email, checkbox, dropdown, pick one (buttons), pick several (stored as a JSON list; shown as "a, b" in search, print and export).
+   - **Fills in from** the ticket: customer name/phone/email/address, ticket title/summary, received/pickup date (edit both ways), ticket number and price (read-only). `editor/formLinks.ts` is a small store the open ticket page fills; typing a linked customer field on a ticket with no customer creates one. Linked fields keep a copy of the value in their attrs for search; printouts skip them (the header already prints the customer and dates).
+   - Fields can be dragged by their grip; after Done the cursor carries on right after the field. Old fields keep their look (defaults: full, label left).
+   - Proven by tests/e2e/forms.spec.ts, which builds a flower shop order form entirely through the app and takes an order with it.
+   - Still repair-flavoured: the ticket page's own header ("Device", "What's wrong with it?") is fixed wording; worth making per template so other kinds of orders read naturally.
 
 **Later:**
 - A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).

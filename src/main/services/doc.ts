@@ -15,7 +15,7 @@ export function extractText(doc: DocJSON | null | undefined): string {
     else if (node.type === 'formField') {
       const label = String(node.attrs?.label ?? '')
       const raw = String(node.attrs?.value ?? '')
-      const value = node.attrs?.kind === 'checkbox' ? (raw === 'true' ? 'Yes' : 'No') : raw
+      const value = fieldText(String(node.attrs?.kind ?? ''), raw)
       line += `${line ? ' ' : ''}${label}: ${value}`
     } else if (node.type === 'hardBreak') line += ' '
     else if (node.type === 'fileAttachment') line += String(node.attrs?.name ?? '')
@@ -55,3 +55,17 @@ export function localDate(d = new Date()): string {
 }
 
 export const isDate = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
+
+/** A fill-in field's value as text: checkboxes are Yes/No, "pick several" lists are joined. */
+export function fieldText(kind: string, raw: string): string {
+  if (kind === 'checkbox') return raw === 'true' ? 'Yes' : 'No'
+  if (kind === 'multi') {
+    try {
+      const list = JSON.parse(raw) as unknown
+      if (Array.isArray(list)) return list.filter((x) => typeof x === 'string').join(', ')
+    } catch {
+      // stored as plain text
+    }
+  }
+  return raw
+}

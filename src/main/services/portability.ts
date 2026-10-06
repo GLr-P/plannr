@@ -4,7 +4,7 @@ import type { Db } from '../db'
 import { formatTicketNumber, type DocJSON } from '../../shared/api'
 import { resolveFilePath } from './files'
 import { createCustomer } from './customers'
-import { digitsOnly, localDate } from './doc'
+import { digitsOnly, fieldText, localDate } from './doc'
 
 /*
  * Your data in plain files, and contacts in from other apps.
@@ -67,7 +67,7 @@ function inline(nodes: DocJSON[] | undefined, files: (id: string) => string | nu
       if (n.type === 'mention') return `@${String(n.attrs?.label ?? '')}`
       if (n.type === 'formField') {
         const v = String(n.attrs?.value ?? '')
-        return `**${esc(String(n.attrs?.label ?? ''))}:** ${n.attrs?.kind === 'checkbox' ? (v === 'true' ? 'Yes' : 'No') : esc(v)}`
+        return `**${esc(String(n.attrs?.label ?? ''))}:** ${esc(fieldText(String(n.attrs?.kind ?? ''), v))}`
       }
       if (n.type === 'image') return image(n, files)
       if (n.type !== 'text') return inline(n.content, files)

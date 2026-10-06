@@ -8,6 +8,7 @@ import { getCustomer } from './customers'
 import { listTransactions } from './money'
 import { getTicket } from './tickets'
 import { listItems } from './items'
+import { fieldText } from './doc'
 
 /*
  * Printouts for a ticket: an intake slip (customer copy at drop-off), a receipt (after payment) and a small
@@ -82,11 +83,12 @@ export function ticketFields(doc: DocJSON | null): { label: string; value: strin
   const out: { label: string; value: string }[] = []
   const walk = (n: DocJSON): void => {
     if (n.type === 'formField') {
-      const a = (n.attrs ?? {}) as { label?: string; value?: string; kind?: string }
+      const a = (n.attrs ?? {}) as { label?: string; value?: string; kind?: string; link?: string }
       const label = (a.label ?? '').trim()
-      let value = (a.value ?? '').trim()
-      if (a.kind === 'checkbox') value = value === 'true' ? 'Yes' : ''
-      if (label && value && !/pass|pin\b|code|password|pattern/i.test(label)) out.push({ label, value })
+      let value = fieldText(a.kind ?? '', (a.value ?? '').trim()).trim()
+      if (a.kind === 'checkbox' && value === 'No') value = ''
+      // Linked fields (customer name, pickup date…) are printed from the ticket itself, in the header
+      if (label && value && !a.link && !/pass|pin\b|code|password|pattern/i.test(label)) out.push({ label, value })
     }
     for (const c of n.content ?? []) walk(c)
   }

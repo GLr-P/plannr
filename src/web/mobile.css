@@ -481,14 +481,17 @@ button,
   }
 }
 
-/* Fill-in fields: the label goes above its box on a narrow screen */
+/* Fill-in fields: one per line with the label above (except small ones inside a sentence) */
 @media (max-width: 760px) {
-  .prose .ff {
-    flex-wrap: wrap;
-    gap: 4px 12px;
+  .prose .ff:not(.ff-w-small) {
+    width: calc(100% - 1em);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
   }
-  .prose .ff > .ff-label {
-    width: 100%;
-    padding-top: 0;
+  .prose .ff:not(.ff-w-small) > .ff-label {
+    width: auto !important;
+    max-width: none;
+    padding-top: 0 !important;
   }
 }

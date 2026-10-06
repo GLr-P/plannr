@@ -607,31 +607,84 @@ input[type='date']::-webkit-calendar-picker-indicator {
   padding: 8px 12px;
   margin: 4px 0 18px;
 }
-/* Each field is a row: a fixed label column, then the box filling the rest, so every box starts and ends at the
-   same place and rows are evenly spaced. Rules target the field's own box (> child) so they don't leak into the
-   field's settings menu, which sits inside the field. */
+/* Fill-in fields. Full-width fields are rows: a fixed label column, then the box filling the rest, so boxes line
+   up. Half/third fields sit side by side when placed on the same line; small ones fit inside a sentence.
+   Rules target the field's own parts (> children) so they don't leak into its settings menu, which sits inside it. */
 .prose .ff {
   position: relative;
   display: inline-flex;
   vertical-align: middle;
   align-items: center;
-  gap: 12px;
-  width: calc(100% - 1em); /* leaves room for the space typed after a field, so it doesn't wrap onto its own line */
+  gap: 6px 12px;
   margin: 3px 0;
+  text-indent: 0;
+}
+.prose .ff-w-full {
+  width: calc(100% - 1em); /* leaves room for the space typed after a field, so it doesn't wrap onto its own line */
+}
+.prose .ff-w-half {
+  width: calc(50% - 0.75em);
+}
+.prose .ff-w-third {
+  width: calc(33.33% - 0.75em);
+}
+.prose .ff-w-small {
+  width: auto;
+  margin: 1px 0;
 }
 .prose .ff > .ff-label {
-  width: 180px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-weight: 500;
   font-size: 0.9em;
   line-height: 1.3;
   color: var(--text-muted);
 }
-.prose .ff > input[type='text'],
-.prose .ff > input[type='date'],
-.prose .ff > select,
-.prose .ff > textarea {
+.prose .ff-w-full.ff-l-left > .ff-label {
+  width: 180px;
+}
+.prose .ff-l-left:not(.ff-w-full) > .ff-label {
+  max-width: 45%;
+}
+/* Label above the box */
+.prose .ff-l-top {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+.prose .ff-l-top > .ff-label {
+  width: auto;
+}
+.ff-link-badge {
+  display: inline-grid;
+  color: var(--accent);
+}
+.ff-link-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.prose .ff > .ff-body {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.prose .ff-w-small > .ff-body,
+.prose .ff-checkbox > .ff-body {
+  flex: 0 0 auto;
+}
+.prose .ff-body > input[type='text'],
+.prose .ff-body > input[type='email'],
+.prose .ff-body > input[type='tel'],
+.prose .ff-body > input[type='date'],
+.prose .ff-body > input[type='time'],
+.prose .ff-body > select,
+.prose .ff-body > textarea,
+.prose .ff-money-box {
+  width: 100%;
   min-width: 0;
   font: inherit;
   font-size: 0.95em;
@@ -643,64 +696,168 @@ input[type='date']::-webkit-calendar-picker-indicator {
   outline: none;
   height: 32px;
 }
-.prose .ff > input:focus,
-.prose .ff > select:focus,
-.prose .ff > textarea:focus {
+.prose .ff-w-small > .ff-body > input,
+.prose .ff-w-small > .ff-body > select,
+.prose .ff-w-small .ff-money-box {
+  width: 150px;
+}
+.prose .ff-w-small.ff-date > .ff-body > input,
+.prose .ff-w-small.ff-time > .ff-body > input {
+  width: auto;
+}
+.prose .ff-body > input:focus,
+.prose .ff-body > select:focus,
+.prose .ff-body > textarea:focus,
+.prose .ff-money-box:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.prose .ff > input[type='checkbox'] {
+.prose .ff-body > input[readonly],
+.prose .ff-body > textarea[readonly] {
+  background: var(--bg-subtle);
+}
+.prose .ff-linked .ff-body > input:not([readonly]),
+.prose .ff-linked .ff-body > textarea:not([readonly]) {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-strong));
+}
+.prose .ff-body > input[type='checkbox'] {
   width: 17px;
   height: 17px;
   margin: 7px 0;
   accent-color: var(--accent);
 }
-/* Long text: the same columns; the label lines up with the first line of the box */
-.prose .ff-textarea {
-  display: flex;
-  align-items: flex-start;
-}
-.prose .ff-textarea > .ff-label {
-  padding-top: 7px;
-}
-.prose .ff > textarea {
+.prose .ff-body > textarea {
   height: auto;
   field-sizing: content;
-  min-height: 58px;
   resize: none;
   line-height: 1.5;
   padding: 5px 8px;
 }
-.prose .ff-gear {
+/* Long text with the label on the left: the label lines up with the first line */
+.prose .ff-textarea.ff-l-left,
+.prose .ff-choice.ff-l-left,
+.prose .ff-multi.ff-l-left {
+  align-items: flex-start;
+}
+.prose .ff-textarea.ff-l-left > .ff-label,
+.prose .ff-choice.ff-l-left > .ff-label,
+.prose .ff-multi.ff-l-left > .ff-label {
+  padding-top: 7px;
+}
+/* Money: the currency symbol inside the box */
+.prose .ff-money-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+.prose .ff-money-box input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  height: 100%;
+}
+.ff-prefix {
+  color: var(--text-muted);
+}
+/* Pick one / pick several: buttons that light up */
+.ff-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0;
+}
+.ff-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 15px;
+  font-size: 0.92em;
+  cursor: pointer;
+  background: var(--bg);
+}
+.ff-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ff-option.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.ff-option:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ff-hint {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+/* Gear and drag handle float at the field's corner (they don't take room from the box) */
+.prose .ff-tools {
+  position: absolute;
+  top: -15px;
+  right: -8px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 1px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.prose .ff:hover > .ff-tools,
+.prose .ff > .ff-tools:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.prose .ff-gear,
+.prose .ff-grip {
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
   border-radius: 4px;
-  color: var(--text-faint);
-  opacity: 0;
+  color: var(--text-muted);
 }
-.prose .ff:hover .ff-gear,
-.prose .ff-gear:focus-visible {
-  opacity: 1;
+.prose .ff-grip {
+  cursor: grab;
 }
-.prose .ff-gear:hover {
+.prose .ff-gear:hover,
+.prose .ff-grip:hover {
   background: var(--hover);
   color: var(--text);
 }
-.prose .ff-textarea .ff-gear {
-  margin-top: 5px;
-}
-.prose .ff-gear svg {
+.prose .ff-gear svg,
+.prose .ff-grip svg {
   width: 14px;
   height: 14px;
 }
+.prose .ff.ProseMirror-selectednode {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* The field's settings */
 .prose .ff-config {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   z-index: 30;
-  width: 290px;
+  width: 340px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -710,7 +867,14 @@ input[type='date']::-webkit-calendar-picker-indicator {
   border-radius: 10px;
   box-shadow: var(--shadow);
   font-size: 13px;
+  font-weight: 400;
   line-height: 1.4;
+  color: var(--text);
+  cursor: default;
+}
+.prose .ff-w-small .ff-config,
+.prose .ff-w-third .ff-config {
+  left: auto;
 }
 .prose .ff-config label {
   display: flex;
@@ -718,6 +882,36 @@ input[type='date']::-webkit-calendar-picker-indicator {
   gap: 4px;
   color: var(--text-muted);
   font-weight: 500;
+}
+.ff-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ff-config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ff-config-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.ff-config-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+.segmented.sm {
+  padding: 2px;
+}
+.segmented.sm button {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12.5px;
 }
 .prose .ff-config input,
 .prose .ff-config select,
@@ -742,13 +936,13 @@ input[type='date']::-webkit-calendar-picker-indicator {
   align-items: center;
 }
 
-/* A long-text field fills its line. ProseMirror surrounds inline nodes with invisible spacer <img>s and a
-   trailing <br>; next to a full-width box each would sit on its own empty line, so hide them there. */
-.prose .react-renderer:has(> .ff-textarea) {
+/* A full-width long-text field fills its line. ProseMirror surrounds inline nodes with invisible spacer <img>s and
+   a trailing <br>; next to a full-width box each would sit on its own empty line, so hide them there. */
+.prose .react-renderer:has(> .ff-textarea.ff-w-full) {
   display: block;
 }
-.prose p:has(.ff-textarea) > img.ProseMirror-separator,
-.prose p:has(.ff-textarea) > br.ProseMirror-trailingBreak {
+.prose p:has(.ff-textarea.ff-w-full) > img.ProseMirror-separator,
+.prose p:has(.ff-textarea.ff-w-full) > br.ProseMirror-trailingBreak {
   display: none !important; /* TipTap's base CSS forces separators inline with !important */
 }
 
