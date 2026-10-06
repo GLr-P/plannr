@@ -160,6 +160,49 @@ export function HomeLayoutSettings() {
   )
 }
 
+const CAPTURE_CHOICES = ['Ctrl+Shift+Space', 'Ctrl+Alt+N', 'Ctrl+Shift+J', 'off']
+
+/** The global shortcut for the quick capture box. */
+export function CaptureSetting() {
+  const [value, setValue] = useState<string | null>(null)
+  const [taken, setTaken] = useState(false)
+  useEffect(() => {
+    void api.app.getCaptureShortcut().then(setValue)
+  }, [])
+  if (value === null) return null
+  return (
+    <section className="setting">
+      <div>
+        <h3>Quick capture</h3>
+        <p className="muted">
+          Press it anywhere in Windows (even with Plannr in the tray) to jot a task or note.
+          {taken && <span className="error-text"> Another app already uses that shortcut; pick a different one.</span>}
+        </p>
+      </div>
+      <div className="setting-controls">
+        <select
+          className="setting-input"
+          value={value}
+          aria-label="Quick capture shortcut"
+          onChange={async (e) => {
+            setValue(e.target.value)
+            setTaken(!(await api.app.setCaptureShortcut(e.target.value)))
+          }}
+        >
+          {CAPTURE_CHOICES.map((c) => (
+            <option key={c} value={c}>
+              {c === 'off' ? 'Off' : c.split('+').join(' + ')}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="link-btn small" onClick={() => void api.app.openCapture()}>
+          Try it now
+        </button>
+      </div>
+    </section>
+  )
+}
+
 export function WeekStartSetting() {
   const weekStart = useDisplay((s) => s.prefs.weekStart)
   return (

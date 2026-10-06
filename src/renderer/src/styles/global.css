@@ -2189,3 +2189,65 @@ kbd {
 .fc .ev-task {
   background: var(--accent-soft);
 }
+
+/* ---------- Quick capture window ---------- */
+.capture {
+  -webkit-app-region: drag;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+}
+.capture button,
+.capture textarea {
+  -webkit-app-region: no-drag;
+}
+.capture-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.capture-kind button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.capture-kind svg {
+  width: 14px;
+  height: 14px;
+}
+.capture-dates {
+  display: flex;
+  gap: 4px;
+}
+.capture-box {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  outline: none;
+}
+.capture-box:focus {
+  border-color: var(--accent);
+}
+.capture-foot {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.capture-foot kbd {
+  font-size: 10.5px;
+}
+.capture-saved {
+  color: var(--c-green);
+  font-weight: 600;
+}

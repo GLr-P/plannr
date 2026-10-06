@@ -27,6 +27,7 @@ import * as qboSync from './services/quickbooks'
 import type { QuickBooksSync } from './quickbooks-sync'
 import type { GoogleSync } from './google-sync'
 import type { Updater } from './updater'
+import { DEFAULT_CAPTURE_SHORTCUT, hideCapture, openCapture, registerCaptureShortcut } from './capture'
 import { search } from './services/search'
 import { resolveFilePath, saveFile } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -45,6 +46,8 @@ export interface ApiHooks {
   googleSync: GoogleSync
   qboSync: QuickBooksSync
   updater: Updater
+  /** Current light/dark theme (for the quick capture box) */
+  theme: () => 'light' | 'dark'
   backupDir: () => string
   /** Closes the database, puts the snapshot back and restarts Plannr */
   restoreAndRestart: (file: string) => Promise<void>
@@ -409,6 +412,16 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         win.setBackgroundColor(c.bg)
         win.setTitleBarOverlay({ color: c.titlebar, symbolColor: c.symbol, height: Math.round(TITLEBAR_HEIGHT * win.webContents.getZoomFactor()) })
       },
+      openCapture: async () => openCapture(hooks.theme),
+      closeCapture: async () => hideCapture(),
+      captureSaved: async () => {
+        getWindow()?.webContents.send('data-changed')
+      },
+      setCaptureShortcut: async (shortcut) => {
+        setSetting(db, 'captureShortcut', shortcut)
+        return registerCaptureShortcut(db, hooks.theme)
+      },
+      getCaptureShortcut: async () => (getSetting(db, 'captureShortcut') as string | null) ?? DEFAULT_CAPTURE_SHORTCUT,
       setZoom: async (factor) => {
         const f = Math.max(0.8, Math.min(1.4, Number(factor) || 1))
         setSetting(db, 'zoom', f)

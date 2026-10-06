@@ -29,6 +29,16 @@ contextBridge.exposeInMainWorld('plannrEvents', {
     ipcRenderer.on('update-status', listener)
     return () => ipcRenderer.removeListener('update-status', listener)
   },
+  onCaptureOpen: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('capture-open', listener)
+    return () => ipcRenderer.removeListener('capture-open', listener)
+  },
+  onDataChanged: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('data-changed', listener)
+    return () => ipcRenderer.removeListener('data-changed', listener)
+  },
   onVaultLocked: (callback: () => void): (() => void) => {
     const listener = (): void => callback()
     ipcRenderer.on('vault-locked', listener)

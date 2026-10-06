@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type { Db } from './db'
 import { dueMoneyReminders, dueReminders, markReminderFired } from './services/reminders'
 import { dueTaskReminders } from './services/tasks'
+import { openCapture } from './capture'
 import { processAutopay } from './services/money'
 import type { EntityType } from '../shared/api'
 
@@ -29,12 +30,13 @@ export function showWindow(getWindow: () => BrowserWindow | null, target?: Navig
 
 let tray: Tray | null = null
 
-export function createTray(getWindow: () => BrowserWindow | null, quit: () => void): void {
+export function createTray(getWindow: () => BrowserWindow | null, quit: () => void, theme: () => 'light' | 'dark'): void {
   tray = new Tray(nativeImage.createFromPath(resourcePath('tray.png')))
   tray.setToolTip('Plannr')
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Open Plannr', click: () => showWindow(getWindow) },
+      { label: 'Quick capture', click: () => openCapture(theme) },
       { type: 'separator' },
       { label: 'Quit Plannr', click: quit }
     ])

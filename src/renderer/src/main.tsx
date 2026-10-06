@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { Capture } from './Capture'
 import { initTheme } from './theme'
 import './styles/global.css'
 import './styles/editor.css'
@@ -16,6 +17,6 @@ void initTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {new URLSearchParams(location.search).get('capture') ? <Capture /> : <App />}
   </StrictMode>
 )

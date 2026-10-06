@@ -1182,6 +1182,14 @@ export interface PlannrApi {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
     setTheme(theme: Theme): Promise<void>
+    /** Quick capture box */
+    openCapture(): Promise<void>
+    closeCapture(): Promise<void>
+    /** Something was captured: the main window refreshes */
+    captureSaved(): Promise<void>
+    /** 'Ctrl+Shift+Space', 'Ctrl+Alt+N', 'Ctrl+Shift+J' or 'off'; false if another app already uses it */
+    setCaptureShortcut(shortcut: string): Promise<boolean>
+    getCaptureShortcut(): Promise<string>
     /** Text size: 1 = normal (0.8–1.4) */
     setZoom(factor: number): Promise<void>
     getZoom(): Promise<number>
@@ -1256,7 +1264,7 @@ export const API_SHAPE = {
   business: ['get', 'set'],
   print: ['ticket'],
   updates: ['status', 'check', 'install'],
-  app: ['info', 'openDataFolder', 'setTheme', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
+  app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

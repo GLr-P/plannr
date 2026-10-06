@@ -20,6 +20,7 @@ import { ensureSearchIndex } from './services/reindex'
 import type { Theme, ThemePref } from '../shared/api'
 import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
+import { registerCaptureShortcut } from './capture'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
 const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
@@ -172,7 +173,7 @@ if (!app.requestSingleInstanceLock()) {
     // Updates from GitHub Releases (tests point PLANNR_UPDATE_URL at a local server and never run the installer).
     const updater = new Updater(getWindow, quit, isTest ? join(dataDir, 'update-ready.json') : undefined)
     if (!isTest) updater.start(db)
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater }))
+    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater, theme: effectiveTheme }))
     // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
     if (!isTest) {
       const autoBackup = (): void => {
@@ -197,10 +198,11 @@ if (!app.requestSingleInstanceLock()) {
       setInterval(updateHolidays, 6 * 60 * 60 * 1000)
     }
     if (background) {
-      createTray(getWindow, quit)
+      createTray(getWindow, quit, effectiveTheme)
       startReminders(db, getWindow)
       ensureStartMenuShortcut()
       adoptLoginItem()
+      registerCaptureShortcut(db, effectiveTheme) // quick capture from anywhere (Ctrl+Shift+Space)
     }
   })
 

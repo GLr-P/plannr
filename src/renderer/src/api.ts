@@ -10,6 +10,8 @@ declare global {
       onVaultLocked: (callback: () => void) => () => void
       onCalendarChanged: (callback: () => void) => () => void
       onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
+      onCaptureOpen: (callback: () => void) => () => void
+      onDataChanged: (callback: () => void) => () => void
     }
   }
 }

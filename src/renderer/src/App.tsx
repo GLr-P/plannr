@@ -120,6 +120,7 @@ export function App() {
   useAppearance()
   useEffect(() => {
     const stopUpdates = initUpdates()
+    const stopData = window.plannrEvents.onDataChanged(() => void useData.getState().refresh())
     void loadDisplay()
       .then(() => useData.getState().refresh())
       .then(() => maybeStartOnboarding())
@@ -133,6 +134,7 @@ export function App() {
     return () => {
       stopNavigate()
       stopUpdates()
+      stopData()
     }
   }, [])
 

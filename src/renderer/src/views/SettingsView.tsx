@@ -10,7 +10,7 @@ import { GoogleSettings } from '../components/GoogleSettings'
 import { ZohoSettings } from '../components/ZohoSettings'
 import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
-import { HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
+import { CaptureSetting, HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
 import { UpdateSettings } from '../components/UpdateSettings'
@@ -90,6 +90,8 @@ export function SettingsView() {
           <LookSettings />
 
           <UpdateSettings />
+
+          <CaptureSetting />
 
           <section className="setting">
             <div>
