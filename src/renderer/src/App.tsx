@@ -15,6 +15,7 @@ import { TemplatesView, TemplateView } from './views/TemplatesView'
 import { CalendarView } from './views/CalendarView'
 import { VaultView } from './views/VaultView'
 import { MoneyView } from './views/MoneyView'
+import { InventoryView } from './views/InventoryView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, newTicket, openEntity } from './actions'
@@ -100,6 +101,8 @@ function MainView() {
       return <VaultView />
     case 'money':
       return <MoneyView itemId={route.itemId} />
+    case 'inventory':
+      return <InventoryView />
     case 'settings':
       return <SettingsView />
   }

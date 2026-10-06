@@ -1,4 +1,4 @@
-import { formatCurrency, formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
+import { formatCurrency, formatTicketNumber, lineTotal, ticketTotals, type LineItem, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
 import { splitTax } from './quickbooks'
 
 /*
@@ -17,6 +17,7 @@ export const DEFAULT_BUSINESS: BusinessInfo = {
   taxNumber: '',
   intakeTerms: '',
   receiptNote: 'Thank you for your business!',
+  pricesIncludeTax: false,
   logoFileId: null,
   labelSize: '62x29mm'
 }
@@ -28,6 +29,8 @@ export interface PrintData {
   business: BusinessInfo
   /** data: URL of the logo, if any */
   logo: string | null
+  /** Quote/invoice lines (empty when the ticket just has a price) */
+  items?: LineItem[]
 }
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
@@ -97,6 +100,8 @@ const STYLE = `
   .sign { display: flex; gap: 32px; margin-top: 36px; }
   .sign div { flex: 1; border-top: 1px solid #111; padding-top: 4px; font-size: 11px; color: #555; }
   .foot { margin-top: 22px; text-align: center; color: #555; }
+  table.lines tr.head td { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #555; border-bottom: 2px solid #111; }
+  table.lines td.num { width: 90px; }
 `
 
 export function intakeHtml({ ticket: t, customer, business: b, logo }: PrintData): string {
@@ -184,6 +189,82 @@ function page(title: string, body: string): string {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body><div class="sheet">${body}</div></body></html>`
 }
 
+const KIND_LABEL: Record<LineItem['kind'], string> = { part: 'Part', labour: 'Labour', other: '', discount: 'Discount' }
+
+/** The lines table and totals shared by quotes and invoices. */
+function linesTable(d: PrintData): { html: string; total: number } {
+  const b = d.business
+  const items = d.items ?? []
+  const totals = ticketTotals(items, { taxRate: b.taxRate, pricesIncludeTax: b.pricesIncludeTax, exempt: d.ticket.taxExempt })
+  const rows = items.length
+    ? items
+        .map((l) => {
+          const what = [KIND_LABEL[l.kind], l.description].filter(Boolean).join(': ') || 'Item'
+          const amount = l.kind === 'discount' ? `−${money(lineTotal(l))}` : money(lineTotal(l))
+          return `<tr><td>${esc(what)}</td><td class="num">${l.kind === 'discount' ? '' : l.qty}</td><td class="num">${l.kind === 'discount' ? '' : money(l.unitCents)}</td><td class="num">${amount}</td></tr>`
+        })
+        .join('')
+    : `<tr><td>${lines([d.ticket.device, d.ticket.issue].filter(Boolean).join(' — ') || 'Repair')}</td><td></td><td></td><td class="num">${money(d.ticket.priceCents ?? 0)}</td></tr>`
+  const total = items.length ? totals.total : (d.ticket.priceCents ?? 0)
+  const taxLabel = `${esc(b.taxName || 'Tax')}${b.taxRate && !d.ticket.taxExempt ? ` (${b.taxRate}%${b.pricesIncludeTax ? ', included' : ''})` : ''}`
+  const sums = items.length
+    ? [
+        totals.discount ? `<tr><td colspan="3">Subtotal</td><td class="num">${money(totals.subtotal)}</td></tr>` : '',
+        totals.discount ? `<tr><td colspan="3">Discount</td><td class="num">−${money(totals.discount)}</td></tr>` : '',
+        totals.tax ? `<tr><td colspan="3">${taxLabel}${b.taxNumber ? ` <span class="muted">· #${esc(b.taxNumber)}</span>` : ''}</td><td class="num">${money(totals.tax)}</td></tr>` : '',
+        d.ticket.taxExempt ? '<tr><td colspan="3" class="muted">No tax</td><td></td></tr>' : ''
+      ].join('')
+    : ''
+  return {
+    total,
+    html: `<table class="lines"><tr class="head"><td>Description</td><td class="num">Qty</td><td class="num">Price</td><td class="num">Amount</td></tr>${rows}${sums}<tr class="total"><td colspan="3">Total</td><td class="num">${money(total)}</td></tr></table>`
+  }
+}
+
+export function quoteHtml(d: PrintData): string {
+  const t = d.ticket
+  const { html } = linesTable(d)
+  return page(
+    `Quote ${formatTicketNumber(t.number)}`,
+    `${header(d.business, d.logo)}
+    <h1>Quote</h1>
+    <div class="muted">Ticket ${formatTicketNumber(t.number)} · ${esc(day(new Date().toISOString().slice(0, 10)))}${t.device ? ` · ${esc(t.device)}` : ''}</div>
+    <div class="cols">${customerBlock(t, d.customer)}</div>
+    ${html}
+    <p class="muted">This is an estimate. The final price may change if we find something else; we’ll ask you first.</p>
+    <div class="sign"><div>Approved by (customer)</div><div>Date</div></div>`
+  )
+}
+
+export function invoiceHtml(d: PrintData): string {
+  const t = d.ticket
+  const { html, total } = linesTable(d)
+  const paid = d.payments.reduce((s, p) => s + p.amountCents, 0)
+  const owing = Math.max(0, total - paid)
+  return page(
+    `Invoice ${formatTicketNumber(t.number)}`,
+    `${header(d.business, d.logo)}
+    <h1>Invoice ${formatTicketNumber(t.number)}</h1>
+    <div class="muted">${esc(day(new Date().toISOString().slice(0, 10)))}${t.device ? ` · ${esc(t.device)}` : ''}</div>
+    <div class="cols">${customerBlock(t, d.customer)}</div>
+    ${html}
+    ${d.payments.length ? `<section><h3>Payments</h3><table>${d.payments.map((p) => `<tr><td>${esc(day(p.date))} · ${esc(p.method || 'Payment')}</td><td class="num">${money(p.amountCents)}</td></tr>`).join('')}</table></section>` : ''}
+    <p class="strong">${owing ? `Balance owing: ${money(owing)}` : 'Paid in full. Thank you!'}</p>
+    ${d.business.receiptNote ? `<div class="foot">${lines(d.business.receiptNote)}</div>` : ''}`
+  )
+}
+
 export function printHtml(kind: PrintKind, data: PrintData): string {
-  return kind === 'intake' ? intakeHtml(data) : kind === 'receipt' ? receiptHtml(data) : labelHtml(data)
+  switch (kind) {
+    case 'intake':
+      return intakeHtml(data)
+    case 'receipt':
+      return receiptHtml(data)
+    case 'quote':
+      return quoteHtml(data)
+    case 'invoice':
+      return invoiceHtml(data)
+    default:
+      return labelHtml(data)
+  }
 }

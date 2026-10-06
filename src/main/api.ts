@@ -6,6 +6,7 @@ import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatu
 import * as notes from './services/notes'
 import * as folders from './services/folders'
 import * as sidebar from './services/sidebar'
+import * as items from './services/items'
 import * as customers from './services/customers'
 import * as tickets from './services/tickets'
 import * as photos from './services/photos'
@@ -111,7 +112,20 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       update: async (id, patch) => (patch.pickupOn !== undefined ? changed(tickets.updateTicket(db, id, patch)) : tickets.updateTicket(db, id, patch)),
       trash: async (id) => changed(tickets.trashTicket(db, id)),
       restore: async (id) => changed(tickets.restoreTicket(db, id)),
-      counts: async () => tickets.ticketCounts(db)
+      counts: async () => tickets.ticketCounts(db),
+      items: async (ticketId) => items.listItems(db, ticketId),
+      addItem: async (ticketId, input) => moneyChanged(items.addItem(db, ticketId, input)),
+      updateItem: async (id, patch) => moneyChanged(items.updateItem(db, id, patch)),
+      removeItem: async (id) => moneyChanged(items.removeItem(db, id)),
+      totals: async (ticketId) => items.totalsFor(db, ticketId)
+    },
+    parts: {
+      list: async (opts) => items.listParts(db, opts),
+      create: async (input) => items.createPart(db, input),
+      update: async (id, patch) => items.updatePart(db, id, patch),
+      remove: async (id) => items.removePart(db, id),
+      restore: async (id) => items.restorePart(db, id),
+      lowCount: async () => items.lowStockCount(db)
     },
     photos: {
       list: async (ticketId) => photos.listPhotos(db, ticketId),

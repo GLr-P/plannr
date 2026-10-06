@@ -16,6 +16,7 @@ import { setLinks } from './links'
 import { digitsOnly, extractMentions, extractText, isDate, likeTerm, localDate } from './doc'
 import { getTemplate, getDefaultTemplateId } from './templates'
 import { syncPickupFromTicket } from './calendar'
+import { syncTicketPrice } from './items'
 
 interface TicketRow {
   id: string
@@ -32,6 +33,7 @@ interface TicketRow {
   pickup_on: string | null
   closed_at: number | null
   paid_cents: number
+  tax_exempt: number
   created_at: number
   updated_at: number
   deleted_at: number | null
@@ -40,7 +42,7 @@ interface TicketRow {
 }
 
 const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on,
-  t.closed_at, t.created_at, t.updated_at, t.deleted_at,
+  t.closed_at, t.created_at, t.updated_at, t.deleted_at, t.tax_exempt,
   c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
   (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid_cents`
 const FROM = 'FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id'
@@ -63,6 +65,7 @@ function toSummary(r: TicketRow): TicketSummary {
     pickupOn: r.pickup_on,
     closedAt: r.closed_at,
     paidCents: r.paid_cents ?? 0,
+    taxExempt: r.tax_exempt === 1,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     deletedAt: r.deleted_at
@@ -193,6 +196,7 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
       set('pickup_on', pickup)
       syncPickupFromTicket(db, id, pickup) // the pickup shows on the calendar
     }
+    if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
     if (patch.content !== undefined) {
       set('content_json', JSON.stringify(patch.content))
       set('content_text', extractText(patch.content))
@@ -202,6 +206,7 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
     params.push(id)
     const result = db.prepare(`UPDATE tickets SET ${sets.join(', ')} WHERE id = ?`).run(...params)
     if (result.changes === 0) throw new Error(`Ticket not found: ${id}`)
+    if (patch.taxExempt !== undefined) syncTicketPrice(db, id) // the total changes with the tax
     reindexTicket(db, id)
     return getSummary(db, id)
   })

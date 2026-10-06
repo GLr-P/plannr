@@ -9,6 +9,7 @@ import { listTransactions } from './services/money'
 import { DEFAULT_BUSINESS, printHtml } from './services/print'
 import { getSetting } from './services/settings'
 import { getTicket } from './services/tickets'
+import { listItems } from './services/items'
 
 export const getBusiness = (db: Db): BusinessInfo => ({ ...DEFAULT_BUSINESS, ...((getSetting(db, 'business') as Partial<BusinessInfo> | null) ?? {}) })
 
@@ -35,7 +36,8 @@ export async function printTicket(db: Db, dataDir: string, id: string, kind: Pri
     customer: ticket.customerId ? getCustomer(db, ticket.customerId) : null,
     payments: listTransactions(db, { ticketId: id, type: 'income' }).reverse(), // oldest first
     business,
-    logo: logoDataUrl(db, dataDir, business.logoFileId)
+    logo: logoDataUrl(db, dataDir, business.logoFileId),
+    items: listItems(db, id)
   })
   if (testOut) return writeFileSync(testOut, html)
 

@@ -328,5 +328,37 @@ export const migrations: string[] = [
   /* 16: note templates (templates were ticket-only), with an icon for notes made from them */ `
   ALTER TABLE templates ADD COLUMN kind TEXT NOT NULL DEFAULT 'ticket';
   ALTER TABLE templates ADD COLUMN icon TEXT NOT NULL DEFAULT '';
+  `,
+
+  /* 17: quotes & invoices (ticket line items) and the parts inventory */ `
+  CREATE TABLE parts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    sku TEXT NOT NULL DEFAULT '',
+    qty REAL NOT NULL DEFAULT 0,
+    cost_cents INTEGER NOT NULL DEFAULT 0,
+    price_cents INTEGER NOT NULL DEFAULT 0,
+    reorder_at REAL NOT NULL DEFAULT 0,
+    supplier TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE TABLE ticket_items (
+    id TEXT PRIMARY KEY,
+    ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'labour',
+    description TEXT NOT NULL DEFAULT '',
+    qty REAL NOT NULL DEFAULT 1,
+    unit_cents INTEGER NOT NULL DEFAULT 0,
+    part_id TEXT,
+    cost_cents INTEGER,
+    sort REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX ticket_items_ticket ON ticket_items(ticket_id);
+  ALTER TABLE tickets ADD COLUMN tax_exempt INTEGER NOT NULL DEFAULT 0;
   `
 ]

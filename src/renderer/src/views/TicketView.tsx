@@ -17,7 +17,8 @@ import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common'
 import { showToast, undoToast } from '../lib/toast'
 import { openMenu } from '../components/ContextMenu'
-import { Printer, Receipt, Tag, ClipboardList } from 'lucide-react'
+import { Printer, Receipt, Tag, ClipboardList, FileText as FileTextIcon, FileCheck } from 'lucide-react'
+import { TicketLines } from '../components/TicketLines'
 import type { PrintKind } from '../../../shared/api'
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
@@ -51,7 +52,7 @@ export function TicketView({ id }: { id: string }) {
   return <TicketPage key={`${ticket.id}:${ticket.deletedAt}`} ticket={ticket} reload={reload} />
 }
 
-type Fields = Omit<TicketUpdate, 'content'>
+type Fields = Omit<TicketUpdate, 'content' | 'taxExempt'>
 
 function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<void> }) {
   const [fields, setFields] = useState<Required<Fields>>({
@@ -64,6 +65,14 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     pickupOn: ticket.pickupOn
   })
   const [priceText, setPriceText] = useState(formatMoney(ticket.priceCents))
+  const [fromLines, setFromLines] = useState(false) // the price comes from the line items
+  const [taxExempt, setTaxExempt] = useState(ticket.taxExempt)
+  const onLinesTotal = useCallback((cents: number | null) => {
+    setFromLines(cents !== null)
+    if (cents === null) return
+    setFields((f) => ({ ...f, priceCents: cents }))
+    setPriceText(formatMoney(cents))
+  }, [])
   const [updatedAt, setUpdatedAt] = useState(ticket.updatedAt)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const trashed = ticket.deletedAt !== null
@@ -148,6 +157,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   }
                   openMenu({ clientX: r.left, clientY: r.bottom + 4 }, [
                     { label: 'Intake slip', icon: <ClipboardList />, onSelect: () => print('intake') },
+                    { label: 'Quote', icon: <FileTextIcon />, onSelect: () => print('quote') },
+                    { label: 'Invoice', icon: <FileCheck />, onSelect: () => print('invoice') },
                     { label: 'Receipt', icon: <Receipt />, onSelect: () => print('receipt') },
                     { label: 'Device label', icon: <Tag />, onSelect: () => print('label') }
                   ])
@@ -282,7 +293,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
               value={priceText}
               placeholder="$0.00"
               inputMode="decimal"
-              readOnly={trashed}
+              readOnly={trashed || fromLines}
+              title={fromLines ? 'Worked out from the line items below' : undefined}
               onChange={(e) => setPriceText(e.target.value)}
               onBlur={() => {
                 const cents = parseMoney(priceText)
@@ -295,7 +307,18 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           </div>
         </div>
 
-        {!trashed && <TicketPayments ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
+        <TicketLines
+          ticketId={ticket.id}
+          taxExempt={taxExempt}
+          readOnly={trashed}
+          onTotal={onLinesTotal}
+          onTaxExempt={(exempt) => {
+            setTaxExempt(exempt)
+            void api.tickets.update(ticket.id, { taxExempt: exempt })
+          }}
+        />
+
+        {!trashed && <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
 
         <PhotoGallery ticketId={ticket.id} />
 

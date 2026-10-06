@@ -16,6 +16,7 @@ import {
   Users,
   Wallet,
   Wrench,
+  Package,
   type LucideIcon
 } from 'lucide-react'
 import type { Folder as FolderT, NoteSummary, SidebarDest, SidebarSection } from '../../../shared/api'
@@ -395,6 +396,7 @@ export function Sidebar() {
   const folders = useData((s) => s.folders)
   const sections = useData((s) => s.sections)
   const openTickets = useData((s) => s.counts.open)
+  const lowStock = useData((s) => s.counts.lowStock)
   const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
   const order = navOrder(useUi((s) => s.prefs.navOrder))
   const hidden = navHidden(useUi((s) => s.prefs.navHidden))
@@ -435,6 +437,7 @@ export function Sidebar() {
     customers: <NavItem key="customers" icon={<Users />} label="Customers" target={{ view: 'customers' }} {...navDrop('customers')} />,
     calendar: <NavItem key="calendar" icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} {...navDrop('calendar')} />,
     money: <NavItem key="money" icon={<Wallet />} label="Money" target={{ view: 'money' }} {...navDrop('money')} />,
+    inventory: <NavItem key="inventory" icon={<Package />} label="Inventory" target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
     notes: (
       <NavItem
         key="notes"

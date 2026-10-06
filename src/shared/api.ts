@@ -205,9 +205,104 @@ export interface TicketSummary {
   closedAt: number | null
   /** Sum of payments recorded for this ticket */
   paidCents: number
+  /** No tax on this ticket's line items */
+  taxExempt: boolean
   createdAt: number
   updatedAt: number
   deletedAt: number | null
+}
+
+// ---------- Quotes & invoices (ticket line items) and inventory ----------
+
+export type LineKind = 'part' | 'labour' | 'other' | 'discount'
+
+export interface LineItem {
+  id: string
+  ticketId: string
+  kind: LineKind
+  description: string
+  qty: number
+  /** Price per unit (a discount line: the amount taken off) */
+  unitCents: number
+  /** Inventory part it came from (stock follows the quantity) */
+  partId: string | null
+  /** The part's cost per unit when it was added, for profit */
+  costCents: number | null
+  sort: number
+}
+
+export interface LineInput {
+  kind?: LineKind
+  description?: string
+  qty?: number
+  unitCents?: number
+  partId?: string | null
+}
+
+export interface TicketTotals {
+  /** Parts, labour and other lines */
+  subtotal: number
+  discount: number
+  tax: number
+  /** What the customer pays */
+  total: number
+  /** Cost of the inventory parts used */
+  cost: number
+  /** Total before tax, minus parts cost */
+  profit: number
+}
+
+export const lineTotal = (l: Pick<LineItem, 'qty' | 'unitCents'>): number => Math.round(l.qty * l.unitCents)
+
+/** Ticket totals from its lines. Prices are before tax unless `pricesIncludeTax`; `exempt` = no tax. */
+export function ticketTotals(lines: LineItem[], opts: { taxRate: number; pricesIncludeTax: boolean; exempt: boolean }): TicketTotals {
+  let subtotal = 0
+  let discount = 0
+  let cost = 0
+  for (const l of lines) {
+    if (l.kind === 'discount') discount += lineTotal(l)
+    else subtotal += lineTotal(l)
+    if (l.kind === 'part' && l.costCents !== null) cost += Math.round(l.qty * l.costCents)
+  }
+  const net = Math.max(0, subtotal - discount)
+  const rate = opts.exempt ? 0 : opts.taxRate
+  let tax = 0
+  let total = net
+  if (rate > 0 && opts.pricesIncludeTax) tax = net - Math.round(net / (1 + rate / 100))
+  else if (rate > 0) {
+    tax = Math.round((net * rate) / 100)
+    total = net + tax
+  }
+  return { subtotal, discount, tax, total, cost, profit: total - tax - cost }
+}
+
+export interface Part {
+  id: string
+  name: string
+  sku: string
+  /** In stock */
+  qty: number
+  costCents: number
+  /** Usual selling price */
+  priceCents: number
+  /** Warn when stock is at or below this (0 = never) */
+  reorderAt: number
+  supplier: string
+  notes: string
+  /** Total used on tickets */
+  used: number
+  updatedAt: number
+}
+
+export interface PartInput {
+  name?: string
+  sku?: string
+  qty?: number
+  costCents?: number
+  priceCents?: number
+  reorderAt?: number
+  supplier?: string
+  notes?: string
 }
 
 export interface Ticket extends TicketSummary {
@@ -237,6 +332,7 @@ export interface TicketUpdate {
   receivedOn?: string | null
   pickupOn?: string | null
   content?: DocJSON
+  taxExempt?: boolean
 }
 
 export type PhotoKind = 'before' | 'after'
@@ -721,6 +817,8 @@ export interface BusinessInfo {
   taxName: string
   /** % included in prices, used to show the tax on receipts and for "+ tax" payments when QuickBooks isn't set up */
   taxRate: number
+  /** Quote/invoice line prices already include the tax (otherwise it's added on top) */
+  pricesIncludeTax: boolean
   /** GST/HST registration number */
   taxNumber: string
   /** Printed on the intake slip above the signature line */
@@ -731,7 +829,7 @@ export interface BusinessInfo {
   labelSize: '62x29mm' | '2.25x1.25in' | '4x6in'
 }
 
-export type PrintKind = 'intake' | 'receipt' | 'label'
+export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice'
 
 // ---------- Updates ----------
 
@@ -797,6 +895,20 @@ export interface PlannrApi {
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
     counts(): Promise<{ open: number; ready: number }>
+    /** Quote/invoice lines; changes return the new list (the ticket's price follows the total) */
+    items(ticketId: string): Promise<LineItem[]>
+    addItem(ticketId: string, input?: LineInput): Promise<LineItem[]>
+    updateItem(id: string, patch: LineInput): Promise<LineItem[]>
+    removeItem(id: string): Promise<LineItem[]>
+    totals(ticketId: string): Promise<TicketTotals>
+  }
+  parts: {
+    list(opts?: { query?: string; lowOnly?: boolean }): Promise<Part[]>
+    create(input?: PartInput): Promise<Part>
+    update(id: string, patch: PartInput): Promise<Part>
+    remove(id: string): Promise<void>
+    restore(id: string): Promise<void>
+    lowCount(): Promise<number>
   }
   photos: {
     list(ticketId: string): Promise<TicketPhoto[]>
@@ -997,7 +1109,8 @@ export interface PlannrApi {
 export const API_SHAPE = {
   notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags'],
   customers: ['list', 'get', 'create', 'update', 'trash', 'restore'],
-  tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts'],
+  tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
+  parts: ['list', 'create', 'update', 'remove', 'restore', 'lowCount'],
   photos: ['list', 'add', 'remove', 'setKind'],
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],

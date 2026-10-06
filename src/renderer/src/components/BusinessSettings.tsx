@@ -91,6 +91,10 @@ export function BusinessSettings() {
           {text('taxName', 'Tax name', { placeholder: 'GST, HST…' })}
           {text('taxRate', 'Tax rate (%)')}
           {text('taxNumber', 'GST/HST number')}
+          <label className="check-row wide-check">
+            <input type="checkbox" checked={info.pricesIncludeTax} onChange={(e) => void save({ pricesIncludeTax: e.target.checked })} aria-label="Line item prices include tax" />
+            Prices on quotes and invoices already include tax (otherwise it’s added on top)
+          </label>
           <label className="mfield">
             Label size
             <select value={info.labelSize} onChange={(e) => void save({ labelSize: e.target.value as BusinessInfo['labelSize'] })} aria-label="Label size">
