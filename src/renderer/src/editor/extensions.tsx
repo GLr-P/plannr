@@ -10,6 +10,7 @@ import Mention from '@tiptap/extension-mention'
 import Suggestion from '@tiptap/suggestion'
 import { TableKit } from '@tiptap/extension-table'
 import { Callout } from './Callout'
+import { FileAttachment } from './FileAttachment'
 import {
   ChevronRight,
   Code,
@@ -23,6 +24,7 @@ import {
   ListChecks,
   ListOrdered,
   Minus,
+  Paperclip,
   MessageSquareWarning,
   Quote,
   Table as TableIcon,
@@ -36,9 +38,11 @@ import type { EntityType } from '../../../shared/api'
 import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
 import { FormField } from './FormField'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
-import { defaultUploader, insertImages, pickImages, type ImageUploader } from './upload'
+import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type ImageUploader } from './upload'
 
 interface SlashCommand {
+  /** Only where files go to Plannr's own storage (not the vault) */
+  plannrFiles?: boolean
   label: string
   hint: string
   icon: ReactNode
@@ -118,6 +122,12 @@ const SLASH_COMMANDS: SlashCommand[] = [
         if (files.length) return insertImages(e.view, files, undefined, uploaderOf(e))
       })
     } },
+  { label: 'File', hint: 'Attach a PDF, document or any file', icon: <Paperclip />, keywords: 'file attach attachment pdf document upload', plannrFiles: true, run: (e, r) => {
+      e.chain().focus().deleteRange(r).run()
+      void pickFiles().then((files) => {
+        if (files.length) return insertFiles(e.view, files)
+      })
+    } },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },
   { label: 'Table', hint: 'Rows and columns (right-click to add more)', icon: <TableIcon />, keywords: 'table grid rows columns spreadsheet', run: (e, r) =>
@@ -137,9 +147,10 @@ const SlashCommands = Extension.create({
         pluginKey: new PluginKey('slashCommands'),
         editor: this.editor,
         char: '/',
-        items: ({ query }) => {
+        items: ({ query, editor }) => {
           const q = query.toLowerCase()
-          return SLASH_COMMANDS.filter((c) => `${c.label} ${c.keywords}`.toLowerCase().includes(q)).map((c) => ({
+          const plannrFiles = uploaderOf(editor) === defaultUploader
+          return SLASH_COMMANDS.filter((c) => (plannrFiles || !c.plannrFiles) && `${c.label} ${c.keywords}`.toLowerCase().includes(q)).map((c) => ({
             key: c.label,
             label: c.label,
             hint: c.hint,
@@ -225,6 +236,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     Highlight,
     FormField,
     Callout,
+    FileAttachment,
     TableKit.configure({ table: { resizable: true } }),
     SlashCommands,
     Uploader.configure({ upload: options.upload ?? defaultUploader }),

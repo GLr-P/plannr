@@ -5,7 +5,7 @@ import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline } from
 import type { DocJSON, EntityType } from '../../../shared/api'
 import { openEntity } from '../actions'
 import { buildExtensions, type EditorOptions } from './extensions'
-import { imageFiles, insertImages } from './upload'
+import { imageFiles, insertFiles, insertImages, otherFiles } from './upload'
 import { TextSelection } from '@tiptap/pm/state'
 import { openMenu } from '../components/ContextMenu'
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, Rows3, Table2, Trash2 } from 'lucide-react'
@@ -33,19 +33,22 @@ export function NoteEditor({ docId, content, editable, onChange, onReady, option
     editable,
     editorProps: {
       attributes: { class: 'prose', spellcheck: 'true' },
+      // Pictures go in as images; other files as file blocks (not in the vault, which keeps its own encrypted files).
       handlePaste: (view, event) => {
         const files = imageFiles(event.clipboardData?.files)
-        if (!files.length) return false
-        void insertImages(view, files, undefined, options?.upload)
+        const others = options?.upload ? [] : otherFiles(event.clipboardData?.files)
+        if (!files.length && !others.length) return false
+        void insertImages(view, files, undefined, options?.upload).then(() => insertFiles(view, others))
         return true
       },
       handleDrop: (view, event, _slice, moved) => {
         if (moved) return false
         const files = imageFiles(event.dataTransfer?.files)
-        if (!files.length) return false
+        const others = options?.upload ? [] : otherFiles(event.dataTransfer?.files)
+        if (!files.length && !others.length) return false
         event.preventDefault()
         const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
-        void insertImages(view, files, pos, options?.upload)
+        void insertImages(view, files, pos, options?.upload).then(() => insertFiles(view, others, files.length ? undefined : pos))
         return true
       },
       handleDOMEvents: {

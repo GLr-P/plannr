@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+/** Each profile remembers its own layout; the first profile keeps the original key. */
+function uiKey(): string {
+  const profile = new URLSearchParams(location.search).get('profile')
+  return profile && profile !== 'main' ? `plannr-ui:${profile}` : 'plannr-ui'
+}
+
 /** Per-device UI preferences, remembered between launches. */
 interface UiState {
   collapsed: Record<string, boolean>
@@ -20,6 +26,6 @@ export const useUi = create<UiState>()(
       setCollapsed: (key, value) => set((s) => ({ collapsed: { ...s.collapsed, [key]: value } })),
       setPref: (key, value) => set((s) => ({ prefs: { ...s.prefs, [key]: value } }))
     }),
-    { name: 'plannr-ui' }
+    { name: uiKey() }
   )
 )

@@ -16,14 +16,20 @@ export function imageFiles(list: FileList | null | undefined): File[] {
   return Array.from(list ?? []).filter((f) => f.type.startsWith('image/'))
 }
 
+/** Files that aren't pictures (PDFs, documents…): they become file blocks. */
+export function otherFiles(list: FileList | null | undefined): File[] {
+  return Array.from(list ?? []).filter((f) => !f.type.startsWith('image/'))
+}
+
 /**
- * Inserts an image at [from, to] and leaves the cursor on an empty line right after it
- * (in the same container, e.g. inside a toggle). Leaving the image selected would make
+ * Inserts an image or file block at [from, to] and leaves the cursor on an empty line right after it
+ * (in the same container, e.g. inside a toggle). Leaving the block selected would make
  * the next paste replace it.
  */
-function insertImage(view: EditorView, src: string, alt: string, from: number, to: number): void {
+function insertBlock(view: EditorView, type: 'image' | 'fileAttachment', attrs: Record<string, unknown>, from: number, to: number): void {
   const { schema } = view.state
-  const node = schema.nodes.image.create({ src, alt })
+  const node = schema.nodes[type].create(attrs)
+  const src = attrs.src
   const tr = view.state.tr.replaceRangeWith(from, to, node)
   let imagePos = -1
   tr.doc.descendants((n, pos) => {
@@ -47,8 +53,21 @@ export async function insertImages(view: EditorView, files: File[], pos?: number
     if (view.isDestroyed) return
     const size = view.state.doc.content.size
     const [from, to] = at != null ? [Math.min(at, size), Math.min(at, size)] : [view.state.selection.from, view.state.selection.to]
-    insertImage(view, stored.url, stored.name, from, to)
+    insertBlock(view, 'image', { src: stored.url, alt: stored.name }, from, to)
     at = undefined // following images go after the previous one (where the cursor now is)
+  }
+}
+
+/** Saves any files into Plannr and inserts a file block for each at `pos` (or the cursor). */
+export async function insertFiles(view: EditorView, files: File[], pos?: number): Promise<void> {
+  let at = pos
+  for (const file of files) {
+    const stored = await storeFile(file)
+    if (view.isDestroyed) return
+    const size = view.state.doc.content.size
+    const [from, to] = at != null ? [Math.min(at, size), Math.min(at, size)] : [view.state.selection.from, view.state.selection.to]
+    insertBlock(view, 'fileAttachment', { src: stored.url, name: stored.name, size: stored.size, mime: stored.mime }, from, to)
+    at = undefined
   }
 }
 

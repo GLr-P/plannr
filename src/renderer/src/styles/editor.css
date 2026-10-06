@@ -400,3 +400,44 @@
 .prose.resize-cursor {
   cursor: col-resize;
 }
+
+/* ---------- File blocks (PDFs, documents…) ---------- */
+.file-block {
+  margin: 6px 0;
+}
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  cursor: default;
+  user-select: none;
+}
+.file-chip:hover {
+  border-color: var(--border-strong);
+}
+.file-block.selected .file-chip {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.file-chip-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.file-chip-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-chip-size {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}

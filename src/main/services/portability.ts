@@ -114,6 +114,11 @@ function block(n: DocJSON, files: (id: string) => string | null, indent = ''): s
       return '---'
     case 'image':
       return image(n, files)
+    case 'fileAttachment': {
+      const id = /^plannr:\/\/file\/([\w-]+)/.exec(String(n.attrs?.src ?? ''))?.[1]
+      const local = id ? files(id) : null
+      return `📎 [${esc(String(n.attrs?.name ?? 'file'))}](${local ?? String(n.attrs?.src ?? '')})`
+    }
     case 'bulletList':
     case 'orderedList':
     case 'taskList':

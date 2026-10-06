@@ -2,7 +2,7 @@ import { app, BrowserWindow, nativeTheme, net, Notification, powerMonitor, proto
 import { VaultSession } from './vault-session'
 import { GoogleSync } from './google-sync'
 import { QuickBooksSync } from './quickbooks-sync'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
@@ -17,23 +17,39 @@ import { ensureStarterNoteTemplates } from './services/note-templates'
 import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
 import { ensureSearchIndex } from './services/reindex'
-import type { Theme, ThemePref } from '../shared/api'
+import type { NavigateTarget, Theme, ThemePref } from '../shared/api'
 import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
 import { SyncService } from './sync/service'
 import { getSecret, putSecret } from './secrets'
+import { ProfileManager } from './profile-manager'
+import { MAIN_PROFILE, saveRegistry } from './profiles'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
-const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
+// That folder is the first profile; other profiles have their own folders inside it (see profiles.ts).
+const baseDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
 const isTest = Boolean(process.env.PLANNR_DATA_DIR)
+// Switching profile restarts Plannr in the other one (tests start the app again themselves).
+const profiles = new ProfileManager(baseDir, () => {
+  quitting = true
+  vaultSession?.lock()
+  vaultSession?.clearClipboardNow()
+  vaultSession?.cleanTemp()
+  db?.close()
+  if (!isTest) app.relaunch({ args: process.argv.slice(1).filter((a) => a !== '--hidden') })
+  app.exit(0)
+}, isTest ? async (dir) => rmSync(dir, { recursive: true, force: true }) : undefined)
+const dataDir = profiles.dir
 // Tray, close-to-tray and reminders. Off in tests; PLANNR_BACKGROUND=1 turns them on to verify real notifications.
 const background = !isTest || process.env.PLANNR_BACKGROUND === '1'
-if (isTest) app.setPath('userData', join(dataDir, '.electron'))
+if (isTest) app.setPath('userData', join(baseDir, '.electron'))
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
 // Started with Windows (login item): stay in the tray until opened.
 const startHidden = process.argv.includes('--hidden')
 mkdirSync(dataDir, { recursive: true })
+// Shown after a switch (e.g. the item a notification was about), once.
+const startNavigate = profiles.registry.navigate
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'plannr', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
@@ -62,13 +78,17 @@ function createWindow(): void {
   const theme = effectiveTheme()
   const colors = themeColors[theme]
   const zoom = Math.max(0.8, Math.min(1.4, Number(getSetting(db, 'zoom')) || 1))
+  // After switching profile the window comes back where it was.
+  const bounds = profiles.registry.window
+  const several = profiles.registry.profiles.length > 1
   mainWindow = new BrowserWindow({
-    width: 1320,
-    height: 860,
+    width: bounds?.width ?? 1320,
+    height: bounds?.height ?? 860,
+    ...(bounds ? { x: bounds.x, y: bounds.y } : {}),
     minWidth: 900,
     minHeight: 600,
     show: false,
-    title: 'Plannr',
+    title: several ? `Plannr · ${profiles.active.name}` : 'Plannr',
     icon: resourcePath('icon.png'),
     backgroundColor: colors.bg,
     titleBarStyle: 'hidden',
@@ -84,8 +104,24 @@ function createWindow(): void {
     }
   })
   mainWindow.once('ready-to-show', () => {
+    if (bounds?.maximized) mainWindow?.maximize()
     if (!startHidden) mainWindow?.show()
   })
+  if (bounds || startNavigate) {
+    delete profiles.registry.window
+    delete profiles.registry.navigate
+    saveRegistry(baseDir, profiles.registry) // used once
+  }
+  // Remembered so a switch can put the window back.
+  const remember = (): void => {
+    if (!mainWindow || mainWindow.isMinimized()) return
+    profiles.registry.window = { ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() }
+  }
+  mainWindow.on('resize', remember)
+  mainWindow.on('move', remember)
+  mainWindow.on('maximize', remember)
+  mainWindow.on('unmaximize', remember)
+  remember()
   // Closing the window keeps Plannr running in the tray so reminders still fire (unless turned off in Settings).
   mainWindow.on('close', (event) => {
     if (quitting || !background || getSetting(db, 'runInBackground') === false) return
@@ -98,6 +134,7 @@ function createWindow(): void {
     }
   })
   mainWindow.on('closed', () => (mainWindow = null))
+  mainWindow.on('page-title-updated', (event) => event.preventDefault()) // the title names the open profile
 
   // Keep the app on its own page; open web links in the default browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -108,9 +145,11 @@ function createWindow(): void {
     if (url !== mainWindow?.webContents.getURL()) event.preventDefault()
   })
 
-  const query = { theme }
+  // The profile (its own remembered layout) and anything to show after a switch.
+  const query: Record<string, string> = { theme, profile: profiles.registry.active }
+  if (startNavigate) query.navigate = JSON.stringify(startNavigate)
   if (process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}?theme=${theme}`)
+    void mainWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}?${new URLSearchParams(query)}`)
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'), { query })
   }
@@ -128,6 +167,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     db = openDb(join(dataDir, 'plannr.db'))
+    profiles.adoptName(db)
     pinLegacyPrefix(db)
     loadDisplayPrefs(db)
     ensureOnboardingState(db)
@@ -153,6 +193,12 @@ if (!app.requestSingleInstanceLock()) {
       return new Response(new Uint8Array(file.data), { headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store' } })
     })
     // Backups go to Documents\Plannr Backups unless another folder was chosen (tests keep them inside their data folder).
+    // Other profiles get their own folder (Plannr Backups\<name>), fixed when first opened, so backups never mix.
+    if (!isTest && profiles.registry.active !== MAIN_PROFILE && !getSetting(db, 'backupDir')) {
+      const safe = profiles.active.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/[. ]+$/, '').trim() || profiles.active.id
+      const folder = ['snapshots', 'files'].includes(safe.toLowerCase()) ? safe + ' profile' : safe
+      setSetting(db, 'backupDir', join(app.getPath('documents'), 'Plannr Backups', folder))
+    }
     const backupDir = (): string => {
       const chosen = getSetting(db, 'backupDir')
       return typeof chosen === 'string' && chosen ? chosen : isTest ? join(dataDir, 'backups') : join(app.getPath('documents'), 'Plannr Backups')
@@ -192,7 +238,41 @@ if (!app.requestSingleInstanceLock()) {
     })
     void sync.start()
     app.on('browser-window-focus', () => sync.poke())
-    registerIpc(createApi(db, dataDir, getWindow, vaultSession, { backupDir, restoreAndRestart, googleSync, qboSync, updater, sync, theme: effectiveTheme }))
+    let refreshTray = (): void => undefined
+    registerIpc(
+      createApi(db, dataDir, getWindow, vaultSession, {
+        backupDir,
+        restoreAndRestart,
+        googleSync,
+        qboSync,
+        updater,
+        sync,
+        theme: effectiveTheme,
+        profiles: {
+          list: async () => profiles.state(),
+          add: async (name, color) => {
+            const p = profiles.add(name, color)
+            mainWindow?.setTitle(`Plannr · ${profiles.active.name}`)
+            refreshTray()
+            return p
+          },
+          update: async (id, patch) => {
+            const p = profiles.update(id, patch)
+            if (id === profiles.registry.active) mainWindow?.setTitle(`Plannr · ${p.name}`)
+            refreshTray()
+            return p
+          },
+          remove: async (id) => {
+            await profiles.remove(id)
+            refreshTray()
+          },
+          switch: async (id, navigate) => {
+            if (id !== profiles.registry.active) profiles.switchTo(id, navigate)
+          },
+          copyNote: async (noteId, targetId, move) => profiles.copyNote({ db, dir: dataDir }, noteId, targetId, move)
+        }
+      })
+    )
     // Daily automatic backup (checked hourly; runs when the last one is ~a day old).
     if (!isTest) {
       const autoBackup = (): void => {
@@ -217,8 +297,21 @@ if (!app.requestSingleInstanceLock()) {
       setInterval(updateHolidays, 6 * 60 * 60 * 1000)
     }
     if (background) {
-      createTray(getWindow, quit, effectiveTheme)
-      startReminders(db, getWindow)
+      refreshTray = createTray(getWindow, quit, effectiveTheme, {
+        list: () => profiles.registry.profiles.map((p) => ({ id: p.id, name: p.name, active: p.id === profiles.registry.active })),
+        pick: (id) => {
+          if (id !== profiles.registry.active) profiles.switchTo(id)
+        }
+      })
+      // Reminders for every profile, not just the open one; clicking another profile's reminder switches to it.
+      startReminders(() => [
+        { db, open: (target) => showWindow(getWindow, target) },
+        ...profiles.otherProfiles().map((b) => ({
+          db: b.db,
+          label: b.profile.name,
+          open: (target: NavigateTarget) => profiles.switchTo(b.profile.id, target)
+        }))
+      ])
       ensureStartMenuShortcut()
       adoptLoginItem()
       registerCaptureShortcut(db, effectiveTheme) // quick capture from anywhere (Ctrl+Shift+Space)
@@ -226,5 +319,8 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('window-all-closed', () => app.quit())
-  app.on('will-quit', () => db?.close())
+  app.on('will-quit', () => {
+    profiles.closeAll()
+    db?.close()
+  })
 }

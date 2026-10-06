@@ -13,8 +13,12 @@ import {
   Pin,
   PinOff,
   Plus,
-  Trash2
+  Trash2,
+  Copy,
+  ArrowRightLeft
 } from 'lucide-react'
+import { otherProfiles, switchProfile } from './store/profiles'
+import { ProfileDot } from './components/Profiles'
 import { showToast } from './lib/toast'
 import type { Folder, NoteSummary, SidebarSection } from '../../shared/api'
 import { api } from './api'
@@ -97,8 +101,37 @@ export function noteMenu(note: NoteSummary, opts: { renameKey?: string } = {}): 
         showToast(`Saved as the note template “${t.name}” (New note ▾)`, { label: 'Open', run: () => go({ view: 'template', id: t.id }) })
       }
     },
+    ...profileEntries(note),
     'separator',
     { label: 'Move to trash', icon: <Trash2 />, danger: true, onSelect: () => trashNote(note.id) }
+  ]
+}
+
+const cleanError = (err: unknown): string => (err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
+
+/** "Copy to profile" / "Move to profile" (with its pictures and files), when there's another profile. */
+function profileEntries(note: NoteSummary): MenuEntry[] {
+  const others = otherProfiles()
+  if (others.length === 0) return []
+  const send = async (targetId: string, name: string, move: boolean): Promise<void> => {
+    try {
+      await api.profiles.copyNote(note.id, targetId, move)
+    } catch (err) {
+      showToast(cleanError(err))
+      return
+    }
+    if (move) {
+      await useData.getState().refresh()
+      const { route } = useNav.getState()
+      if (route.view === 'note' && route.id === note.id) go({ view: 'notes', filter: { kind: 'all' } })
+    }
+    showToast(`${move ? 'Moved' : 'Copied'} “${note.title || 'Untitled'}” to ${name}`, { label: `Open ${name}`, run: () => void switchProfile(targetId) })
+  }
+  const choices = (move: boolean): MenuEntry[] =>
+    others.map((b) => ({ label: b.name, icon: <ProfileDot profile={b} size={16} />, onSelect: () => send(b.id, b.name, move) }))
+  return [
+    { label: 'Copy to profile', icon: <Copy />, children: choices(false) },
+    { label: 'Move to profile', icon: <ArrowRightLeft />, children: choices(true) }
   ]
 }
 

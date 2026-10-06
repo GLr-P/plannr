@@ -1,7 +1,7 @@
 import type { DocJSON, EntityType } from '../../shared/api'
 import type { LinkTarget } from './links'
 
-const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader'])
+const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader', 'fileAttachment'])
 const ENTITY_TYPES = new Set<EntityType>(['note', 'customer', 'ticket'])
 
 /** Plain text of a document, one line per block; used for search and previews. */
@@ -18,6 +18,7 @@ export function extractText(doc: DocJSON | null | undefined): string {
       const value = node.attrs?.kind === 'checkbox' ? (raw === 'true' ? 'Yes' : 'No') : raw
       line += `${line ? ' ' : ''}${label}: ${value}`
     } else if (node.type === 'hardBreak') line += ' '
+    else if (node.type === 'fileAttachment') line += String(node.attrs?.name ?? '')
     node.content?.forEach(walk)
     if (BLOCKS.has(node.type)) {
       if (line.trim()) lines.push(line.trim())

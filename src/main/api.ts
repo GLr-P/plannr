@@ -39,6 +39,7 @@ export interface ApiHooks {
   backupDir: () => string
   /** Closes the database, puts the snapshot back and restarts Plannr */
   restoreAndRestart: (file: string) => Promise<void>
+  profiles: PlannrApi['profiles']
 }
 
 export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
@@ -283,6 +284,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       syncNow: async () => hooks.sync.syncNow(),
       disconnect: async () => hooks.sync.disconnect()
     },
+    profiles: hooks.profiles,
     updates: {
       status: async () => hooks.updater.status,
       check: async () => hooks.updater.check(),

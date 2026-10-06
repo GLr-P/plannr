@@ -29,6 +29,26 @@ import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
 import { initUpdates } from './store/update'
 import { MessageDialog } from './components/MessageDialog'
 import { MobileNav, useDrawer } from './components/MobileNav'
+import { AddProfileDialog } from './components/Profiles'
+import type { NavigateTarget } from './api'
+
+/** Shows what a notification (or a switch of profile) asked for. */
+function navigateTo(target: NavigateTarget): void {
+  if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
+  else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
+  else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
+  else openEntity(target.type, target.id)
+}
+
+/** After switching profile because of a notification, the main process passes what to show. */
+function startTarget(): NavigateTarget | null {
+  try {
+    const raw = new URLSearchParams(location.search).get('navigate')
+    return raw ? (JSON.parse(raw) as NavigateTarget) : null
+  } catch {
+    return null
+  }
+}
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -129,14 +149,13 @@ export function App() {
     })
     void loadDisplay()
       .then(() => useData.getState().refresh())
-      .then(() => maybeStartOnboarding())
+      .then(() => {
+        const target = startTarget()
+        if (target) navigateTo(target)
+        return maybeStartOnboarding()
+      })
     // A clicked reminder notification asks to show its ticket/customer/note (or calendar day).
-    const stopNavigate = window.plannrEvents.onNavigate((target) => {
-      if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
-      else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
-      else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
-      else openEntity(target.type, target.id)
-    })
+    const stopNavigate = window.plannrEvents.onNavigate(navigateTo)
     return () => {
       stopNavigate()
       stopUpdates()
@@ -156,6 +175,7 @@ export function App() {
       <ShortcutsDialog />
       <Onboarding />
       <MessageDialog />
+      <AddProfileDialog />
     </div>
   )
 }

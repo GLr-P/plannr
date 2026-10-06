@@ -6,7 +6,7 @@ import { dueMoneyReminders, dueReminders, markReminderFired } from './services/r
 import { dueTaskReminders } from './services/tasks'
 import { openCapture } from './capture'
 import { processAutopay } from './services/money'
-import type { EntityType } from '../shared/api'
+import type { NavigateTarget } from '../shared/api'
 
 export const APP_ID = 'com.nanotechservices.plannr'
 
@@ -14,8 +14,7 @@ export const APP_ID = 'com.nanotechservices.plannr'
 export const resourcePath = (file: string): string =>
   app.isPackaged ? join(process.resourcesPath, 'resources', file) : join(app.getAppPath(), 'resources', file)
 
-/** Asks the window to show something (used by notifications). */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true }
+export type { NavigateTarget }
 
 export function showWindow(getWindow: () => BrowserWindow | null, target?: NavigateTarget): void {
   const win = getWindow()
@@ -30,47 +29,82 @@ export function showWindow(getWindow: () => BrowserWindow | null, target?: Navig
 
 let tray: Tray | null = null
 
-export function createTray(getWindow: () => BrowserWindow | null, quit: () => void, theme: () => 'light' | 'dark'): void {
+/** The profiles for the tray's "Switch profile" menu (only shown when there are two or more). */
+export interface TrayProfiles {
+  list: () => { id: string; name: string; active: boolean }[]
+  pick: (id: string) => void
+}
+
+export function createTray(getWindow: () => BrowserWindow | null, quit: () => void, theme: () => 'light' | 'dark', profiles?: TrayProfiles): () => void {
   tray = new Tray(nativeImage.createFromPath(resourcePath('tray.png')))
-  tray.setToolTip('Plannr')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open Plannr', click: () => showWindow(getWindow) },
-      { label: 'Quick capture', click: () => openCapture(theme) },
-      { type: 'separator' },
-      { label: 'Quit Plannr', click: quit }
-    ])
-  )
+  const build = (): void => {
+    const list = profiles?.list() ?? []
+    const active = list.find((b) => b.active)
+    tray?.setToolTip(list.length > 1 && active ? `Plannr · ${active.name}` : 'Plannr')
+    tray?.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open Plannr', click: () => showWindow(getWindow) },
+        { label: 'Quick capture', click: () => openCapture(theme) },
+        ...(list.length > 1
+          ? [
+              {
+                label: 'Switch profile',
+                submenu: list.map((b) => ({ label: b.name, type: 'radio' as const, checked: b.active, click: () => profiles?.pick(b.id) }))
+              }
+            ]
+          : []),
+        { type: 'separator' },
+        { label: 'Quit Plannr', click: quit }
+      ])
+    )
+  }
+  build()
   tray.on('click', () => showWindow(getWindow))
+  return build
 }
 
 // ---------- Reminders ----------
 
+/** A profile whose reminders are checked: the open one, and the others (labelled, and clicking switches to them). */
+export interface ReminderSource {
+  db: Db
+  /** The profile name, for profiles that aren't open */
+  label?: string
+  open: (target: NavigateTarget) => void
+}
+
 /** Checks every minute (and on wake from sleep) for reminders that are due and shows Windows notifications. */
-export function startReminders(db: Db, getWindow: () => BrowserWindow | null): () => void {
-  const check = (): void => {
-    if (!Notification.isSupported()) return
+export function startReminders(sources: () => ReminderSource[]): () => void {
+  const notify = (source: ReminderSource, title: string, body: string, target: NavigateTarget): void => {
+    const n = new Notification({ title: source.label ? `${source.label} · ${title}` : title, body, icon: resourcePath('icon.png') })
+    n.on('click', () => source.open(target))
+    n.show()
+  }
+  const checkOne = (source: ReminderSource): void => {
+    const { db } = source
     // Bill/subscription reminders first (auto-pay below moves due dates forward once charged).
     for (const r of dueMoneyReminders(db)) {
       markReminderFired(db, r.recurringId, r.key)
-      const n = new Notification({ title: r.title, body: r.body, icon: resourcePath('icon.png') })
-      n.on('click', () => showWindow(getWindow, { money: r.recurringId }))
-      n.show()
+      notify(source, r.title, r.body, { money: r.recurringId })
     }
     processAutopay(db)
     for (const r of dueTaskReminders(db)) {
       markReminderFired(db, r.taskId, r.key)
-      const n = new Notification({ title: r.title, body: r.body, icon: resourcePath('icon.png') })
-      n.on('click', () => showWindow(getWindow, { tasks: true }))
-      n.show()
+      notify(source, r.title, r.body, { tasks: true })
     }
     for (const r of dueReminders(db)) {
       markReminderFired(db, r.eventId, r.key) // mark first: never repeat, even if showing fails
-      const n = new Notification({ title: r.title, body: r.body, icon: resourcePath('icon.png') })
-      n.on('click', () =>
-        showWindow(getWindow, r.linkType && r.linkId ? { type: r.linkType, id: r.linkId } : { calendarDate: r.date })
-      )
-      n.show()
+      notify(source, r.title, r.body, r.linkType && r.linkId ? { type: r.linkType, id: r.linkId } : { calendarDate: r.date })
+    }
+  }
+  const check = (): void => {
+    if (!Notification.isSupported()) return
+    for (const source of sources()) {
+      try {
+        checkOne(source)
+      } catch {
+        // one profile's problem (e.g. its folder was removed) mustn't stop the others' reminders
+      }
     }
   }
   check()

@@ -93,6 +93,23 @@ export interface StoredFile {
   url: string
 }
 
+/** Asks the window to show something (notifications, switching profile) */
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true }
+
+/** One profile on this PC (e.g. work and personal): its own data folder, so everything in it is separate from the others */
+export interface Profile {
+  id: string
+  name: string
+  /** Shown as a dot in the switcher, e.g. #3b82f6 */
+  color: string
+}
+
+export interface ProfilesState {
+  /** The open profile */
+  active: string
+  profiles: Profile[]
+}
+
 export interface AppInfo {
   version: string
   dataDir: string
@@ -1227,6 +1244,17 @@ export interface PlannrApi {
     /** Downloads, verifies and installs the new version, then restarts Plannr */
     install(): Promise<UpdateStatus>
   }
+  profiles: {
+    list(): Promise<ProfilesState>
+    add(name: string, color?: string): Promise<Profile>
+    update(id: string, patch: { name?: string; color?: string }): Promise<Profile>
+    /** Takes a profile off this PC; its folder goes to the Recycle Bin */
+    remove(id: string): Promise<void>
+    /** Opens another profile: Plannr restarts in it, optionally showing something */
+    switch(id: string, navigate?: NavigateTarget): Promise<void>
+    /** Copies a note (with its pictures and files) into another profile; move = then puts this one in the trash */
+    copyNote(noteId: string, targetId: string, move: boolean): Promise<void>
+  }
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
@@ -1285,6 +1313,7 @@ export const API_SHAPE = {
   search: ['query'],
   files: ['save', 'open'],
   settings: ['get', 'set'],
+  profiles: ['list', 'add', 'update', 'remove', 'switch', 'copyNote'],
   money: [
     'recurring',
     'createRecurring',

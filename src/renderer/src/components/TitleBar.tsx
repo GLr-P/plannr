@@ -4,6 +4,7 @@ import { useUpdate } from '../store/update'
 import { useUi } from '../store/ui'
 import { SearchBox } from './SearchBox'
 import { DrawerButton } from './MobileNav'
+import { ProfileSwitcher } from './Profiles'
 
 /** Shows in the title bar when a new version is ready (or downloading); opens Settings → General → Updates. */
 function UpdatePill() {
@@ -35,10 +36,7 @@ export function TitleBar() {
     <header className="titlebar">
       <div className="titlebar-left">
         <DrawerButton />
-        <span className="brand">
-          <span className="brand-mark">P</span>
-          Plannr
-        </span>
+        <ProfileSwitcher />
         <div className="history">
           <button type="button" className="icon-btn" disabled={!canBack} onClick={back} title="Back (Alt+←)" aria-label="Back">
             <ArrowLeft />

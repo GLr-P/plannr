@@ -159,6 +159,14 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       disconnect: async () => sync.disconnect()
     },
     updates: { status: async () => updates, check: async () => updates, install: async () => updates },
+    profiles: {
+      list: async () => ({ active: 'main', profiles: [{ id: 'main', name: 'Main', color: '#3b82f6' }] }),
+      add: offline,
+      update: offline,
+      remove: offline,
+      switch: async () => undefined,
+      copyNote: offline
+    },
     app: {
       info: async () => ({ version: __APP_VERSION__, dataDir: DATA, tests: false, web: true }),
       openDataFolder: async () => undefined,
