@@ -7,6 +7,7 @@ import { saveDisplay, useDisplay } from '../store/display'
 import { ACCENTS, TEXT_SIZES } from '../lib/appearance'
 import { HIDEABLE, navHidden } from '../lib/navOrder'
 import { HOME_SECTIONS, hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
+import { MessageTemplatesSettings } from './MessageTemplatesSettings'
 
 /* Settings sections for customizing Plannr: look, menu, Home, tickets and money display. */
 
@@ -224,6 +225,7 @@ export function TicketSettings() {
           ))}
         </div>
       </section>
+      <MessageTemplatesSettings />
     </>
   )
 }

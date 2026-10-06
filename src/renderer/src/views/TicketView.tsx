@@ -19,6 +19,9 @@ import { showToast, undoToast } from '../lib/toast'
 import { openMenu } from '../components/ContextMenu'
 import { Printer, Receipt, Tag, ClipboardList, FileText as FileTextIcon, FileCheck } from 'lucide-react'
 import { TicketLines } from '../components/TicketLines'
+import { MessageSquare } from 'lucide-react'
+import { loadTemplates } from '../lib/messages'
+import { useMessageDialog } from '../components/MessageDialog'
 import type { PrintKind } from '../../../shared/api'
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
@@ -81,7 +84,22 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     const s = await api.tickets.update(ticket.id, patch)
     setUpdatedAt(s.updatedAt)
     if (patch.status) void useData.getState().refreshCounts()
+    // Ready for pickup: offer to let the customer know.
+    if (patch.status === 'ready') {
+      showToast('Ready for pickup. Let the customer know?', {
+        label: 'Message',
+        run: async () => openMessage((await loadTemplates()).find((t) => t.id === 'ready'))
+      })
+    }
   })
+
+  /** Opens a customer message for this ticket (the menu picks a template; the toast opens "Ready for pickup"). */
+  const openMessage = async (template?: Awaited<ReturnType<typeof loadTemplates>>[number]): Promise<void> => {
+    await saver.flush()
+    const latest = await api.tickets.get(ticket.id)
+    if (!template || !latest) return
+    useMessageDialog.getState().set({ template, ticket: latest, customer: customerIdRef.current ? await api.customers.get(customerIdRef.current) : null })
+  }
 
   // Customer details typed on the ticket are saved to the customer record.
   const customerIdRef = useRef(ticket.customerId)
@@ -146,6 +164,20 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           {!trashed && (
             <>
               <StatusSelect value={fields.status} onChange={(status) => set({ status }, true)} />
+              <button
+                type="button"
+                className="btn sm"
+                onClick={async (e) => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  const templates = await loadTemplates()
+                  openMenu(
+                    { clientX: r.left, clientY: r.bottom + 4 },
+                    templates.map((t) => ({ label: t.name, icon: <MessageSquare />, onSelect: () => openMessage(t) }))
+                  )
+                }}
+              >
+                <MessageSquare /> Message
+              </button>
               <button
                 type="button"
                 className="btn sm"

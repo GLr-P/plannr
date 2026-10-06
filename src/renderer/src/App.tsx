@@ -26,6 +26,7 @@ import { loadDisplay, useDisplay } from './store/display'
 import { useAppearance } from './lib/appearance'
 import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
 import { initUpdates } from './store/update'
+import { MessageDialog } from './components/MessageDialog'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -141,6 +142,7 @@ export function App() {
       <ToastHost />
       <ShortcutsDialog />
       <Onboarding />
+      <MessageDialog />
     </div>
   )
 }

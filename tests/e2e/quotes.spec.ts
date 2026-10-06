@@ -109,3 +109,27 @@ test('reports: GST collected on the payment minus GST on an expense, and the cha
   await expect(page.locator('.report-stats')).toContainText('Received')
   await shot(page, 'q3-reports')
 })
+
+test('messages: setting Ready offers to message the customer; the template is filled in; copy for a text', async () => {
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
+  await page.getByRole('tab', { name: 'All', exact: true }).click().catch(() => undefined)
+  await page.locator('.ticket-row').first().click()
+  await page.getByLabel('Status').selectOption('ready')
+  const toast = page.locator('.app-toast')
+  await expect(toast).toContainText('Let the customer know?')
+  await toast.getByRole('button', { name: 'Message' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Message: Ready for pickup' })
+  await expect(dialog.getByLabel('Subject')).toHaveValue('Your iPhone 13 is ready (T-0001)')
+  await expect(dialog.getByLabel('Message')).toHaveValue(/Hi there,\n\nGood news: your iPhone 13 is ready for pickup\. The total is \$198\.45, already paid\./)
+  await expect(dialog.getByLabel('Message')).toHaveValue(/Maple Repair Co\./)
+  await shot(page, 'q4-message')
+  await dialog.getByRole('button', { name: 'Copy text' }).click()
+  await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toContain('Good news: your iPhone 13 is ready')
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+
+  // The Message button lists every template
+  await page.getByRole('button', { name: 'Message', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: 'Waiting on parts' })).toBeVisible()
+  await page.keyboard.press('Escape')
+})
