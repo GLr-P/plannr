@@ -479,3 +479,18 @@
 .fc .ev-google .ev-chip {
   color: #fff;
 }
+
+/* Repeating events */
+.repeat-row select {
+  flex: 1;
+}
+.repeat-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.repeat-delete {
+  display: flex;
+  gap: 6px;
+}

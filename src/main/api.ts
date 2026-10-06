@@ -165,6 +165,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       create: async (input) => changed(calendar.createEvent(db, input)),
       update: async (id, patch) => changed(calendar.updateEvent(db, id, patch)),
       remove: async (id) => changed(calendar.removeEvent(db, id)),
+      skipOccurrence: async (id, date) => changed(calendar.skipOccurrence(db, id, date)),
       forLink: async (id) => calendar.eventsForLink(db, id),
       drop: async (item, date, startTime) => changed(calendar.dropItem(db, item, date, startTime ?? null))
     },

@@ -145,6 +145,28 @@ describe('Plannr → Google', () => {
     expect(google.list(plannrCal()).find((e) => e.summary === 'Dentist')!.status).toBe('cancelled')
   })
 
+  it('a repeating event goes up as one recurring event; its occurrences coming back are ignored; turning repeat off replaces it', async () => {
+    const ev = cal.createEvent(db, { title: 'Staff meeting', date: '2026-10-06', startTime: '09:00', endTime: '10:00' })
+    cal.updateEvent(db, ev.id, { repeat: 'weekly', repeatUntil: '2026-12-29' })
+    cal.skipOccurrence(db, ev.id, '2026-10-20')
+    await sync()
+    const g = google.list(plannrCal()).find((e) => e.summary === 'Staff meeting')!
+    expect(g.recurrence).toEqual(['RRULE:FREQ=WEEKLY;UNTIL=20261229T235959Z', `EXDATE;TZID=${TZ}:20261020T090000`])
+    // Google lists occurrences (single events) with recurringEventId; they must not overwrite the series
+    google.addInGoogle(plannrCal(), { summary: 'Staff meeting', recurringEventId: g.id, start: { date: '2026-10-13' }, end: { date: '2026-10-14' }, extendedProperties: { private: { plannrId: ev.id } } })
+    await sync()
+    expect(cal.getEvent(db, ev.id)).toMatchObject({ date: '2026-10-06', repeat: 'weekly' })
+    expect(cal.listEvents(db, '2026-10-01', '2026-10-31').filter((e) => e.title === 'Staff meeting').map((e) => e.date)).toEqual(['2026-10-06', '2026-10-13', '2026-10-27'])
+
+    await later()
+    cal.updateEvent(db, ev.id, { repeat: '' })
+    await sync()
+    expect(g.status).toBe('cancelled') // the recurring copy is replaced by a one-off
+    const fresh = google.list(plannrCal()).filter((e) => e.summary === 'Staff meeting' && e.status !== 'cancelled' && !e.recurringEventId)
+    expect(fresh).toHaveLength(1)
+    expect(fresh[0].recurrence).toBeUndefined()
+  })
+
   it('a trashed ticket removes its pickup from Google; restoring brings it back', async () => {
     const t = tickets.createTicket(db, { templateId: null })
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-12' })

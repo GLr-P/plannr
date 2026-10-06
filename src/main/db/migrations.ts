@@ -378,5 +378,12 @@ export const migrations: string[] = [
     deleted_at INTEGER
   );
   CREATE INDEX tasks_due ON tasks(due_date);
+  `,
+
+  /* 19: repeating events (daily/weekly/monthly/yearly, until, skipped dates); google_reset re-creates the Google copy */ `
+  ALTER TABLE events ADD COLUMN repeat TEXT NOT NULL DEFAULT '';
+  ALTER TABLE events ADD COLUMN repeat_until TEXT;
+  ALTER TABLE events ADD COLUMN exdates TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE events ADD COLUMN google_reset INTEGER NOT NULL DEFAULT 0;
   `
 ]

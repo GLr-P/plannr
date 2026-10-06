@@ -1,6 +1,6 @@
 import type { Db } from '../db'
 import { newId, now, tx } from '../db'
-import { formatTicketNumber, type CalendarEvent, type EntityType, type EventInput, type EventKind, type EventUpdate, type ReminderKind } from '../../shared/api'
+import { formatTicketNumber, type Repeat, type CalendarEvent, type EntityType, type EventInput, type EventKind, type EventUpdate, type ReminderKind } from '../../shared/api'
 import { isDate } from './doc'
 
 const REMINDER_KINDS = new Set<ReminderKind>(['day_before', 'day_of'])
@@ -17,13 +17,16 @@ interface EventRow {
   link_type: EntityType | null
   link_id: string | null
   reminders: string
+  repeat: Repeat
+  repeat_until: string | null
+  exdates: string
   updated_at: number
   link_title: string | null
   link_done: number
   link_deleted: number | null
 }
 
-const COLS = `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, e.link_type, e.link_id, e.reminders, e.updated_at,
+const COLS = `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, e.link_type, e.link_id, e.reminders, e.repeat, e.repeat_until, e.exdates, e.updated_at,
   CASE e.link_type
     WHEN 'ticket' THEN ticket_no(t.number)
       || CASE WHEN t.device <> '' THEN ' · ' || t.device ELSE '' END
@@ -58,8 +61,38 @@ function toEvent(r: EventRow): CalendarEvent {
     linkDone: r.link_done === 1,
     linkDeleted: r.link_deleted !== null && r.link_deleted !== undefined,
     reminders: JSON.parse(r.reminders) as ReminderKind[],
+    repeat: r.repeat ?? '',
+    repeatUntil: r.repeat_until,
+    seriesStart: r.date,
     updatedAt: r.updated_at
   }
+}
+
+const REPEATS: Repeat[] = ['', 'daily', 'weekly', 'monthly', 'yearly']
+const ymd = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** Dates a repeating series falls on within [from, to]. Monthly on the 31st skips shorter months (as Google does). */
+export function occurrenceDates(start: string, repeat: Repeat, until: string | null, from: string, to: string, skip: string[] = []): string[] {
+  if (!repeat) return start >= from && start <= to ? [start] : []
+  const last = until && until < to ? until : to
+  const [y, m, d] = start.split('-').map(Number)
+  const out: string[] = []
+  for (let i = 0; i < 100_000; i++) {
+    let date: Date
+    if (repeat === 'daily') date = new Date(y, m - 1, d + i)
+    else if (repeat === 'weekly') date = new Date(y, m - 1, d + 7 * i)
+    else if (repeat === 'monthly') {
+      date = new Date(y, m - 1 + i, d)
+      if (date.getDate() !== d) continue // no such day this month
+    } else {
+      date = new Date(y + i, m - 1, d)
+      if (date.getMonth() !== m - 1) continue // 29 Feb in a non-leap year
+    }
+    const iso = ymd(date)
+    if (iso > last) break
+    if (iso >= from && !skip.includes(iso)) out.push(iso)
+  }
+  return out
 }
 
 const isTime = (s: unknown): s is string => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
@@ -68,9 +101,20 @@ const cleanReminders = (r: ReminderKind[]): ReminderKind[] => [...new Set(r.filt
 export function listEvents(db: Db, from: string, to: string): CalendarEvent[] {
   if (!isDate(from) || !isDate(to)) return []
   const rows = db
-    .prepare(`SELECT ${COLS} ${FROM} WHERE ${VISIBLE} AND e.date BETWEEN ? AND ? ORDER BY e.date, e.start_time IS NOT NULL, e.start_time`)
-    .all(from, to) as unknown as EventRow[]
-  return rows.map(toEvent)
+    .prepare(
+      `SELECT ${COLS} ${FROM} WHERE ${VISIBLE} AND (
+         (e.repeat = '' AND e.date BETWEEN ? AND ?)
+         OR (e.repeat <> '' AND e.date <= ? AND (e.repeat_until IS NULL OR e.repeat_until >= ?)))`
+    )
+    .all(from, to, to, from) as unknown as EventRow[]
+  // Repeating events become one entry per occurrence in the range (same id, that occurrence's date).
+  const out: CalendarEvent[] = []
+  for (const r of rows) {
+    const ev = toEvent(r)
+    if (!ev.repeat) out.push(ev)
+    else for (const date of occurrenceDates(r.date, r.repeat, r.repeat_until, from, to, JSON.parse(r.exdates) as string[])) out.push({ ...ev, date })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || Number(a.startTime !== null) - Number(b.startTime !== null) || (a.startTime ?? '').localeCompare(b.startTime ?? ''))
 }
 
 export function getEvent(db: Db, id: string): CalendarEvent | null {
@@ -147,6 +191,13 @@ export function updateEvent(db: Db, id: string, patch: EventUpdate): CalendarEve
     }
     if (patch.endTime !== undefined) set('end_time', isTime(patch.endTime) ? patch.endTime : null)
     if (patch.reminders !== undefined) set('reminders', JSON.stringify(cleanReminders(patch.reminders)))
+    if (patch.repeat !== undefined && current.kind !== 'pickup') {
+      const repeat = REPEATS.includes(patch.repeat) ? patch.repeat : ''
+      set('repeat', repeat)
+      if (repeat !== current.repeat) set('google_reset', 1) // Google's copy is replaced (a repeat can't be patched away)
+      if (!repeat) set('exdates', '[]')
+    }
+    if (patch.repeatUntil !== undefined) set('repeat_until', isDate(patch.repeatUntil) ? patch.repeatUntil : null)
 
     let kind = current.kind
     if (patch.kind !== undefined && patch.kind !== current.kind) {
@@ -173,6 +224,19 @@ export function updateEvent(db: Db, id: string, patch: EventUpdate): CalendarEve
     }
     return getEvent(db, id)!
   })
+}
+
+/** Repeating event: leave out one occurrence (the rest of the series stays). */
+export function skipOccurrence(db: Db, id: string, date: string): void {
+  const row = db.prepare('SELECT exdates FROM events WHERE id = ?').get(id) as { exdates: string } | undefined
+  if (!row || !isDate(date)) return
+  const skip = [...new Set([...(JSON.parse(row.exdates) as string[]), date])].sort()
+  db.prepare('UPDATE events SET exdates = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(skip), now(), id)
+}
+
+export function exdatesOf(db: Db, id: string): string[] {
+  const row = db.prepare('SELECT exdates FROM events WHERE id = ?').get(id) as { exdates: string } | undefined
+  return row ? (JSON.parse(row.exdates) as string[]) : []
 }
 
 export function removeEvent(db: Db, id: string): void {

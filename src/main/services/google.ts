@@ -31,6 +31,9 @@ export interface GEvent {
   updated?: string
   htmlLink?: string
   extendedProperties?: { private?: Record<string, string> }
+  recurrence?: string[]
+  /** Set on each occurrence of a repeating event (single-events listing) */
+  recurringEventId?: string
 }
 
 export interface GCalendar {
@@ -168,6 +171,10 @@ interface EventSyncRow {
   google_id: string | null
   google_synced_at: number | null
   hidden: number
+  repeat: string
+  repeat_until: string | null
+  exdates: string
+  google_reset: number
 }
 
 async function ensurePlannrCalendar(db: Db, api: GoogleApi, calendars: GCalendar[], timeZone: string): Promise<string> {
@@ -180,12 +187,30 @@ async function ensurePlannrCalendar(db: Db, api: GoogleApi, calendars: GCalendar
   return id
 }
 
+/** RRULE (+ EXDATE) lines for a repeating event, in Google's format. */
+export function recurrenceFor(ev: { repeat: string; repeat_until: string | null; exdates: string; start_time: string | null }, timeZone: string): string[] {
+  if (!ev.repeat) return []
+  const flat = (d: string): string => d.replace(/-/g, '')
+  const until = ev.repeat_until ? `;UNTIL=${flat(ev.repeat_until)}${ev.start_time ? 'T235959Z' : ''}` : ''
+  const lines = [`RRULE:FREQ=${ev.repeat.toUpperCase()}${until}`]
+  const skip = JSON.parse(ev.exdates) as string[]
+  if (skip.length) {
+    lines.push(
+      ev.start_time
+        ? `EXDATE;TZID=${timeZone}:${skip.map((d) => `${flat(d)}T${ev.start_time!.replace(':', '')}00`).join(',')}`
+        : `EXDATE;VALUE=DATE:${skip.map(flat).join(',')}`
+    )
+  }
+  return lines
+}
+
 function bodyFor(ev: EventSyncRow, timeZone: string): Partial<GEvent> {
   const footer = ev.link_title ? `${NOTES_FOOTER}: ${ev.link_title}` : NOTES_FOOTER
   return {
     summary: ev.title || '(untitled)',
     description: `${ev.notes}${footer}`.trim(),
     ...toGoogleTimes({ date: ev.date, startTime: ev.start_time, endTime: ev.end_time }, timeZone),
+    ...(ev.repeat ? { recurrence: recurrenceFor(ev, timeZone) } : {}),
     extendedProperties: { private: { plannrId: ev.id } }
   }
 }
@@ -197,7 +222,7 @@ const notesFrom = (description?: string): string => {
 }
 
 const markSynced = (db: Db, id: string, googleId: string | null): void => {
-  db.prepare('UPDATE events SET google_id = ?, google_synced_at = updated_at WHERE id = ?').run(googleId, id)
+  db.prepare('UPDATE events SET google_id = ?, google_synced_at = updated_at, google_reset = 0 WHERE id = ?').run(googleId, id)
 }
 
 /** Applies changes made in Google (on the Plannr calendar) to Plannr events. */
@@ -211,6 +236,8 @@ async function pull(db: Db, api: GoogleApi, calendarId: string): Promise<number>
   if (newest > 0) setSetting(db, 'google.lastPull', new Date(newest).toISOString())
   let count = 0
   for (const g of changes) {
+    // Occurrences of a repeating event: the series is managed in Plannr (pushed as one recurring event).
+    if (g.recurringEventId) continue
     const plannrId = g.extendedProperties?.private?.plannrId
     const row = (
       plannrId
@@ -258,7 +285,7 @@ async function pull(db: Db, api: GoogleApi, calendarId: string): Promise<number>
 async function push(db: Db, api: GoogleApi, calendarId: string, timeZone: string): Promise<number> {
   const rows = db
     .prepare(
-      `SELECT e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.updated_at, e.deleted_at, e.google_id, e.google_synced_at,
+      `SELECT e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.updated_at, e.deleted_at, e.google_id, e.google_synced_at, e.repeat, e.repeat_until, e.exdates, e.google_reset,
          COALESCE(CASE e.link_type
            WHEN 'ticket' THEN ticket_no(t.number) || CASE WHEN tc.name <> '' THEN ' (' || tc.name || ')' ELSE '' END
            WHEN 'customer' THEN c.name WHEN 'note' THEN n.title END, '') AS link_title,
@@ -286,6 +313,13 @@ async function push(db: Db, api: GoogleApi, calendarId: string, timeZone: string
     }
     const body = bodyFor(ev, timeZone)
     let googleId = ev.google_id
+    if (googleId && ev.google_reset) {
+      // Started or stopped repeating: replace Google's copy (a repeat can't be patched away).
+      await api.deleteEvent(calendarId, googleId).catch((err) => {
+        if (!gone(err)) throw err
+      })
+      googleId = null
+    }
     if (googleId) {
       try {
         await api.patchEvent(calendarId, googleId, body)

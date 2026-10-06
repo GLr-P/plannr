@@ -431,8 +431,17 @@ export interface CalendarEvent {
   /** Linked item was deleted */
   linkDeleted: boolean
   reminders: ReminderKind[]
+  /** Repeats: '' = no, or daily/weekly/monthly/yearly. For a repeating event, `date` is this occurrence's date. */
+  repeat: Repeat
+  /** Last date it repeats on (inclusive), or null = forever */
+  repeatUntil: string | null
+  /** First date of the series (equals `date` for one-off events) */
+  seriesStart: string
   updatedAt: number
 }
+
+export type Repeat = '' | 'daily' | 'weekly' | 'monthly' | 'yearly'
+export const REPEAT_LABELS: Record<Repeat, string> = { '': 'Doesn’t repeat', daily: 'Every day', weekly: 'Every week', monthly: 'Every month', yearly: 'Every year' }
 
 export interface EventInput {
   title?: string
@@ -453,6 +462,8 @@ export interface EventUpdate {
   endTime?: string | null
   reminders?: ReminderKind[]
   kind?: EventKind
+  repeat?: Repeat
+  repeatUntil?: string | null
 }
 
 // ---------- Holidays (Google's public holiday calendars) ----------
@@ -1019,6 +1030,8 @@ export interface PlannrApi {
     create(input: EventInput): Promise<CalendarEvent>
     update(id: string, patch: EventUpdate): Promise<CalendarEvent>
     remove(id: string): Promise<void>
+    /** Repeating event: skip just the occurrence on this date */
+    skipOccurrence(id: string, date: string): Promise<void>
     /** Events linked to a ticket/customer/note */
     forLink(id: string): Promise<CalendarEvent[]>
     /** Something was dragged onto a day: a ticket becomes (or moves) its pickup; others make a linked event */
@@ -1208,7 +1221,7 @@ export const API_SHAPE = {
   photos: ['list', 'add', 'remove', 'setKind'],
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],
-  calendar: ['range', 'get', 'create', 'update', 'remove', 'forLink', 'drop'],
+  calendar: ['range', 'get', 'create', 'update', 'remove', 'skipOccurrence', 'forLink', 'drop'],
   holidays: ['range', 'status', 'configure', 'refresh'],
   vault: [
     'status',

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Bell, ExternalLink, X } from 'lucide-react'
-import { REMINDER_SCHEDULE, type CalendarEvent, type EventUpdate, type ReminderKind } from '../../../shared/api'
+import { Bell, ExternalLink, X, Repeat2 } from 'lucide-react'
+import { REPEAT_LABELS, type Repeat as RepeatKind, REMINDER_SCHEDULE, type CalendarEvent, type EventUpdate, type ReminderKind } from '../../../shared/api'
 import { api } from '../api'
 import { openEntity } from '../actions'
 import { useAutosave } from '../lib/useAutosave'
@@ -61,11 +61,13 @@ export function EventPopover({
   onClose: () => void
 }) {
   const [ev, setEv] = useState(event)
+  const occurrence = event.date // a repeating event opens on one occurrence; saving returns the series start
   const { ref, pos } = usePlacement(anchor)
   useDismiss(ref, onClose)
 
   const saver = useAutosave<EventUpdate>(async (patch) => {
-    setEv(await api.calendar.update(event.id, patch))
+    const saved = await api.calendar.update(event.id, patch)
+    setEv(saved.repeat ? { ...saved, date: occurrence } : saved)
     onChanged()
   }, 300)
 
@@ -141,6 +143,26 @@ export function EventPopover({
         </div>
       )}
 
+      {ev.kind !== 'pickup' && (
+        <div className="popover-row repeat-row">
+          <Repeat2 className="repeat-icon" />
+          <select value={ev.repeat} aria-label="Repeat" onChange={(e) => change({ repeat: e.target.value as RepeatKind }, true)}>
+            {(Object.keys(REPEAT_LABELS) as RepeatKind[]).map((r) => (
+              <option key={r} value={r}>
+                {REPEAT_LABELS[r]}
+              </option>
+            ))}
+          </select>
+          {ev.repeat && (
+            <>
+              <span className="muted small">until</span>
+              <input type="date" value={ev.repeatUntil ?? ''} aria-label="Repeat until" title="Leave empty to repeat forever" onChange={(e) => change({ repeatUntil: e.target.value || null }, true)} />
+            </>
+          )}
+        </div>
+      )}
+      {ev.repeat && ev.seriesStart !== ev.date && <div className="muted small">Changes apply to every occurrence. The series started on {ev.seriesStart}.</div>}
+
       {ev.linkType === 'ticket' && (
         <label className="check">
           <input type="checkbox" checked={ev.kind === 'pickup'} onChange={(e) => change({ kind: e.target.checked ? 'pickup' : 'event' }, true)} />
@@ -164,15 +186,40 @@ export function EventPopover({
       <textarea className="popover-notes" value={ev.notes} placeholder="Notes" onChange={(e) => change({ notes: e.target.value })} aria-label="Event notes" />
 
       <div className="popover-foot">
-        <ConfirmButton
-          title="Delete event"
-          label="Delete"
-          onConfirm={async () => {
-            await api.calendar.remove(event.id)
-            onChanged()
-            onClose()
-          }}
-        />
+        {ev.repeat ? (
+          <span className="repeat-delete">
+            <button
+              type="button"
+              className="btn sm"
+              onClick={async () => {
+                await api.calendar.skipOccurrence(event.id, event.date)
+                onChanged()
+                onClose()
+              }}
+            >
+              Delete this one
+            </button>
+            <ConfirmButton
+              title="Delete every occurrence"
+              label="Delete all"
+              onConfirm={async () => {
+                await api.calendar.remove(event.id)
+                onChanged()
+                onClose()
+              }}
+            />
+          </span>
+        ) : (
+          <ConfirmButton
+            title="Delete event"
+            label="Delete"
+            onConfirm={async () => {
+              await api.calendar.remove(event.id)
+              onChanged()
+              onClose()
+            }}
+          />
+        )}
         <span className="muted small">{saver.status === 'saved' ? 'Saved' : 'Saving…'}</span>
       </div>
     </div>

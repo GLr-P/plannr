@@ -138,7 +138,8 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
       })),
       ...events.map((e) => ({
         order: 1,
-        id: e.id,
+        id: e.repeat ? `${e.id}::${e.date}` : e.id,
+        editable: !e.repeat, // a repeating event is changed in its popover (all occurrences at once)
         title: e.title || '(untitled)',
         start: e.startTime ? `${e.date}T${e.startTime}` : e.date,
         end: e.startTime && e.endTime ? `${e.date}T${e.endTime}` : undefined,
