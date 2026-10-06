@@ -137,6 +137,18 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Plus everything from the sidebar work: sections, icons and colours, order.
    - Display preferences live in the shared formatters (`setDisplayPrefs` in shared/api.ts), so the main process (printing, search titles) and the window agree.
 12. **For other people:** **Done (2026-10-05).** Welcome tour on fresh installs (business name with a suggested ticket prefix, currency, pick the parts you want, optional connections, tips; reopen it from Settings → General). New installs default to "T-"; installs that already had tickets keep "NT-". Published as open source (GPL-3.0) at https://github.com/GLr-P/plannr, with the website at https://glr-p.github.io/plannr/ (served from docs/) and **v0.9.0 (beta)** as the first release with the installer.
+13. **More features (requested 2026-10-05):**
+   1. Quotes and invoices: ticket line items (parts, labour, discount), printable quote/invoice, totals with tax
+   2. Parts inventory: stock and cost, parts used on tickets come off stock, low-stock warning, profit per repair
+   3. Reports (Money → Reports): GST/HST summary per quarter (collected minus paid, i.e. ITCs), charts for income and expenses per month, repairs per month, turnaround and top devices
+   4. Customer messages: templates such as "Ready for pickup", opened as an email draft or copied
+   5. Tasks: standalone tasks with due dates and reminders, plus every checkbox from notes and tickets; shown on the calendar and Home
+   6. Quick capture: a global shortcut opens a small box to jot a note or task, even from the tray
+   7. Repeating events (daily, weekly, monthly, yearly), synced to Google as recurrence
+   8. Import contacts from CSV; export everything to Markdown and CSV
+14. **Phone and second PC:** sync between devices (decisions needed first: where the data is stored, cost, phone app or web app).
+
+**Later:** a built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).
 
 ## Quality rules Claude follows
 - Plan each feature before coding, and keep changes small and complete.
