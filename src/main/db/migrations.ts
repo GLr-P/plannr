@@ -1,3 +1,4 @@
+import { syncSchemaSql } from '../sync/engine'
 // Append-only: never edit a migration that has shipped, add a new one instead.
 // Every synced record has a UUID id, created_at/updated_at (ms) and deleted_at (soft delete)
 // so cross-device sync can be added later without reshaping data.
@@ -385,5 +386,8 @@ export const migrations: string[] = [
   ALTER TABLE events ADD COLUMN repeat_until TEXT;
   ALTER TABLE events ADD COLUMN exdates TEXT NOT NULL DEFAULT '[]';
   ALTER TABLE events ADD COLUMN google_reset INTEGER NOT NULL DEFAULT 0;
-  `
+  `,
+
+  /* 20: sync between devices: changed rows are noted by triggers (see sync/engine.ts) */
+  syncSchemaSql()
 ]
