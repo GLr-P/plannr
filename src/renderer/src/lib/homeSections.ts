@@ -1,5 +1,6 @@
 export const HOME_SECTIONS = [
   { id: 'coming', label: 'Coming up (next 7 days)' },
+  { id: 'tasks', label: 'Tasks due' },
   { id: 'tickets', label: 'Open tickets' },
   { id: 'pinned', label: 'Pinned notes' },
   { id: 'recent', label: 'Recent notes' }

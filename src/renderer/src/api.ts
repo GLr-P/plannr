@@ -1,6 +1,6 @@
 import type { EntityType, PlannrApi, UpdateStatus } from '../../shared/api'
 
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true }
 
 declare global {
   interface Window {

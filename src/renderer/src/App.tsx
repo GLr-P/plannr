@@ -16,6 +16,7 @@ import { CalendarView } from './views/CalendarView'
 import { VaultView } from './views/VaultView'
 import { MoneyView } from './views/MoneyView'
 import { InventoryView } from './views/InventoryView'
+import { TasksView } from './views/TasksView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, newTicket, openEntity } from './actions'
@@ -104,6 +105,8 @@ function MainView() {
       return <MoneyView itemId={route.itemId} />
     case 'inventory':
       return <InventoryView />
+    case 'tasks':
+      return <TasksView />
     case 'settings':
       return <SettingsView />
   }
@@ -124,6 +127,7 @@ export function App() {
     const stopNavigate = window.plannrEvents.onNavigate((target) => {
       if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
       else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
+      else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
       else openEntity(target.type, target.id)
     })
     return () => {

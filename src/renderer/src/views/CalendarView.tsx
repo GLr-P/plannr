@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { displayPrefs, formatTicketNumber, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
+import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -52,19 +52,22 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
 
   const reload = useCallback(async () => {
     if (!range) return
-    const [evs, hols, due, gev] = await Promise.all([
+    const [evs, hols, due, gev, tks] = await Promise.all([
       api.calendar.range(range.from, range.to),
       api.holidays.range(range.from, range.to),
       api.money.occurrences(range.from, range.to),
-      api.google.events(range.from, range.to)
+      api.google.events(range.from, range.to),
+      api.tasks.range(range.from, range.to)
     ])
     setEvents(evs)
+    setTasks(tks)
     setHolidays(hols)
     setBills(due)
     setGoogleEvents(gev)
@@ -122,6 +125,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         backgroundColor: g.color || undefined,
         extendedProps: { google: g }
       })),
+      // Tasks with a due date (drag to change the date; click opens Tasks)
+      ...tasks.map((t) => ({
+        id: `task:${t.id}`,
+        title: t.title || 'Task',
+        start: t.dueTime ? `${t.dueDate}T${t.dueTime}` : t.dueDate!,
+        allDay: !t.dueTime,
+        order: 1,
+        durationEditable: false,
+        classNames: ['ev-task', t.done ? 'ev-done' : ''],
+        extendedProps: { task: t }
+      })),
       ...events.map((e) => ({
         order: 1,
         id: e.id,
@@ -133,7 +147,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents]
+    [events, holidays, bills, googleEvents, tasks]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -182,6 +196,15 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
 ${google.calendarName} (Google)`}>
           {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
           <span className="ev-title">{google.title}</span>
+        </div>
+      )
+    const task = arg.event.extendedProps.task as Task | undefined
+    if (task)
+      return (
+        <div className="ev-chip" title={`Task${task.done ? ' (done)' : ''}: ${task.title}`}>
+          <CheckSquare className="ev-icon" />
+          {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
+          <span className="ev-title">{arg.event.title}</span>
         </div>
       )
     const bill = arg.event.extendedProps.bill as MoneyOccurrence | undefined
@@ -298,6 +321,7 @@ ${google.calendarName} (Google)`}>
               if (google) return void (google.htmlLink && window.open(google.htmlLink, '_blank'))
               const bill = info.event.extendedProps.bill as MoneyOccurrence | undefined
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
+              if (info.event.extendedProps.task) return go({ view: 'tasks' })
               const r = info.el.getBoundingClientRect()
               setPopover({ kind: 'edit', event: info.event.extendedProps.ev as CalendarEvent, anchor: { x: r.right, y: r.top } })
             }}
@@ -318,6 +342,11 @@ ${google.calendarName} (Google)`}>
             eventDrop={async (info) => {
               const start = info.event.start!
               const allDay = info.event.allDay
+              const task = info.event.extendedProps.task as Task | undefined
+              if (task) {
+                await api.tasks.update(task.id, { dueDate: isoDate(start), dueTime: allDay ? null : hhmm(start) })
+                return void reload()
+              }
               await api.calendar.update(info.event.id, {
                 date: isoDate(start),
                 startTime: allDay ? null : hhmm(start),

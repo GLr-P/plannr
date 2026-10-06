@@ -16,6 +16,7 @@ export type Route =
   | { view: 'vault' }
   | { view: 'money'; itemId?: string }
   | { view: 'inventory' }
+  | { view: 'tasks' }
   | { view: 'settings' }
 
 interface NavState {

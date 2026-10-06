@@ -8,6 +8,7 @@ import * as folders from './services/folders'
 import * as sidebar from './services/sidebar'
 import * as items from './services/items'
 import { moneyReport } from './services/reports'
+import * as tasks from './services/tasks'
 import * as customers from './services/customers'
 import * as tickets from './services/tickets'
 import * as photos from './services/photos'
@@ -119,6 +120,17 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       updateItem: async (id, patch) => moneyChanged(items.updateItem(db, id, patch)),
       removeItem: async (id) => moneyChanged(items.removeItem(db, id)),
       totals: async (ticketId) => items.totalsFor(db, ticketId)
+    },
+    tasks: {
+      list: async (opts) => tasks.listTasks(db, opts),
+      range: async (from, to) => tasks.tasksInRange(db, from, to),
+      create: async (input) => tasks.createTask(db, input),
+      update: async (id, patch) => tasks.updateTask(db, id, patch),
+      remove: async (id) => tasks.removeTask(db, id),
+      restore: async (id) => tasks.restoreTask(db, id),
+      dueCount: async () => tasks.dueTaskCount(db),
+      checklists: async (opts) => tasks.checklistItems(db, opts),
+      setChecklist: async (source, id, index, checked) => tasks.setChecklistItem(db, source, id, index, checked)
     },
     parts: {
       list: async (opts) => items.listParts(db, opts),

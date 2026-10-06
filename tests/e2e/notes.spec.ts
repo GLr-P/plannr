@@ -187,7 +187,7 @@ test('organise the sidebar: reorder the menu, add a section, drag a folder into 
   const menu = () => page.locator('.sidebar > .nav-item .nav-label').allTextContents()
   const tickets = page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first()
   await page.locator('.sidebar .nav-item', { hasText: 'Calendar' }).first().dragTo(tickets, { targetPosition: { x: 40, y: 4 } })
-  await expect.poll(async () => (await menu()).slice(0, 3)).toEqual(['Home', 'Calendar', 'Tickets'])
+  await expect.poll(async () => (await menu()).slice(0, 4)).toEqual(['Home', 'Tasks', 'Calendar', 'Tickets'])
 
   await page.locator('.add-section').click()
   await page.getByLabel('New name').fill('Work')
@@ -219,12 +219,12 @@ test('moves a note to trash and restores it', async () => {
 test('keyboard shortcuts: Ctrl+/ lists them; Ctrl+number follows the menu order', async () => {
   await page.keyboard.press('Control+/')
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' })
-  await expect(dialog).toContainText('Go to Calendar') // the menu was reordered: Calendar is 2nd
-  await expect(dialog.locator('.shortcut-row', { hasText: 'Go to Calendar' })).toContainText('2')
+  await expect(dialog).toContainText('Go to Calendar') // the menu was reordered: Calendar is 3rd (after Home and Tasks)
+  await expect(dialog.locator('.shortcut-row', { hasText: 'Go to Calendar' })).toContainText('3')
   await shot(page, '09-shortcuts')
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
-  await page.keyboard.press('Control+2')
+  await page.keyboard.press('Control+3')
   await expect(page.locator('.cal-title')).toBeVisible()
   await page.keyboard.press('Control+1')
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good (morning|afternoon|evening)/)

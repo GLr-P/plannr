@@ -360,5 +360,23 @@ export const migrations: string[] = [
   );
   CREATE INDEX ticket_items_ticket ON ticket_items(ticket_id);
   ALTER TABLE tickets ADD COLUMN tax_exempt INTEGER NOT NULL DEFAULT 0;
+  `,
+
+  /* 18: tasks (standalone to-dos with due dates and reminders) */ `
+  CREATE TABLE tasks (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    due_date TEXT,
+    due_time TEXT,
+    remind INTEGER NOT NULL DEFAULT 1,
+    done_at INTEGER,
+    link_type TEXT,
+    link_id TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX tasks_due ON tasks(due_date);
   `
 ]

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { CalendarDays, DollarSign, FileText, Flag, Pin, Wrench } from 'lucide-react'
-import { formatTicketNumber, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
 import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
@@ -14,6 +14,7 @@ import { ItemIcon } from '../lib/icons'
 import { noteMenu } from '../menus'
 import { useUi } from '../store/ui'
 import { hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
+import { dueLabel } from './TasksView'
 import { formatDay, formatMoney, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
 
 function dayLabel(date: string): string {
@@ -39,8 +40,10 @@ export function HomeView() {
   const [upcoming, setUpcoming] = useState<CalendarEvent[]>([])
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
+  const [dueTasks, setDueTasks] = useState<Task[]>([])
   useEffect(() => {
     void upcomingBills(7).then(setBills)
+    void api.tasks.list().then((list) => setDueTasks(list.filter((t) => t.dueDate && t.dueDate <= addDays(todayISO(), 1)).slice(0, 8)))
     void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
     void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
@@ -48,6 +51,37 @@ export function HomeView() {
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   const blocks: Record<HomeSection, ReactNode> = {
+    tasks: dueTasks.length > 0 && (
+      <section>
+        <h2 className="section-title">
+          Tasks due <span className="muted">{dueTasks.length}</span>
+        </h2>
+        <ul className="ticket-history">
+          {dueTasks.map((t) => (
+            <li key={t.id}>
+              <div className="history-row task-home-row">
+                <button
+                  type="button"
+                  className="task-check"
+                  role="checkbox"
+                  aria-checked={false}
+                  aria-label={`Done: ${t.title}`}
+                  onClick={async () => {
+                    await api.tasks.update(t.id, { done: true })
+                    setDueTasks((list) => list.filter((x) => x.id !== t.id))
+                    void useData.getState().refreshCounts()
+                  }}
+                />
+                <button type="button" className="history-main link-like" onClick={() => go({ view: 'tasks' })}>
+                  {t.title}
+                </button>
+                <span className={`history-date ${t.dueDate! < todayISO() ? 'overdue' : ''}`}>{dueLabel(t.dueDate!)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
     coming: (upcoming.length > 0 || holidays.length > 0 || bills.length > 0) && (
       <section>
         <h2 className="section-title">Coming up</h2>

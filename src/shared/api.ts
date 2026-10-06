@@ -361,6 +361,47 @@ export interface Template extends TemplateSummary {
   content: DocJSON | null
 }
 
+// ---------- Tasks ----------
+
+export interface Task {
+  id: string
+  title: string
+  notes: string
+  /** YYYY-MM-DD */
+  dueDate: string | null
+  /** HH:MM */
+  dueTime: string | null
+  /** Windows reminder on the due date (at the time, or 9 AM) */
+  remind: boolean
+  done: boolean
+  doneAt: number | null
+  linkType: EntityType | null
+  linkId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface TaskInput {
+  title?: string
+  notes?: string
+  dueDate?: string | null
+  dueTime?: string | null
+  remind?: boolean
+  linkType?: EntityType | null
+  linkId?: string | null
+}
+
+/** A checkbox inside a note or ticket */
+export interface ChecklistItem {
+  source: 'note' | 'ticket'
+  sourceId: string
+  sourceTitle: string
+  /** Which checkbox in the document (in order) */
+  index: number
+  text: string
+  checked: boolean
+}
+
 // ---------- Calendar ----------
 
 export type ReminderKind = 'day_before' | 'day_of'
@@ -933,6 +974,18 @@ export interface PlannrApi {
     removeItem(id: string): Promise<LineItem[]>
     totals(ticketId: string): Promise<TicketTotals>
   }
+  tasks: {
+    list(opts?: { done?: boolean }): Promise<Task[]>
+    range(from: string, to: string): Promise<Task[]>
+    create(input: TaskInput): Promise<Task>
+    update(id: string, patch: TaskInput & { done?: boolean }): Promise<Task>
+    remove(id: string): Promise<void>
+    restore(id: string): Promise<void>
+    dueCount(): Promise<number>
+    /** Checkboxes inside notes (and open tickets, if asked) */
+    checklists(opts?: { tickets?: boolean; done?: boolean }): Promise<ChecklistItem[]>
+    setChecklist(source: ChecklistItem['source'], id: string, index: number, checked: boolean): Promise<void>
+  }
   parts: {
     list(opts?: { query?: string; lowOnly?: boolean }): Promise<Part[]>
     create(input?: PartInput): Promise<Part>
@@ -1143,6 +1196,7 @@ export const API_SHAPE = {
   customers: ['list', 'get', 'create', 'update', 'trash', 'restore'],
   tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
   parts: ['list', 'create', 'update', 'remove', 'restore', 'lowCount'],
+  tasks: ['list', 'range', 'create', 'update', 'remove', 'restore', 'dueCount', 'checklists', 'setChecklist'],
   photos: ['list', 'add', 'remove', 'setKind'],
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],

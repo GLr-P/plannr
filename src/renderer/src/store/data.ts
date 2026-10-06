@@ -8,7 +8,7 @@ interface DataState {
   folders: Folder[]
   sections: SidebarSection[]
   loaded: boolean
-  counts: { open: number; ready: number; lowStock: number }
+  counts: { open: number; ready: number; lowStock: number; dueTasks: number }
   refreshCounts: () => Promise<void>
   refresh: () => Promise<void>
   upsertNote: (note: NoteSummary) => void
@@ -19,20 +19,21 @@ export const useData = create<DataState>((set, get) => ({
   folders: [],
   sections: [],
   loaded: false,
-  counts: { open: 0, ready: 0, lowStock: 0 },
+  counts: { open: 0, ready: 0, lowStock: 0, dueTasks: 0 },
   refreshCounts: async () => {
-    const [tickets, lowStock] = await Promise.all([api.tickets.counts(), api.parts.lowCount()])
-    set({ counts: { ...tickets, lowStock } })
+    const [tickets, lowStock, dueTasks] = await Promise.all([api.tickets.counts(), api.parts.lowCount(), api.tasks.dueCount()])
+    set({ counts: { ...tickets, lowStock, dueTasks } })
   },
   refresh: async () => {
-    const [notes, folders, sections, counts, lowStock] = await Promise.all([
+    const [notes, folders, sections, counts, lowStock, dueTasks] = await Promise.all([
       api.notes.list(),
       api.folders.list(),
       api.sidebar.sections(),
       api.tickets.counts(),
-      api.parts.lowCount()
+      api.parts.lowCount(),
+      api.tasks.dueCount()
     ])
-    set({ notes, folders, sections, counts: { ...counts, lowStock }, loaded: true })
+    set({ notes, folders, sections, counts: { ...counts, lowStock, dueTasks }, loaded: true })
   },
   upsertNote: (note) => {
     const others = get().notes.filter((n) => n.id !== note.id)

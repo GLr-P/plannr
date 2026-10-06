@@ -53,7 +53,7 @@ test('layout: hide a menu item; reorder and hide Home sections', async () => {
   const titles = await page.locator('.home .section-title').allTextContents()
   expect(titles[0]).toBe('Recent') // moved above Open tickets/Pinned
   expect(titles).not.toContain('Coming up')
-  await page.keyboard.press('Control+5') // Money is hidden, so the 5th item is Inventory
+  await page.keyboard.press('Control+6') // Money is hidden, so the 6th item is Inventory (Home, Tasks, Tickets, Customers, Calendar, Inventory)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inventory')
 })
 

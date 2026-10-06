@@ -1,11 +1,12 @@
 import type { Route } from '../store/nav'
 
 /** The main menu items, in their default order. The order you drag them into is saved as the `navOrder` pref. */
-export const NAV_IDS = ['home', 'tickets', 'customers', 'calendar', 'money', 'inventory', 'notes'] as const
+export const NAV_IDS = ['home', 'tasks', 'tickets', 'customers', 'calendar', 'money', 'inventory', 'notes'] as const
 export type NavId = (typeof NAV_IDS)[number]
 
 export const NAV_ROUTES: Record<NavId, Route> = {
   home: { view: 'home' },
+  tasks: { view: 'tasks' },
   tickets: { view: 'tickets' },
   customers: { view: 'customers' },
   calendar: { view: 'calendar' },
@@ -16,6 +17,7 @@ export const NAV_ROUTES: Record<NavId, Route> = {
 
 export const NAV_LABELS: Record<NavId, string> = {
   home: 'Home',
+  tasks: 'Tasks',
   tickets: 'Tickets',
   customers: 'Customers',
   calendar: 'Calendar',

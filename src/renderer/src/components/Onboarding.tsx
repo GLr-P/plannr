@@ -10,6 +10,7 @@ import {
   Lock,
   Mail,
   Package,
+  CheckSquare,
   MousePointerClick,
   Printer,
   Receipt,
@@ -36,6 +37,7 @@ export async function maybeStartOnboarding(): Promise<void> {
 }
 
 const FEATURES: { id: string; icon: ReactNode; title: string; text: string }[] = [
+  { id: 'tasks', icon: <CheckSquare />, title: 'Tasks', text: 'To-dos with due dates and reminders, plus every checkbox in your notes.' },
   { id: 'tickets', icon: <Wrench />, title: 'Tickets', text: 'Jobs, repairs, orders or requests from start to finish: status, photos, fill-in forms, printing.' },
   { id: 'customers', icon: <Users />, title: 'Customers', text: 'The people and companies you work with, and everything you’ve done for them.' },
   { id: 'calendar', icon: <CalendarDays />, title: 'Calendar', text: 'Appointments, due dates and reminders. Drag notes and tickets onto a day.' },
