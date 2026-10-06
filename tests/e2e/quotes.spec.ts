@@ -87,3 +87,25 @@ test('print a quote and an invoice', async () => {
   await expect(page.locator('.part-row').first()).toHaveClass(/low/)
   await shot(page, 'q2-inventory')
 })
+
+test('reports: GST collected on the payment minus GST on an expense, and the charts', async () => {
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
+  await page.locator('.ticket-row').first().click()
+  await page.getByRole('button', { name: 'Record payment' }).click()
+  await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('198.45')
+  await page.getByLabel('Tax', { exact: true }).selectOption('included')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.locator('.pay-badge')).toHaveText('Paid')
+  await page.evaluate(() => window.plannr.money.addTransaction({ type: 'expense', amountCents: 5250, description: 'Adhesive', category: 'Parts' }))
+
+  await nav('Money').click()
+  await page.getByRole('tab', { name: 'Reports' }).click()
+  const gst = page.locator('.gst-card')
+  await expect(gst.locator('.stat').nth(0)).toContainText('$9.45') // 198.45 − 198.45 / 1.05
+  await expect(gst.locator('.stat').nth(1)).toContainText('$2.50') // 52.50 − 52.50 / 1.05
+  await expect(gst.locator('.gst-net')).toContainText('Net to remit')
+  await expect(gst.locator('.gst-net')).toContainText('$6.95')
+  await expect(page.locator('.chart')).toHaveCount(2)
+  await expect(page.locator('.report-stats')).toContainText('Received')
+  await shot(page, 'q3-reports')
+})

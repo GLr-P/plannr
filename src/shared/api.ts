@@ -660,6 +660,37 @@ export const paymentMethods = (current?: string): string[] =>
   current && !display.paymentMethods.includes(current) ? [...display.paymentMethods, current] : display.paymentMethods
 export const DEFAULT_CATEGORIES = ['Parts', 'Software', 'Rent', 'Utilities', 'Phone & internet', 'Insurance', 'Marketing', 'Fuel', 'Tools', 'Other']
 
+/** Money → Reports for a period (YYYY-MM-DD, inclusive). Amounts in cents. */
+export interface MoneyReport {
+  from: string
+  to: string
+  taxRate: number
+  purchaseTaxRate: number
+  gst: {
+    /** All income in the period (tax included) */
+    sales: number
+    /** Tax inside that income */
+    collected: number
+    /** Income recorded as "no tax" */
+    exemptSales: number
+    /** All expenses (tax included) */
+    expenses: number
+    /** Tax paid on expenses (input tax credits) */
+    paid: number
+    /** collected − paid: to remit if positive, refund if negative */
+    net: number
+  }
+  /** The 12 months up to the end of the period */
+  monthly: { month: string; income: number; expense: number; tickets: number }[]
+  repairs: {
+    count: number
+    completed: number
+    avgTurnaroundDays: number | null
+    avgValueCents: number | null
+    topDevices: { name: string; count: number }[]
+  }
+}
+
 // ---------- Google Calendar ----------
 
 export interface GoogleCalendarInfo {
@@ -1018,6 +1049,7 @@ export interface PlannrApi {
     /** month = YYYY-MM */
     summary(month: string): Promise<MoneySummary>
     occurrences(from: string, to: string): Promise<MoneyOccurrence[]>
+    report(from: string, to: string): Promise<MoneyReport>
     categories(): Promise<string[]>
     /** Save-file dialog: transactions in [from, to] as CSV */
     exportCsv(from: string, to: string): Promise<boolean>
@@ -1157,6 +1189,7 @@ export const API_SHAPE = {
     'restoreTransaction',
     'summary',
     'occurrences',
+    'report',
     'categories',
     'exportCsv'
   ],

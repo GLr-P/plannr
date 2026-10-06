@@ -21,12 +21,14 @@ import { formatDay, formatMoney, parseMoney, todayISO } from '../lib/format'
 import { addDays } from '../lib/time'
 import { ConfirmButton } from '../components/common'
 import { undoToast } from '../lib/toast'
+import { MoneyReports } from '../components/MoneyReports'
 
-type Tab = 'overview' | 'recurring' | 'transactions'
+type Tab = 'overview' | 'recurring' | 'transactions' | 'reports'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'recurring', label: 'Bills & subscriptions' },
-  { id: 'transactions', label: 'Transactions' }
+  { id: 'transactions', label: 'Transactions' },
+  { id: 'reports', label: 'Reports' }
 ]
 
 const money0 = (cents: number): string => formatMoney(cents) || '$0.00'
@@ -105,6 +107,7 @@ export function MoneyView({ itemId }: { itemId?: string }) {
       {tab === 'overview' && <Overview month={month} onMonth={setMonth} onOpenItem={(id) => go({ view: 'money', itemId: id })} />}
       {tab === 'recurring' && <Recurring openId={itemId} />}
       {tab === 'transactions' && <Transactions month={month} onMonth={setMonth} />}
+      {tab === 'reports' && <MoneyReports />}
     </div>
   )
 }

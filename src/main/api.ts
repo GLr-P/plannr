@@ -7,6 +7,7 @@ import * as notes from './services/notes'
 import * as folders from './services/folders'
 import * as sidebar from './services/sidebar'
 import * as items from './services/items'
+import { moneyReport } from './services/reports'
 import * as customers from './services/customers'
 import * as tickets from './services/tickets'
 import * as photos from './services/photos'
@@ -246,6 +247,7 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       restoreTransaction: async (id) => moneyChanged(money.restoreTransaction(db, id)),
       summary: async (month) => (money.processAutopay(db), money.summary(db, month)),
       occurrences: async (from, to) => money.occurrences(db, from, to),
+      report: async (from, to) => moneyReport(db, from, to),
       categories: async () => money.categories(db),
       exportCsv: async (from, to) => {
         const win = getWindow()

@@ -605,3 +605,123 @@ button.due-row:hover,
 .wide-check {
   grid-column: 1 / -1;
 }
+
+/* Money → Reports */
+.reports .report-period {
+  min-width: 200px;
+  text-align: center;
+}
+.report-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 18px 16px;
+  margin-top: 16px;
+}
+.report-card .section-title {
+  margin-top: 14px;
+}
+.gst-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.gst-grid .stat {
+  padding: 12px 14px;
+}
+.gst-net {
+  background: var(--accent-soft);
+  border-color: var(--accent) !important;
+}
+.report-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+.report-note svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.report-columns {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+}
+.chart {
+  margin: 0;
+}
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart-axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+.chart-label {
+  font-size: 11px;
+  fill: var(--text-faint);
+}
+.bar-income {
+  fill: var(--c-green);
+}
+.bar-expense {
+  fill: var(--c-red);
+  opacity: 0.8;
+}
+.bar-count {
+  fill: var(--accent);
+}
+.chart-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.chart-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.chart-legend i.bar-income {
+  background: var(--c-green);
+}
+.chart-legend i.bar-expense {
+  background: var(--c-red);
+}
+.report-stats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.report-stats dt {
+  color: var(--text-muted);
+}
+.report-stats dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.report-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 14px 0 4px;
+}
+.top-devices {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+.top-devices li span:first-child {
+  margin-right: 6px;
+}
