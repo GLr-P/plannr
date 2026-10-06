@@ -29,9 +29,25 @@ export function fakeD1(): D1Database {
   }
 }
 
+const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.webmanifest': 'application/manifest+json' }
+
+/** Cloudflare's static assets, imitated: files from a folder, index.html for anything else (single-page app). */
+function staticFiles(dir: string): NonNullable<Env['ASSETS']> {
+  return {
+    fetch: async (request) => {
+      const { readFileSync, existsSync, statSync } = await import('node:fs')
+      const { join, extname, normalize } = await import('node:path')
+      const path = normalize(decodeURIComponent(new URL(request.url).pathname)).replace(/^[\\/]+/, '')
+      let file = join(dir, path)
+      if (!file.startsWith(dir) || !existsSync(file) || statSync(file).isDirectory()) file = join(dir, 'index.html')
+      return new Response(readFileSync(file), { headers: { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' } })
+    }
+  }
+}
+
 /** The sync service running in-process: fetch(path, init) → Response. */
-export function fakeServer(ownerSecret = 'owner-secret'): { env: Env; fetch: (path: string, init?: RequestInit) => Promise<Response> } {
-  const env: Env = { DB: fakeD1(), OWNER_SECRET: ownerSecret }
+export function fakeServer(ownerSecret = 'owner-secret', assetsDir?: string): { env: Env; fetch: (path: string, init?: RequestInit) => Promise<Response> } {
+  const env: Env = { DB: fakeD1(), OWNER_SECRET: ownerSecret, ASSETS: assetsDir ? staticFiles(assetsDir) : undefined }
   return { env, fetch: (path, init) => worker.fetch(new Request(`https://sync.test${path}`, init), env) }
 }
 

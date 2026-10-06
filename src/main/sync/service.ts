@@ -1,10 +1,8 @@
-import { net } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { Db } from '../db'
 import { newId } from '../db'
 import { getSetting, setSetting } from '../services/settings'
-import { getSecret, putSecret } from '../secrets'
 import { SyncEngine, type BlobKind, type BlobStore, type SyncTransport } from './engine'
 import { joinLink, newSyncKey, parseJoinLink, validSyncKey } from '../../shared/sync-crypto'
 import { afterPull } from './upkeep'
@@ -14,7 +12,7 @@ const REL_PATH = /^attachments[\\/][0-9a-f]{2}[\\/][0-9a-f-]{8,64}(\.[a-z0-9]{1,
 const VAULT_ID = /^[0-9a-f-]{8,64}$/
 
 /** Attachments live at files.rel_path; vault files (already encrypted by the vault) at vault/<id>.bin. */
-export function desktopBlobs(dataDir: string): BlobStore {
+export function fileBlobs(dataDir: string): BlobStore {
   // Only paths of the shapes Plannr itself creates, so a row can never point outside the data folder.
   const pathOf = (kind: BlobKind, id: string, row: Record<string, unknown>): string | null => {
     if (kind === 'file') return typeof row.rel_path === 'string' && REL_PATH.test(row.rel_path) ? join(dataDir, row.rel_path) : null
@@ -53,9 +51,16 @@ export function normalizeServer(input: string): string {
   return url.origin
 }
 
-type Fetcher = (url: string, init: RequestInit) => Promise<Response>
+export type Fetcher = (url: string, init: RequestInit) => Promise<Response>
 
-export function httpTransport(server: string, token: () => string, fetcher: Fetcher = (u, i) => net.fetch(u, i)): SyncTransport {
+/** What a device provides: web requests, and somewhere safe to keep the sync key. */
+export interface SyncPlatform {
+  fetch: Fetcher
+  getKey(): string | null
+  putKey(key: string | null): void
+}
+
+export function httpTransport(server: string, token: () => string, fetcher: Fetcher): SyncTransport {
   const call = async (path: string, init: RequestInit = {}): Promise<Response> => {
     let res: Response
     try {
@@ -87,10 +92,10 @@ export function httpTransport(server: string, token: () => string, fetcher: Fetc
 }
 
 /**
- * Keeps this PC in sync: a quick check every few seconds sends local changes, other devices' changes come in every
+ * Keeps this device in sync: a quick check every few seconds sends local changes, other devices' changes come in every
  * minute (and when the window gets focus). One run at a time; problems show in Settings and are retried.
  */
-export class DesktopSync {
+export class SyncService {
   private engine: SyncEngine | null = null
   private running: Promise<void> | null = null
   private again = false
@@ -106,7 +111,7 @@ export class DesktopSync {
     private dataDir: string,
     /** Rows arrived from another device (after search/links are updated) */
     private onPulled: (touched: Map<string, Set<string>>) => void,
-    private fetcher?: Fetcher
+    private platform: SyncPlatform
   ) {}
 
   private stateGet(key: string): string | null {
@@ -124,13 +129,13 @@ export class DesktopSync {
 
   private config(): { server: string; key: string } | null {
     const server = getSetting(this.db, 'sync.server')
-    const key = getSecret<string>(this.db, 'sync.key')
+    const key = this.platform.getKey()
     return typeof server === 'string' && key && validSyncKey(key) ? { server, key } : null
   }
 
   private async open(server: string, key: string): Promise<SyncEngine> {
     let token = ''
-    const engine = new SyncEngine(this.db, httpTransport(server, () => token, this.fetcher), desktopBlobs(this.dataDir), this.deviceId())
+    const engine = new SyncEngine(this.db, httpTransport(server, () => token, this.platform.fetch), fileBlobs(this.dataDir), this.deviceId())
     token = (await engine.init(key)).token
     return engine
   }
@@ -203,7 +208,7 @@ export class DesktopSync {
   }
 
   private save(server: string, key: string): void {
-    putSecret(this.db, 'sync.key', key)
+    this.platform.putKey(key)
     setSetting(this.db, 'sync.server', server)
   }
 
@@ -263,7 +268,7 @@ export class DesktopSync {
   /** Stops syncing on this device. Everything stays here, and on the other devices. */
   disconnect(): SyncStatus {
     this.engine = null
-    putSecret(this.db, 'sync.key', null)
+    this.platform.putKey(null)
     setSetting(this.db, 'sync.server', null)
     this.forgetProgress()
     return this.status()

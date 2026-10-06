@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowLeft,
   Check,
   Copy,
   CreditCard,
@@ -415,6 +416,11 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
           ))}
         </aside>
         <section className="vault-detail">
+          {selected && (
+            <button type="button" className="link-btn vault-back" onClick={() => setSelected(null)}>
+              <ArrowLeft className="inline-icon" /> All items
+            </button>
+          )}
           {selected ? (
             <ItemEditor
               key={selected}

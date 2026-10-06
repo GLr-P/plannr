@@ -98,6 +98,8 @@ export interface AppInfo {
   dataDir: string
   /** Automated tests: the welcome tour stays out of the way */
   tests: boolean
+  /** The phone web app (no tray, backups, integrations or updates; those stay on the PC) */
+  web: boolean
 }
 
 /** Ticket prefix suggested from a business name: "Acme Repairs" → "AR-", "Nano Tech Services" → "NTS-". */

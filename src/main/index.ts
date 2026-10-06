@@ -21,7 +21,8 @@ import type { Theme, ThemePref } from '../shared/api'
 import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
-import { DesktopSync } from './sync/desktop'
+import { SyncService } from './sync/service'
+import { getSecret, putSecret } from './secrets'
 
 // PLANNR_DATA_DIR isolates data (used by automated tests); otherwise %APPDATA%\Plannr\data.
 const dataDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
@@ -175,7 +176,7 @@ if (!app.requestSingleInstanceLock()) {
     const updater = new Updater(getWindow, quit, isTest ? join(dataDir, 'update-ready.json') : undefined)
     if (!isTest) updater.start(db)
     // Sync with your other devices (phone, second PC) through your own sync server, once turned on in Settings.
-    const sync = new DesktopSync(db, dataDir, (touched) => {
+    const sync = new SyncService(db, dataDir, (touched) => {
       const win = getWindow()
       win?.webContents.send('data-changed')
       if (touched.has('events')) {
@@ -183,6 +184,11 @@ if (!app.requestSingleInstanceLock()) {
         googleSync.schedule()
       }
       if (touched.has('transactions') || touched.has('customers') || touched.has('tickets')) qboSync.schedule()
+    }, {
+      fetch: (url, init) => net.fetch(url, init),
+      // The sync key is encrypted with Windows (only this account on this PC can read it).
+      getKey: () => getSecret<string>(db, 'sync.key'),
+      putKey: (key) => putSecret(db, 'sync.key', key)
     })
     void sync.start()
     app.on('browser-window-focus', () => sync.poke())

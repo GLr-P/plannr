@@ -527,3 +527,8 @@
   width: 40px;
   height: 40px;
 }
+
+/* Back to the list (phone layout only; see the phone web app's mobile.css) */
+.vault-back {
+  display: none;
+}

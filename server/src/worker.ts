@@ -7,6 +7,7 @@
  *   POST /api/s/:space/push              { device, changes: [{ tbl, id, ts, data }] } → keeps the newest per row
  *   GET  /api/s/:space/pull?since=&limit= changes after a change number
  *   PUT/GET/HEAD /api/s/:space/blob/:id  encrypted file contents (R2 if bound, else in D1 in 1.5 MB parts)
+ *   GET  /api/ics?u=                     a public holiday calendar from Google (the phone app can't fetch it itself)
  *
  * Anything else is served from the static assets (the phone web app), when they're bound.
  */
@@ -86,6 +87,14 @@ export default {
 }
 
 async function api(request: Request, env: Env, url: URL): Promise<Response> {
+  if (url.pathname === '/api/ics') {
+    // Only Google's public holiday calendars, so this can't be used to fetch anything else.
+    const target = url.searchParams.get('u') ?? ''
+    if (!/^https:\/\/calendar\.google\.com\/calendar\/ical\/[^/?#]+%23holiday%40group\.v\.calendar\.google\.com\/public\/basic\.ics$/.test(target)) return json({ error: 'Not allowed' }, 400)
+    const res = await fetch(target)
+    return new Response(res.body, { status: res.status, headers: { 'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'public, max-age=86400', ...CORS } })
+  }
+
   if (url.pathname === '/api/spaces' && request.method === 'POST') {
     const body = (await request.json()) as { space?: string; authHash?: string; ownerSecret?: string }
     if (!env.OWNER_SECRET || body.ownerSecret !== env.OWNER_SECRET) return json({ error: 'Wrong setup code' }, 403)

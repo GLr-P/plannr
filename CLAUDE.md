@@ -23,7 +23,8 @@ npm run build       # production build into out/
 npm start           # run the built app
 npm run typecheck   # tsc for main/preload (node), renderer (web) and e2e configs
 npm test            # Vitest unit tests (tests/unit), pure Node, no Electron
-npm run test:e2e    # build, then Playwright drives the real Electron app (tests/e2e)
+npm run test:e2e    # build (PC app + phone web app), then Playwright drives the real Electron app (tests/e2e)
+npm run build:web   # the phone web app → out/web (served by the sync service; see server/README.md)
 npm run check       # all of the above; run before calling work done
 npx vitest run -t "search"          # single unit test by name
 npx playwright test -g "drag"       # single e2e test (run `npm run build` first; e2e uses out/)
@@ -103,6 +104,12 @@ Cross-cutting mechanisms that later phases should reuse rather than reinvent:
   - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
   - Restore closes the database, saves a `-before-restore` copy of the current one, swaps the files, then relaunches the app. Tests exit instead of relaunching.
   - Default folder: `Documents/Plannr Backups` (inside the data dir in tests).
+- **Sync and the phone web app** (phase 14):
+  - `sync/engine.ts` is portable (no Node/Electron): triggers (migration 20, `syncSchemaSql`) note changed rows of `SYNCED_TABLES` and allow-listed `SYNCED_SETTINGS` in `sync_dirty`; push seals rows (AES-GCM, `shared/sync-crypto.ts`) and the server keeps the newest per row; pull applies with UPSERT (never `INSERT OR REPLACE`: FK cascades) with foreign keys off and `sync_state.applying` set so triggers don't re-mark. Files and vault files travel as sealed blobs. One 32-byte key (the join link `https://<server>/#join=<key>`) derives the space id, the auth token (server keeps its SHA-256) and the encryption key.
+  - `sync/service.ts` (`SyncService`) schedules it and handles setup/join/QR link; the platform passes `fetch` and key storage (PC: Windows-encrypted secret). `sync/upkeep.ts` rebuilds derived data (search index, links, display prefs) after a pull. A new table or synced setting must be added to `SYNCED_TABLES`/`SYNCED_SETTINGS` *and* get triggers via a new migration.
+  - `server/src/worker.ts` is the Cloudflare Worker (D1, optional R2) and serves `out/web`; tests run it in-process on node:sqlite (`tests/support/d1.ts`: `fakeServer`, `serveHttp`).
+  - `src/web/` is the phone app: the same renderer, with `window.plannr` answered by a Web Worker (`worker.ts`) running the same services (`api-core.ts`, `vault-core.ts`, `SyncService`) on SQLite-WASM in OPFS (opfs-sahpool). `vite.web.config.ts` aliases `node:sqlite|fs|path|crypto` to `src/web/shims` (fs = a SQLite table; crypto = @noble, byte-compatible with Node so the vault opens on both). `plannr://file/` ⇄ `/plannr-file/` is rewritten in `rpc.ts`, and `public/sw.js` serves those from the worker via the page. Phone layout is `src/web/mobile.css` + `MobileNav.tsx`; PC-only settings hide when `app.info().web`.
+  - Keep services free of Electron (and of Node APIs beyond what the shims cover), or the phone build breaks.
 - **Packaging:** all runtime code is bundled into `out/` by Vite, so every npm package is a devDependency and no node_modules ship. `resources/` is copied as extraResources (see `resourcePath`). The installer's shortcuts carry `appId` = `APP_ID`, which keeps notifications working.
 - **Background** (`main/background.ts`):
   - The tray, and close-to-tray unless the `runInBackground` setting is `false`.

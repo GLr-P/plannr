@@ -1,5 +1,13 @@
 import { formatCurrency, formatTicketNumber, lineTotal, ticketTotals, type LineItem, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
 import { splitTax } from './quickbooks'
+import type { Db } from '../db'
+import { getSetting } from './settings'
+import { readFileSync } from 'node:fs'
+import { resolveFilePath } from './files'
+import { getCustomer } from './customers'
+import { listTransactions } from './money'
+import { getTicket } from './tickets'
+import { listItems } from './items'
 
 /*
  * Printouts for a ticket: an intake slip (customer copy at drop-off), a receipt (after payment) and a small
@@ -20,6 +28,33 @@ export const DEFAULT_BUSINESS: BusinessInfo = {
   pricesIncludeTax: false,
   logoFileId: null,
   labelSize: '62x29mm'
+}
+
+export const getBusiness = (db: Db): BusinessInfo => ({ ...DEFAULT_BUSINESS, ...((getSetting(db, 'business') as Partial<BusinessInfo> | null) ?? {}) })
+
+function logoDataUrl(db: Db, dataDir: string, id: string | null): string | null {
+  const file = id ? resolveFilePath(db, dataDir, id) : null
+  if (!file) return null
+  try {
+    return `data:${file.mime};base64,${readFileSync(file.path).toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
+/** The printable page (intake sheet, receipt or label) for a ticket. */
+export function ticketPrintHtml(db: Db, dataDir: string, id: string, kind: PrintKind): string {
+  const ticket = getTicket(db, id)
+  if (!ticket) throw new Error('Ticket not found')
+  const business = getBusiness(db)
+  return printHtml(kind, {
+    ticket,
+    customer: ticket.customerId ? getCustomer(db, ticket.customerId) : null,
+    payments: listTransactions(db, { ticketId: id, type: 'income' }).reverse(), // oldest first
+    business,
+    logo: logoDataUrl(db, dataDir, business.logoFileId),
+    items: listItems(db, id)
+  })
 }
 
 export interface PrintData {

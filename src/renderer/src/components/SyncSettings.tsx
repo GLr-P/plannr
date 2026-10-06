@@ -5,8 +5,7 @@ import type { SyncStatus } from '../../../shared/api'
 import { api } from '../api'
 import { relativeTime } from '../lib/format'
 
-const cleanError = (e: unknown): string =>
-  e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e)
+const cleanError = (e: unknown): string => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e))
 
 /** A QR code drawn as SVG squares (black on white, so phone cameras read it in dark mode too). */
 function Qr({ text }: { text: string }) {
@@ -39,8 +38,11 @@ export function SyncSettings() {
   const [confirmOff, setConfirmOff] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [web, setWeb] = useState(false)
+  const device = web ? 'this phone' : 'this PC'
 
   useEffect(() => {
+    void api.app.info().then((info) => setWeb(info.web))
     void api.sync.status().then(setStatus)
     const t = setInterval(() => void api.sync.status().then(setStatus), 2_000)
     return () => clearInterval(t)
@@ -68,13 +70,16 @@ export function SyncSettings() {
         <div className="integration-main">
           <h3>Sync & devices</h3>
           <p className="muted">
-            Use Plannr on your phone and other computers. Everything is encrypted on this device before it leaves, with a key only your devices have, and kept on a free sync server you own (Cloudflare).
+            Use Plannr on your phone and other computers. Everything is encrypted on this device before it leaves, with a key only your devices have, and kept
+            on a free sync server you own (Cloudflare).
           </p>
           {mode === null && (
             <div className="backup-actions">
-              <button type="button" className="btn sm primary" onClick={() => setMode('first')}>
-                <Laptop /> Start syncing from this PC
-              </button>
+              {!web && (
+                <button type="button" className="btn sm primary" onClick={() => setMode('first')}>
+                  <Laptop /> Start syncing from this PC
+                </button>
+              )}
               <button type="button" className="btn sm" onClick={() => setMode('join')}>
                 <Link2 /> Join with a link
               </button>
@@ -95,7 +100,13 @@ export function SyncSettings() {
                 <span className="small">Your sync server’s address and the setup code chosen when it was set up.</span>
                 <label className="mfield">
                   <span>Sync server address</span>
-                  <input value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://plannr-sync.yourname.workers.dev" spellCheck={false} aria-label="Sync server address" />
+                  <input
+                    value={server}
+                    onChange={(e) => setServer(e.target.value)}
+                    placeholder="https://plannr-sync.yourname.workers.dev"
+                    spellCheck={false}
+                    aria-label="Sync server address"
+                  />
                 </label>
                 <label className="mfield">
                   <span>Setup code</span>
@@ -125,11 +136,19 @@ export function SyncSettings() {
             >
               <div className="integration-fields">
                 <span className="small">
-                  On a device that already syncs, open Settings → Sync & devices → Add a device, copy the link and paste it here. If this PC is new, its starter templates are replaced with yours; otherwise its things are combined with your other devices’.
+                  On a device that already syncs, open Settings → Sync & devices → Add a device, copy the link and paste it here. If {device} is new, its
+                  starter templates are replaced with yours; otherwise its things are combined with your other devices’.
                 </span>
                 <label className="mfield">
                   <span>Join link</span>
-                  <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…/#join=…" spellCheck={false} autoComplete="off" aria-label="Join link" />
+                  <input
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    placeholder="https://…/#join=…"
+                    spellCheck={false}
+                    autoComplete="off"
+                    aria-label="Join link"
+                  />
                 </label>
                 <div className="backup-actions">
                   <button type="submit" className="btn sm primary" disabled={!!busy || !link.trim()}>
@@ -148,11 +167,7 @@ export function SyncSettings() {
     )
   }
 
-  const state = status.syncing
-    ? 'Syncing…'
-    : status.lastSyncAt
-      ? `Synced ${relativeTime(status.lastSyncAt).toLowerCase()}`
-      : 'Not synced yet'
+  const state = status.syncing ? 'Syncing…' : status.lastSyncAt ? `Synced ${relativeTime(status.lastSyncAt).toLowerCase()}` : 'Not synced yet'
   return (
     <>
       <section className="setting integration sync-setting">
@@ -160,8 +175,18 @@ export function SyncSettings() {
           <h3>Sync & devices</h3>
           <p className="small integration-status" aria-live="polite">
             <span className={status.error ? 'dot-error' : 'dot-ok'} /> {state}
-            {status.pending > 0 && <span className="muted"> · {status.pending} change{status.pending === 1 ? '' : 's'} to send</span>}
-            {status.filesWaiting > 0 && <span className="muted"> · downloading {status.filesWaiting} file{status.filesWaiting === 1 ? '' : 's'}</span>}
+            {status.pending > 0 && (
+              <span className="muted">
+                {' '}
+                · {status.pending} change{status.pending === 1 ? '' : 's'} to send
+              </span>
+            )}
+            {status.filesWaiting > 0 && (
+              <span className="muted">
+                {' '}
+                · downloading {status.filesWaiting} file{status.filesWaiting === 1 ? '' : 's'}
+              </span>
+            )}
           </p>
           <p className="small muted">
             Through <code className="path inline">{status.server}</code>. Changes go up within seconds and come in every minute.
@@ -169,14 +194,14 @@ export function SyncSettings() {
           {status.fileStore === 'd1' && (
             <p className="small muted">Files and photos are kept in the server’s database (up to 60 MB each). Add Cloudflare R2 storage for bigger files.</p>
           )}
-          <p className="small muted">Connect Google Calendar and QuickBooks on one PC only; the others get the results through sync.</p>
+          {!web && <p className="small muted">Connect Google Calendar and QuickBooks on one PC only; the others get the results through sync.</p>}
           <div className="backup-actions">
             <button type="button" className="btn sm" disabled={status.syncing} onClick={() => void run('sync', () => api.sync.syncNow())}>
               <RefreshCw /> Sync now
             </button>
             {confirmOff ? (
               <>
-                <span className="small">Stop syncing on this PC? Nothing is deleted here or on your other devices.</span>
+                <span className="small">Stop syncing on {device}? Nothing is deleted here or on your other devices.</span>
                 <button
                   type="button"
                   className="btn sm danger"
@@ -206,7 +231,8 @@ export function SyncSettings() {
         <div className="integration-main">
           <h3>Add a device</h3>
           <p className="muted">
-            iPhone: point the Camera at the code, tap the link, then in Safari tap Share → Add to Home Screen. Another PC: copy the link and paste it in that PC’s Plannr under Settings → Sync & devices → Join with a link.
+            iPhone: point the Camera at the code, tap the link, then in Safari tap Share → Add to Home Screen. Another PC: copy the link and paste it in that
+            PC’s Plannr under Settings → Sync & devices → Join with a link.
           </p>
           <p className="small warn-text">Anyone with this code or link can open your Plannr data. Only use it on your own devices.</p>
           {shownLink ? (

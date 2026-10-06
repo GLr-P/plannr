@@ -28,6 +28,7 @@ import { useAppearance } from './lib/appearance'
 import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
 import { initUpdates } from './store/update'
 import { MessageDialog } from './components/MessageDialog'
+import { MobileNav, useDrawer } from './components/MobileNav'
 
 function useGlobalShortcuts(): void {
   useEffect(() => {
@@ -116,6 +117,7 @@ export function App() {
   const loaded = useData((s) => s.loaded)
   const displayVersion = useDisplay((s) => s.version) // re-render pages when ticket prefix/currency/status names change
   const view = useNav((s) => s.route.view)
+  const drawer = useDrawer((s) => s.open)
   useGlobalShortcuts()
   useAppearance()
   useEffect(() => {
@@ -143,9 +145,10 @@ export function App() {
   }, [])
 
   return (
-    <div className="app">
+    <div className={drawer ? 'app drawer-open' : 'app'}>
       <TitleBar />
       <Sidebar />
+      <MobileNav />
       {/* Settings isn't redrawn while you edit it; every other page picks up new names/prefix/currency right away. */}
       <main className="main">{loaded && <MainView key={view === 'settings' ? 'settings' : displayVersion} />}</main>
       <ContextMenuHost />

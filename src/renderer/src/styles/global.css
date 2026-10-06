@@ -2294,3 +2294,10 @@ kbd {
   word-break: break-all;
   user-select: all;
 }
+
+/* Phone-only navigation (the phone web app shows these on narrow screens; see src/web/mobile.css) */
+.drawer-btn,
+.mobile-tabs,
+.drawer-backdrop {
+  display: none;
+}

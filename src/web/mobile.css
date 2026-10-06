@@ -1,0 +1,457 @@
+/*
+ * The phone web app. Same screens as the PC; on narrow screens the sidebar becomes a drawer, a tab bar sits at the
+ * bottom, pages use the full width and everything is sized for fingers. Respects the iPhone's notch and home bar.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+  overscroll-behavior: none;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+/* No "Copy / Look up" bubble when long-pressing buttons and menu items (long-press opens Plannr's own menu). */
+.sidebar,
+.mobile-tabs,
+.titlebar,
+button,
+.nav-item {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ---------- First start: connect to your Plannr ---------- */
+.web-welcome {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bg-sidebar);
+}
+.web-welcome-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.08));
+  text-align: center;
+}
+.web-welcome-card h1 {
+  font-size: 24px;
+  margin: 10px 0 6px;
+}
+.web-welcome-card p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.brand-mark.big {
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+  border-radius: 14px;
+  margin: 0 auto;
+}
+.web-steps {
+  text-align: left;
+  margin: 16px auto;
+  padding-left: 22px;
+  line-height: 2;
+}
+.web-steps .inline-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+}
+.web-join {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.web-join input {
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
+.web-join .btn {
+  justify-content: center;
+  padding: 10px;
+}
+.web-joining {
+  padding: 18px 0 6px;
+}
+.spinner {
+  width: 30px;
+  height: 30px;
+  margin: 0 auto 8px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.web-fatal {
+  padding: 40px 24px;
+  text-align: center;
+}
+
+/* ---------- Phone layout ---------- */
+@media (max-width: 760px) {
+  :root {
+    --titlebar-h: calc(50px + env(safe-area-inset-top));
+    --tabs-h: calc(56px + env(safe-area-inset-bottom));
+  }
+  .app {
+    grid-template-rows: var(--titlebar-h) 1fr var(--tabs-h);
+    grid-template-columns: 1fr;
+    height: 100%;
+  }
+  .main {
+    grid-row: 2;
+    grid-column: 1;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Title bar: ☰, back, search */
+  .titlebar {
+    padding: env(safe-area-inset-top) 8px 0 4px;
+    gap: 6px;
+  }
+  .titlebar-left {
+    width: auto;
+    padding: 0;
+    gap: 2px;
+  }
+  .titlebar-left .brand,
+  .history button:last-child,
+  .titlebar-right,
+  .update-pill,
+  .search kbd {
+    display: none;
+  }
+  .drawer-btn {
+    display: inline-grid;
+  }
+  .titlebar .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .titlebar .icon-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .search {
+    max-width: none;
+    margin: 0;
+  }
+  .search-results {
+    position: fixed;
+    top: var(--titlebar-h);
+    left: 8px;
+    right: 8px;
+    max-height: calc(100% - var(--titlebar-h) - var(--tabs-h) - 16px);
+    overflow-y: auto;
+  }
+
+  /* The sidebar becomes a drawer */
+  .sidebar {
+    position: fixed;
+    z-index: 60;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 320px);
+    padding: calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom));
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.18);
+  }
+  .app.drawer-open .sidebar {
+    transform: none;
+  }
+  .drawer-backdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .sidebar .nav-item {
+    height: 42px;
+    font-size: 16px;
+    gap: 12px;
+  }
+  .sidebar .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Tab bar */
+  .mobile-tabs {
+    grid-row: 3;
+    grid-column: 1;
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border);
+    z-index: 50;
+  }
+  .mobile-tabs button {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .mobile-tabs button svg {
+    width: 23px;
+    height: 23px;
+  }
+  .mobile-tabs button.active {
+    color: var(--accent);
+  }
+  .tab-badge {
+    position: absolute;
+    top: 5px;
+    left: calc(50% + 6px);
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10.5px;
+    line-height: 17px;
+  }
+
+  /* Pages use the whole width */
+  .page {
+    padding: 16px 16px 40px;
+    max-width: none;
+  }
+  .page h1 {
+    font-size: 24px;
+  }
+
+  /* iPhone zooms into any field with text under 16px; keep them at 16px */
+  input,
+  select,
+  textarea,
+  .ProseMirror {
+    font-size: 16px !important;
+  }
+
+  /* Bigger targets */
+  .btn {
+    min-height: 38px;
+  }
+  .icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  /* Settings rows stack */
+  .setting {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .settings-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+  .settings-tabs button {
+    white-space: nowrap;
+  }
+
+  /* Dialogs and popovers fit the screen */
+  .dialog,
+  .modal {
+    width: calc(100vw - 24px) !important;
+    max-width: none !important;
+    max-height: calc(100% - var(--titlebar-h) - 24px);
+  }
+}
+
+/* Touch screens have no hover: show the buttons that otherwise appear on hover */
+@media (hover: none) {
+  .row-actions {
+    visibility: visible;
+  }
+  .task-remind,
+  .task-delete,
+  .task-due.empty {
+    opacity: 1;
+  }
+  .section-actions {
+    display: flex;
+  }
+}
+
+@media (max-width: 760px) {
+  .main {
+    overflow-x: hidden;
+  }
+  .home-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .home-header .header-actions {
+    width: 100%;
+  }
+  .page-toolbar {
+    height: auto;
+    min-height: 32px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar-right {
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+  .save-status {
+    display: none;
+  }
+
+  /* Lists that are tables on the PC become stacked rows */
+  .table-wrap:has(.ticket-row) thead,
+  .table-wrap:has(.customer-row) thead,
+  .table-wrap:has(.tx-row) thead {
+    display: none;
+  }
+  .table tr.ticket-row,
+  .table tr.customer-row,
+  .table tr.tx-row {
+    display: grid;
+    gap: 2px 12px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table tr.ticket-row td,
+  .table tr.customer-row td,
+  .table tr.tx-row td {
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  /* # · customer · price / device · status */
+  .table tr.ticket-row {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'num who price' 'num what status';
+  }
+  .ticket-row td:nth-child(1) {
+    grid-area: num;
+  }
+  .ticket-row td:nth-child(2) {
+    grid-area: who;
+  }
+  .ticket-row td:nth-child(3) {
+    grid-area: what;
+  }
+  .ticket-row td:nth-child(4) {
+    grid-area: status;
+    justify-self: end;
+  }
+  .ticket-row td:nth-child(5),
+  .ticket-row td:nth-child(6) {
+    display: none;
+  }
+  .ticket-row td:nth-child(7) {
+    grid-area: price;
+  }
+  /* name · tickets / phone · email */
+  .table tr.customer-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'name count' 'phone phone' 'email email';
+  }
+  .customer-row td:nth-child(1) {
+    grid-area: name;
+  }
+  .customer-row td:nth-child(2) {
+    grid-area: phone;
+    color: var(--text-muted);
+  }
+  .customer-row td:nth-child(3) {
+    grid-area: email;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .customer-row td:nth-child(4) {
+    grid-area: count;
+  }
+  .customer-row td:nth-child(5) {
+    display: none;
+  }
+  /* description · amount / date · category · method */
+  .table tr.tx-row {
+    grid-template-columns: auto auto 1fr auto;
+    grid-template-areas: 'desc desc desc amount' 'date cat method actions';
+    align-items: center;
+  }
+  .tx-row td:nth-child(1) {
+    grid-area: date;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .tx-row td:nth-child(2) {
+    grid-area: desc;
+  }
+  .tx-row td:nth-child(3) {
+    grid-area: cat;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .tx-row td:nth-child(4) {
+    grid-area: method;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .tx-row td:nth-child(5) {
+    grid-area: amount;
+  }
+  .tx-row td:nth-child(6) {
+    grid-area: actions;
+  }
+}
+
+/* Vault: the list, or one item full-width with a way back */
+@media (max-width: 760px) {
+  .vault-split {
+    grid-template-columns: 1fr;
+  }
+  .vault-split:has(.vault-row.active) .vault-list,
+  .vault-split:not(:has(.vault-row.active)) .vault-detail {
+    display: none;
+  }
+  .vault-detail {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .vault-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+}

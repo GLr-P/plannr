@@ -83,3 +83,15 @@ export function makePdf(text: string): Buffer {
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
   return Buffer.from(pdf, 'latin1')
 }
+
+/** Opens a URL in a phone-sized window with an iPhone browser identity (its own storage folder). */
+export async function launchPhone(url: string, profileDir: string): Promise<{ app: ElectronApplication; page: Page }> {
+  const env: Record<string, string> = {}
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
+  delete env.ELECTRON_RUN_AS_NODE
+  env.PHONE_URL = url
+  env.PHONE_PROFILE = profileDir
+  const app = await electron.launch({ args: [join(root, 'tests', 'support', 'phone-main.cjs')], env })
+  const page = await app.firstWindow()
+  return { app, page }
+}

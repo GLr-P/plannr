@@ -1,0 +1,9 @@
+{
+  "name": "Plannr",
+  "short_name": "Plannr",
+  "description": "Your notes, tasks, tickets, customers, calendar, money and vault, synced from your PC.",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f6f6f4",
+  "icons": [{ "src": "/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" }]
+}

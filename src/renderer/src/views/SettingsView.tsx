@@ -12,7 +12,15 @@ import { QuickBooksSettings } from '../components/QuickBooksSettings'
 import { BusinessSettings } from '../components/BusinessSettings'
 import { DataPortability } from '../components/DataPortability'
 import { SyncSettings } from '../components/SyncSettings'
-import { CaptureSetting, HomeLayoutSettings, LookSettings, MenuSettings, MoneyDisplaySettings, TicketSettings, WeekStartSetting } from '../components/CustomizeSettings'
+import {
+  CaptureSetting,
+  HomeLayoutSettings,
+  LookSettings,
+  MenuSettings,
+  MoneyDisplaySettings,
+  TicketSettings,
+  WeekStartSetting
+} from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
 import { UpdateSettings } from '../components/UpdateSettings'
@@ -28,11 +36,15 @@ const TABS = [
   { id: 'data', label: 'Backups & data' }
 ] as const
 type Tab = (typeof TABS)[number]['id']
+/** Kept on the PC: integrations and backups run there (the phone gets the results through sync). */
+const PC_ONLY_TABS: string[] = ['accounts', 'data']
 
 export function SettingsView() {
-  const tab = (useUi((s) => s.prefs.settingsTab) as Tab | undefined) ?? 'general'
+  const savedTab = (useUi((s) => s.prefs.settingsTab) as Tab | undefined) ?? 'general'
   const { pref, setPref } = useTheme()
   const [info, setInfo] = useState<AppInfo | null>(null)
+  const tab: Tab = info?.web && PC_ONLY_TABS.includes(savedTab) ? 'general' : savedTab
+  const pc = info !== null && !info.web
   const [background, setBackground] = useState(true)
   const [atLogin, setAtLogin] = useState(false)
   const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
@@ -53,7 +65,7 @@ export function SettingsView() {
     <div className="page settings">
       <h1>Settings</h1>
       <div className="segmented settings-tabs" role="tablist" aria-label="Settings sections">
-        {TABS.map((t) => (
+        {TABS.filter((t) => !(info?.web && PC_ONLY_TABS.includes(t.id))).map((t) => (
           <button
             key={t.id}
             type="button"
@@ -92,61 +104,72 @@ export function SettingsView() {
 
           <LookSettings />
 
-          <UpdateSettings />
+          {pc && (
+            <>
+              <UpdateSettings />
+              <CaptureSetting />
+            </>
+          )}
 
-          <CaptureSetting />
+          {pc && (
+            <section className="setting">
+              <div>
+                <h3>Welcome tour</h3>
+                <p className="muted">The quick introduction from the first time you opened Plannr.</p>
+              </div>
+              <button type="button" className="btn" onClick={() => useOnboarding.getState().set(true)}>
+                <Sparkles /> Show the tour
+              </button>
+            </section>
+          )}
 
-          <section className="setting">
-            <div>
-              <h3>Welcome tour</h3>
-              <p className="muted">The quick introduction from the first time you opened Plannr.</p>
-            </div>
-            <button type="button" className="btn" onClick={() => useOnboarding.getState().set(true)}>
-              <Sparkles /> Show the tour
-            </button>
-          </section>
+          {pc && (
+            <section className="setting">
+              <div>
+                <h3>Keyboard shortcuts</h3>
+                <p className="muted">
+                  Press <kbd>Ctrl</kbd> + <kbd>/</kbd> anywhere to see them.
+                </p>
+              </div>
+              <button type="button" className="btn" onClick={() => useShortcutsOpen.getState().set(true)}>
+                <Keyboard /> Show shortcuts
+              </button>
+            </section>
+          )}
 
-          <section className="setting">
-            <div>
-              <h3>Keyboard shortcuts</h3>
-              <p className="muted">
-                Press <kbd>Ctrl</kbd> + <kbd>/</kbd> anywhere to see them.
-              </p>
-            </div>
-            <button type="button" className="btn" onClick={() => useShortcutsOpen.getState().set(true)}>
-              <Keyboard /> Show shortcuts
-            </button>
-          </section>
+          {pc && (
+            <>
+              <section className="setting">
+                <div>
+                  <h3>Keep running in the tray</h3>
+                  <p className="muted">Closing the window keeps Plannr in the system tray so calendar reminders still pop up.</p>
+                </div>
+                <Switch
+                  label="Keep running in the tray"
+                  checked={background}
+                  onChange={(v) => {
+                    setBackground(v)
+                    void api.settings.set('runInBackground', v)
+                  }}
+                />
+              </section>
 
-          <section className="setting">
-            <div>
-              <h3>Keep running in the tray</h3>
-              <p className="muted">Closing the window keeps Plannr in the system tray so calendar reminders still pop up.</p>
-            </div>
-            <Switch
-              label="Keep running in the tray"
-              checked={background}
-              onChange={(v) => {
-                setBackground(v)
-                void api.settings.set('runInBackground', v)
-              }}
-            />
-          </section>
-
-          <section className="setting">
-            <div>
-              <h3>Start with Windows</h3>
-              <p className="muted">Opens Plannr quietly in the tray when you sign in, so reminders work even if you forget to open it.</p>
-            </div>
-            <Switch
-              label="Start with Windows"
-              checked={atLogin}
-              onChange={(v) => {
-                setAtLogin(v)
-                void api.app.setOpenAtLogin(v)
-              }}
-            />
-          </section>
+              <section className="setting">
+                <div>
+                  <h3>Start with Windows</h3>
+                  <p className="muted">Opens Plannr quietly in the tray when you sign in, so reminders work even if you forget to open it.</p>
+                </div>
+                <Switch
+                  label="Start with Windows"
+                  checked={atLogin}
+                  onChange={(v) => {
+                    setAtLogin(v)
+                    void api.app.setOpenAtLogin(v)
+                  }}
+                />
+              </section>
+            </>
+          )}
 
           <WeekStartSetting />
           <HolidaySettings />
