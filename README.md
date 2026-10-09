@@ -44,7 +44,8 @@ Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu 
 ## Install
 
 1. Download **Plannr-Setup-x.y.z.exe** from the [latest release](https://github.com/GLr-P/plannr/releases/latest).
-2. Run it. Windows may say *"Windows protected your PC"* because the installer isn't code-signed yet: click **More info → Run anyway**. On PCs where Windows **Smart App Control** is on, unsigned apps are blocked entirely. Signed releases are on the way (see [Code signing policy](#code-signing-policy)).
+2. Run it. Plannr isn't code-signed (signing costs money every year, and Plannr is free), so Windows may say *"Windows protected your PC"*: click **More info → Run anyway**.
+   If Windows instead says it **blocked** Plannr, your PC has **Smart App Control** on, which doesn't allow unsigned apps at all. To use Plannr you'd need to turn it off: Windows Security → App & browser control → Smart App Control settings → Off. Note that Windows can't turn Smart App Control back on without resetting the PC, so decide whether that's worth it for you.
 3. Plannr opens with a one-minute welcome tour.
 
 Plannr updates itself: when a new version is out, an **Update** button appears at the top of the window (or use Settings → General → Check for updates).
@@ -53,7 +54,7 @@ Works on Windows 10 and 11 (64-bit). Your data lives in `%APPDATA%\Plannr\data`,
 
 ## Privacy
 
-Plannr has no account, no server and no tracking, and it never sends your notes, contacts or other data anywhere unless you ask it to. Your data stays in `%APPDATA%Plannrdata` on your computer.
+Plannr has no account, no server and no tracking, and it never sends your notes, contacts or other data anywhere unless you ask it to. Your data stays in `%APPDATA%\Plannr\data` on your computer.
 
 It makes two automatic connections, neither of which sends any of your data, and you can turn both off:
 
@@ -62,14 +63,9 @@ It makes two automatic connections, neither of which sends any of your data, and
 
 If you connect **Google Calendar**, **Zoho Mail** or **QuickBooks Online**, Plannr exchanges data with that service only, and only what Settings describes. Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
 
-## Code signing policy
+## Code signing
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
-
-- Committers and reviewers: [GLr-P](https://github.com/GLr-P)
-- Approvers: [GLr-P](https://github.com/GLr-P)
-
-Every release is built from this repository's source code by GitHub Actions ([workflow](.github/workflows/build.yml)) and signed only after an approver reviews the signing request. Releases published before signing was in place (0.9.0 and 0.9.1) are unsigned.
+Plannr's releases aren't code-signed. Each installer is built from this repository's source code, and when Plannr updates itself it checks that the download matches the file published on the release page (its SHA-256 fingerprint) before installing it.
 
 ## For developers
 
