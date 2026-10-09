@@ -187,7 +187,8 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       setZoom: async (factor) => setSetting(db, 'zoom', Math.max(0.8, Math.min(1.4, Number(factor) || 1))),
       getZoom: async () => Number(getSetting(db, 'zoom')) || 1,
       getOpenAtLogin: async () => false,
-      setOpenAtLogin: async () => undefined
+      setOpenAtLogin: async () => undefined,
+      testNotification: async () => false
     }
   }
   const web: WebExtras = {

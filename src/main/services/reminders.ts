@@ -1,5 +1,5 @@
 import type { Db } from '../db'
-import { REMINDER_SCHEDULE, type EntityType, type ReminderKind } from '../../shared/api'
+import type { EntityType, ReminderKind } from '../../shared/api'
 import { localDate } from './doc'
 import { listEvents } from './calendar'
 
@@ -22,27 +22,55 @@ export function formatTime(hhmm: string): string {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
 
-export function fireTime(date: string, kind: ReminderKind): Date {
+/** When a reminder pops up for an event on `date` (starting at `startTime`, or all day). */
+export function fireTime(date: string, kind: ReminderKind, startTime: string | null = null): Date {
   const [y, m, d] = date.split('-').map(Number)
-  const { daysBefore, time } = REMINDER_SCHEDULE[kind]
-  const [hh, mm] = time.split(':').map(Number)
-  return new Date(y, m - 1, d - daysBefore, hh, mm)
+  if (kind === 'day_of') return new Date(y, m - 1, d, 8, 0)
+  if (kind === 'day_before') return new Date(y, m - 1, d - 1, 9, 0)
+  if (kind === 'week_before') return new Date(y, m - 1, d - 7, 9, 0)
+  const minutes = Number(kind.slice('before:'.length)) || 0
+  if (!startTime) {
+    // A "minutes before" reminder on an event that became all-day: whole days before at 9 AM, else the morning of
+    const days = Math.floor(minutes / 1440)
+    return days > 0 ? new Date(y, m - 1, d - days, 9, 0) : new Date(y, m - 1, d, 8, 0)
+  }
+  const [hh, mm] = startTime.split(':').map(Number)
+  return new Date(y, m - 1, d, hh, mm - minutes)
+}
+
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** The notification's text: when the event is, from the moment the reminder fires. */
+export function whenText(kind: ReminderKind, date: string, startTime: string | null): string {
+  const at = startTime ? ` at ${formatTime(startTime)}` : ''
+  if (kind === 'day_of') return `Today${at}`
+  if (kind === 'day_before') return `Tomorrow${at}`
+  if (kind === 'week_before') return `In a week (${new Date(`${date}T12:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })})${at}`
+  const minutes = Number(kind.slice('before:'.length)) || 0
+  if (!startTime) return minutes >= 1440 ? (minutes < 2880 ? 'Tomorrow' : `In ${plural(Math.floor(minutes / 1440), 'day')}`) : 'Today'
+  if (minutes === 0) return `Starting now (${formatTime(startTime)})`
+  if (minutes < 60) return `In ${plural(minutes, 'minute')}${at}`
+  if (minutes < 1440) return `In ${plural(Math.round(minutes / 60), 'hour')}${at}`
+  return minutes < 2880 ? `Tomorrow${at}` : `In ${plural(Math.floor(minutes / 1440), 'day')}${at}`
 }
 
 /** Reminders whose time has come (and haven't been shown yet). */
 export function dueReminders(db: Db, now = new Date(), lookbackMs = LOOKBACK_MS): DueReminder[] {
   const day = 86_400_000
-  const events = listEvents(db, localDate(new Date(now.getTime() - day)), localDate(new Date(now.getTime() + day)))
+  // Events from yesterday to 8 days ahead: far enough for "a week before" reminders
+  const events = listEvents(db, localDate(new Date(now.getTime() - day)), localDate(new Date(now.getTime() + 8 * day)))
   const logged = db.prepare('SELECT 1 FROM reminder_log WHERE event_id = ? AND reminder_key = ?')
   const due: DueReminder[] = []
   for (const e of events) {
     if (e.linkDone) continue // ticket already picked up
     for (const kind of e.reminders) {
-      const at = fireTime(e.date, kind).getTime()
+      const at = fireTime(e.date, kind, e.startTime).getTime()
       if (at > now.getTime() || now.getTime() - at > lookbackMs) continue
       const key = `${kind}@${e.date}`
       if (logged.get(e.id, key)) continue
-      const when = `${kind === 'day_before' ? 'Tomorrow' : 'Today'}${e.startTime ? ` at ${formatTime(e.startTime)}` : ''}`
+      // Caught up after Plannr was closed and the event has already begun: say so rather than "In 15 minutes"
+      const started = e.startTime && now.getTime() >= fireTime(e.date, 'before:0', e.startTime).getTime()
+      const when = started ? `Started at ${formatTime(e.startTime!)}` : whenText(kind, e.date, e.startTime)
       due.push({
         eventId: e.id,
         key,

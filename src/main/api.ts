@@ -1,11 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, net, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, Notification, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
 import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
 import { exportAll, importContacts } from './services/portability'
 import * as money from './services/money'
-import { getOpenAtLogin, setOpenAtLogin } from './background'
+import { getOpenAtLogin, resourcePath, setOpenAtLogin } from './background'
 import * as backups from './services/backup'
 import * as google from './services/google'
 import * as googleClient from './google-client'
@@ -327,7 +327,14 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       },
       getZoom: async () => Number(getSetting(db, 'zoom')) || 1,
       getOpenAtLogin: async () => getOpenAtLogin(),
-      setOpenAtLogin: async (enabled) => setOpenAtLogin(enabled)
+      setOpenAtLogin: async (enabled) => setOpenAtLogin(enabled),
+      testNotification: async () => {
+        if (!Notification.isSupported()) return false
+        // Tests don't put real notifications on the screen (except the background check, PLANNR_BACKGROUND=1)
+        if (process.env.PLANNR_DATA_DIR && process.env.PLANNR_BACKGROUND !== '1') return true
+        new Notification({ title: 'Notifications are working', body: 'Plannr will remind you like this. Click a reminder to open what it is about.', icon: resourcePath('icon.png') }).show()
+        return true
+      }
     }
   }
 }

@@ -2394,3 +2394,55 @@ kbd {
 .drawer-profile {
   display: none; /* phone only: there the title bar has no room for the profile switcher */
 }
+
+/* ---------- Notify me (event reminders) ---------- */
+.chip-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-toggle {
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12.5px;
+}
+.chip-toggle:hover {
+  border-color: var(--text-muted);
+}
+.chip-toggle.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.setting-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.notify-defaults {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px 16px;
+  align-items: center;
+}
+.notify-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+@media (max-width: 760px) {
+  .notify-defaults {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .setting-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+}

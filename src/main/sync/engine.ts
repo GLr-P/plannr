@@ -65,7 +65,8 @@ export const SYNCED_SETTINGS = [
   'holidayObservances',
   'starterTemplateCreated',
   'starterNoteTemplatesCreated',
-  'vaultAutoLockMinutes'
+  'vaultAutoLockMinutes',
+  'eventReminders'
 ]
 
 const nowMs = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`
@@ -84,19 +85,23 @@ export function syncSchemaSql(): string {
        INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('${t}', OLD.id, ${nowMs}, 1)
        ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`
   ])
-  const keys = SYNCED_SETTINGS.map((k) => `'${k}'`).join(', ')
-  const settingTrigger = (when: string) => `
-    CREATE TRIGGER sync_settings_${when} AFTER ${when === 'ins' ? 'INSERT' : 'UPDATE'} ON settings WHEN NEW.key IN (${keys}) AND ${notApplying} BEGIN
-      INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('settings', NEW.key, ${nowMs}, 1)
-      ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`
   return `
     CREATE TABLE sync_dirty (tbl TEXT NOT NULL, id TEXT NOT NULL, changed_at INTEGER NOT NULL, n INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (tbl, id));
     CREATE TABLE sync_state (key TEXT PRIMARY KEY, value TEXT);
     CREATE TABLE sync_uploaded (kind TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (kind, id));
     ${triggers.join('\n')}
-    ${settingTrigger('ins')}
-    ${settingTrigger('upd')}
+    ${settingsTriggersSql()}
   `
+}
+
+/** Triggers noting changes to the synced settings (re-created by a migration whenever SYNCED_SETTINGS grows). */
+export function settingsTriggersSql(): string {
+  const keys = SYNCED_SETTINGS.map((k) => `'${k}'`).join(', ')
+  const settingTrigger = (when: string) => `
+    CREATE TRIGGER sync_settings_${when} AFTER ${when === 'ins' ? 'INSERT' : 'UPDATE'} ON settings WHEN NEW.key IN (${keys}) AND ${notApplying} BEGIN
+      INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('settings', NEW.key, ${nowMs}, 1)
+      ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`
+  return `${settingTrigger('ins')}\n${settingTrigger('upd')}`
 }
 
 const BLOB_KIND: Partial<Record<string, BlobKind>> = { files: 'file', vault_files: 'vault' }

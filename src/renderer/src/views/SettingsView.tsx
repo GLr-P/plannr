@@ -25,6 +25,7 @@ import { useShortcutsOpen } from '../components/Shortcuts'
 import { useOnboarding } from '../components/Onboarding'
 import { UpdateSettings } from '../components/UpdateSettings'
 import { ProfilesSetting } from '../components/Profiles'
+import { NotificationSettings } from '../components/NotificationSettings'
 import { Keyboard, Sparkles } from 'lucide-react'
 
 const TABS = [
@@ -174,6 +175,7 @@ export function SettingsView() {
             </>
           )}
 
+          {info && <NotificationSettings pc={pc} />}
           <WeekStartSetting />
           <HolidaySettings />
         </>

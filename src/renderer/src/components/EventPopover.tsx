@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Bell, ExternalLink, X, Repeat2 } from 'lucide-react'
-import { REPEAT_LABELS, type Repeat as RepeatKind, REMINDER_SCHEDULE, type CalendarEvent, type EventUpdate, type ReminderKind } from '../../../shared/api'
+import { REPEAT_LABELS, type Repeat as RepeatKind, type CalendarEvent, type EventUpdate } from '../../../shared/api'
+import { ReminderChips } from './ReminderChips'
 import { api } from '../api'
 import { openEntity } from '../actions'
 import { useAutosave } from '../lib/useAutosave'
@@ -75,11 +76,6 @@ export function EventPopover({
     setEv((cur) => ({ ...cur, ...patch }))
     saver.queue(patch)
     if (immediate) void saver.flush()
-  }
-
-  const toggleReminder = (kind: ReminderKind, on: boolean): void => {
-    const next = on ? [...ev.reminders, kind] : ev.reminders.filter((k) => k !== kind)
-    change({ reminders: next }, true)
   }
 
   return (
@@ -172,14 +168,9 @@ export function EventPopover({
 
       <div className="popover-section">
         <div className="popover-label">
-          <Bell /> Remind me
+          <Bell /> Notify me
         </div>
-        {(Object.keys(REMINDER_SCHEDULE) as ReminderKind[]).map((kind) => (
-          <label key={kind} className="check">
-            <input type="checkbox" checked={ev.reminders.includes(kind)} onChange={(e) => toggleReminder(kind, e.target.checked)} />
-            {REMINDER_SCHEDULE[kind].label}
-          </label>
-        ))}
+        <ReminderChips value={ev.reminders} timed={ev.startTime !== null} onChange={(reminders) => change({ reminders }, true)} />
         {ev.linkDone && <div className="muted small">Ticket is picked up, so reminders are off.</div>}
       </div>
 

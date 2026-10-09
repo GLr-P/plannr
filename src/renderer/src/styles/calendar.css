@@ -256,6 +256,8 @@
 }
 .event-popover {
   width: 320px;
+  max-height: calc(100vh - 68px); /* below the title bar; scrolls if it would run off the window */
+  overflow-y: auto;
   padding: 12px;
   display: flex;
   flex-direction: column;

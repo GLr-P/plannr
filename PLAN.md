@@ -166,6 +166,7 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Fields can be dragged by their grip; after Done the cursor carries on right after the field. Old fields keep their look (defaults: full, label left).
    - Proven by tests/e2e/forms.spec.ts, which builds a flower shop order form entirely through the app and takes an order with it.
    - Still repair-flavoured: the ticket page's own header ("Device", "What's wrong with it?") is fixed wording; worth making per template so other kinds of orders read naturally.
+17. **Choose your notifications (requested 2026-10-09):** **Done (2026-10-09).** Every event has a **Notify me** row: for events with a time, when it starts or 5/10/15/30 min, 1 or 2 hours, 1 day before; for all-day events, the morning of (8 AM), the day before (9 AM) or a week before; or **Don't notify**. Several can be picked. Settings → General → Notifications sets the defaults for new timed and all-day events (setting `eventReminders`, synced; migration 21 re-creates the settings triggers) and has a **Test notification** button. Reminder kinds are `day_of`, `day_before`, `week_before` and `before:<minutes>` (`isReminderKind` in shared/api.ts); a reminder caught up after the event began says "Started at …". Tasks and bills keep their own reminders. Notifications come from the PC (Plannr in the tray); the phone web app can't show them in the background.
 
 **Later:**
 - A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).

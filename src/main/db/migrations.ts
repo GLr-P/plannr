@@ -1,4 +1,4 @@
-import { syncSchemaSql } from '../sync/engine'
+import { settingsTriggersSql, syncSchemaSql } from '../sync/engine'
 // Append-only: never edit a migration that has shipped, add a new one instead.
 // Every synced record has a UUID id, created_at/updated_at (ms) and deleted_at (soft delete)
 // so cross-device sync can be added later without reshaping data.
@@ -389,5 +389,11 @@ export const migrations: string[] = [
   `,
 
   /* 20: sync between devices: changed rows are noted by triggers (see sync/engine.ts) */
-  syncSchemaSql()
+  syncSchemaSql(),
+
+  /* 21: the calendar notification defaults sync too (settings triggers re-created with the longer list) */ `
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
+  `
 ]

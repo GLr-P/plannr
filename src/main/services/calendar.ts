@@ -1,10 +1,27 @@
 import type { Db } from '../db'
 import { newId, now, tx } from '../db'
-import { formatTicketNumber, type Repeat, type CalendarEvent, type EntityType, type EventInput, type EventKind, type EventUpdate, type ReminderKind } from '../../shared/api'
+import {
+  DEFAULT_EVENT_REMINDERS,
+  formatTicketNumber,
+  isReminderKind,
+  type Repeat,
+  type CalendarEvent,
+  type EntityType,
+  type EventInput,
+  type EventKind,
+  type EventReminderDefaults,
+  type EventUpdate,
+  type ReminderKind
+} from '../../shared/api'
+import { getSetting } from './settings'
 import { isDate } from './doc'
 
-const REMINDER_KINDS = new Set<ReminderKind>(['day_before', 'day_of'])
-export const DEFAULT_REMINDERS: ReminderKind[] = ['day_before', 'day_of']
+/** The notifications a new event gets: the user's defaults for timed or all-day events. */
+export function defaultReminders(db: Db, timed: boolean): ReminderKind[] {
+  const saved = getSetting(db, 'eventReminders') as Partial<EventReminderDefaults> | null
+  const list = (timed ? saved?.timed : saved?.allDay) ?? (timed ? DEFAULT_EVENT_REMINDERS.timed : DEFAULT_EVENT_REMINDERS.allDay)
+  return cleanReminders(list)
+}
 
 interface EventRow {
   id: string
@@ -96,7 +113,7 @@ export function occurrenceDates(start: string, repeat: Repeat, until: string | n
 }
 
 const isTime = (s: unknown): s is string => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
-const cleanReminders = (r: ReminderKind[]): ReminderKind[] => [...new Set(r.filter((k) => REMINDER_KINDS.has(k)))]
+export const cleanReminders = (r: unknown[]): ReminderKind[] => [...new Set(r.filter(isReminderKind))]
 
 export function listEvents(db: Db, from: string, to: string): CalendarEvent[] {
   if (!isDate(from) || !isDate(to)) return []
@@ -145,7 +162,7 @@ export function createEvent(db: Db, input: EventInput, kind: EventKind = 'event'
     kind,
     input.linkType ?? null,
     input.linkId ?? null,
-    JSON.stringify(cleanReminders(input.reminders ?? DEFAULT_REMINDERS)),
+    JSON.stringify(cleanReminders(input.reminders ?? defaultReminders(db, Boolean(input.startTime)))),
     t,
     t
   )

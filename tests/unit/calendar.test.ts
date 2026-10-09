@@ -5,7 +5,8 @@ import * as cal from '../../src/main/services/calendar'
 import * as tickets from '../../src/main/services/tickets'
 import * as customers from '../../src/main/services/customers'
 import * as notes from '../../src/main/services/notes'
-import { dueReminders, fireTime, markReminderFired } from '../../src/main/services/reminders'
+import { dueReminders, fireTime, markReminderFired, whenText } from '../../src/main/services/reminders'
+import { setSetting } from '../../src/main/services/settings'
 
 let db: Db
 beforeEach(() => {
@@ -22,7 +23,7 @@ const ticketFor = (name: string) => {
 describe('events', () => {
   it('creates, lists by range, updates and removes', () => {
     const e = cal.createEvent(db, { title: 'Order parts', date: '2026-10-05', startTime: '14:30', endTime: '15:00' })
-    expect(e).toMatchObject({ title: 'Order parts', startTime: '14:30', endTime: '15:00', kind: 'event', reminders: ['day_before', 'day_of'] })
+    expect(e).toMatchObject({ title: 'Order parts', startTime: '14:30', endTime: '15:00', kind: 'event', reminders: ['before:15'] })
     cal.createEvent(db, { title: 'Later', date: '2026-11-01' })
     expect(cal.listEvents(db, '2026-10-01', '2026-10-31').map((x) => x.title)).toEqual(['Order parts'])
     const u = cal.updateEvent(db, e.id, { title: 'Order screen', startTime: null, reminders: ['day_of', 'bogus' as never] })
@@ -125,8 +126,8 @@ describe('reminders', () => {
   })
 
   it('catches up on recently missed reminders but not stale ones', () => {
-    cal.createEvent(db, { title: 'Call supplier', date: '2026-10-10', startTime: '15:00' })
-    expect(dueReminders(db, at('2026-10-10T19:00:00')).map((d) => d.body)).toEqual(['Today at 3:00 PM'])
+    cal.createEvent(db, { title: 'Call supplier', date: '2026-10-10', startTime: '15:00', reminders: ['day_of'] })
+    expect(dueReminders(db, at('2026-10-10T19:00:00')).map((d) => d.body)).toEqual(['Started at 3:00 PM']) // caught up after the event began
     expect(dueReminders(db, at('2026-10-10T21:00:00'))).toHaveLength(0) // > 12h after 8 AM
   })
 
@@ -142,5 +143,51 @@ describe('reminders', () => {
     const t = ticketFor('Jane')
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-10', status: 'picked_up' })
     expect(dueReminders(db, at('2026-10-10T08:30:00'))).toHaveLength(0)
+  })
+})
+
+describe('choosing notifications', () => {
+  const at = (iso: string) => new Date(iso)
+
+  it('new events get the defaults for timed or all-day events, which can be changed in settings', () => {
+    expect(cal.createEvent(db, { title: 'Meeting', date: '2026-10-10', startTime: '15:00' }).reminders).toEqual(['before:15'])
+    expect(cal.createEvent(db, { title: 'Holiday', date: '2026-10-10' }).reminders).toEqual(['day_before', 'day_of'])
+    setSetting(db, 'eventReminders', { timed: ['before:60', 'before:0'], allDay: [] })
+    expect(cal.createEvent(db, { title: 'Meeting 2', date: '2026-10-10', startTime: '15:00' }).reminders).toEqual(['before:60', 'before:0'])
+    expect(cal.createEvent(db, { title: 'Quiet', date: '2026-10-10' }).reminders).toEqual([])
+    // Ticket pickups (all day) follow the all-day default
+    const t = ticketFor('Sam')
+    tickets.updateTicket(db, t.id, { pickupOn: '2026-10-12' })
+    expect(cal.eventsForLink(db, t.id)[0].reminders).toEqual([])
+    // Explicit choices win, and nonsense is dropped
+    expect(cal.createEvent(db, { title: 'X', date: '2026-10-10', reminders: ['week_before', 'before:99999' as never, 'soon' as never] }).reminders).toEqual(['week_before'])
+  })
+
+  it('fires minutes before a timed event, a week before, or not at all', () => {
+    expect(fireTime('2026-10-10', 'before:15', '15:00')).toEqual(at('2026-10-10T14:45:00'))
+    expect(fireTime('2026-10-10', 'before:0', '09:30')).toEqual(at('2026-10-10T09:30:00'))
+    expect(fireTime('2026-10-10', 'before:1440', '09:30')).toEqual(at('2026-10-09T09:30:00'))
+    expect(fireTime('2026-10-10', 'week_before')).toEqual(at('2026-10-03T09:00:00'))
+    expect(fireTime('2026-10-10', 'before:30', null)).toEqual(at('2026-10-10T08:00:00')) // became all-day: the morning of
+
+    const e = cal.createEvent(db, { title: 'Dentist', date: '2026-10-10', startTime: '15:00', reminders: ['before:15', 'before:0', 'week_before'] })
+    expect(dueReminders(db, at('2026-10-03T09:01:00')).map((d) => d.body)).toEqual(['In a week (Sat, Oct 10) at 3:00 PM'])
+    expect(dueReminders(db, at('2026-10-10T14:44:00')).filter((d) => d.key.startsWith('before'))).toHaveLength(0)
+    const soon = dueReminders(db, at('2026-10-10T14:45:30')).filter((d) => d.key.startsWith('before'))
+    expect(soon.map((d) => [d.title, d.body])).toEqual([['Dentist', 'In 15 minutes at 3:00 PM']])
+    markReminderFired(db, e.id, soon[0].key)
+    expect(dueReminders(db, at('2026-10-10T15:00:10')).filter((d) => d.key.startsWith('before')).map((d) => d.body)).toEqual(['Started at 3:00 PM'])
+
+    cal.updateEvent(db, e.id, { reminders: [] })
+    expect(dueReminders(db, at('2026-10-10T15:00:10'))).toHaveLength(0)
+  })
+
+  it('says when the event is', () => {
+    expect(whenText('before:0', '2026-10-10', '15:00')).toBe('Starting now (3:00 PM)')
+    expect(whenText('before:5', '2026-10-10', '15:00')).toBe('In 5 minutes at 3:00 PM')
+    expect(whenText('before:60', '2026-10-10', '15:00')).toBe('In 1 hour at 3:00 PM')
+    expect(whenText('before:120', '2026-10-10', '15:00')).toBe('In 2 hours at 3:00 PM')
+    expect(whenText('before:1440', '2026-10-10', '15:00')).toBe('Tomorrow at 3:00 PM')
+    expect(whenText('day_of', '2026-10-10', null)).toBe('Today')
   })
 })

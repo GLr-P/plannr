@@ -423,11 +423,46 @@ export interface ChecklistItem {
 
 // ---------- Calendar ----------
 
-export type ReminderKind = 'day_before' | 'day_of'
-export const REMINDER_SCHEDULE: Record<ReminderKind, { daysBefore: number; time: string; label: string }> = {
-  day_before: { daysBefore: 1, time: '09:00', label: 'Day before (9 AM)' },
-  day_of: { daysBefore: 0, time: '08:00', label: 'Day of (8 AM)' }
+/**
+ * When a calendar notification pops up: 'day_of' (8 AM), 'day_before' (9 AM), 'week_before' (9 AM, 7 days before),
+ * or 'before:<minutes>' before a timed event starts ('before:0' = when it starts).
+ */
+export type ReminderKind = 'day_before' | 'day_of' | 'week_before' | `before:${number}`
+
+/** Choices for events with a start time */
+export const TIMED_REMINDERS: { kind: ReminderKind; label: string }[] = [
+  { kind: 'before:0', label: 'When it starts' },
+  { kind: 'before:5', label: '5 min before' },
+  { kind: 'before:10', label: '10 min before' },
+  { kind: 'before:15', label: '15 min before' },
+  { kind: 'before:30', label: '30 min before' },
+  { kind: 'before:60', label: '1 hour before' },
+  { kind: 'before:120', label: '2 hours before' },
+  { kind: 'before:1440', label: '1 day before' }
+]
+/** Choices for all-day events */
+export const ALL_DAY_REMINDERS: { kind: ReminderKind; label: string }[] = [
+  { kind: 'day_of', label: 'Morning of (8 AM)' },
+  { kind: 'day_before', label: 'Day before (9 AM)' },
+  { kind: 'week_before', label: 'Week before (9 AM)' }
+]
+
+export function reminderLabel(kind: ReminderKind): string {
+  return [...TIMED_REMINDERS, ...ALL_DAY_REMINDERS].find((r) => r.kind === kind)?.label ?? kind.replace(/^before:(\d+)$/, '$1 min before')
 }
+
+export function isReminderKind(k: unknown): k is ReminderKind {
+  if (k === 'day_before' || k === 'day_of' || k === 'week_before') return true
+  const m = typeof k === 'string' ? /^before:(\d{1,5})$/.exec(k) : null
+  return Boolean(m && Number(m[1]) <= 10080)
+}
+
+/** What new events get (Settings → General → Calendar notifications) */
+export interface EventReminderDefaults {
+  timed: ReminderKind[]
+  allDay: ReminderKind[]
+}
+export const DEFAULT_EVENT_REMINDERS: EventReminderDefaults = { timed: ['before:15'], allDay: ['day_before', 'day_of'] }
 
 export type EventKind = 'event' | 'pickup'
 
@@ -1273,6 +1308,8 @@ export interface PlannrApi {
     getOpenAtLogin(): Promise<boolean>
     /** Start Plannr (in the tray) when Windows starts, so reminders always work */
     setOpenAtLogin(enabled: boolean): Promise<void>
+    /** Shows a sample Windows notification, to check notifications get through; false if Windows can't show them */
+    testNotification(): Promise<boolean>
   }
 }
 
@@ -1344,7 +1381,7 @@ export const API_SHAPE = {
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
   updates: ['status', 'check', 'install'],
-  app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin']
+  app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.
