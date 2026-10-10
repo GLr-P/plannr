@@ -9,6 +9,8 @@ import { listTransactions } from './money'
 import { getTicket } from './tickets'
 import { listItems } from './items'
 import { fieldText } from './doc'
+import { formHtml } from './print-form'
+import { listPhotos } from './photos'
 
 /*
  * Printouts for a ticket: an intake slip (customer copy at drop-off), a receipt (after payment) and a small
@@ -48,13 +50,25 @@ export function ticketPrintHtml(db: Db, dataDir: string, id: string, kind: Print
   const ticket = getTicket(db, id)
   if (!ticket) throw new Error('Ticket not found')
   const business = getBusiness(db)
-  return printHtml(kind, {
+  const data: PrintData = {
     ticket,
     customer: ticket.customerId ? getCustomer(db, ticket.customerId) : null,
     payments: listTransactions(db, { ticketId: id, type: 'income' }).reverse(), // oldest first
     business,
     logo: logoDataUrl(db, dataDir, business.logoFileId),
     items: listItems(db, id)
+  }
+  if (kind !== 'form') return printHtml(kind, data)
+  // The form as designed: its pictures and the ticket's photos go in the page itself
+  return formHtml({
+    ticket,
+    customer: data.customer,
+    fileData: (url) => logoDataUrl(db, dataDir, /^plannr:\/\/file\/([0-9a-f-]{36})$/.exec(url)?.[1] ?? null),
+    photos: listPhotos(db, id)
+      .map((p) => logoDataUrl(db, dataDir, p.fileId))
+      .filter((u): u is string => Boolean(u)),
+    linesHtml: (data.items ?? []).length ? linesTable(data).html : '<div class="muted">No lines</div>',
+    payments: { priceCents: ticket.priceCents, paidCents: ticket.paidCents }
   })
 }
 

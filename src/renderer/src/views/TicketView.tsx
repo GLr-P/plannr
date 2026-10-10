@@ -18,7 +18,7 @@ import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator, StatusSelect } from '../components/common'
 import { showToast, undoToast } from '../lib/toast'
 import { openMenu } from '../components/ContextMenu'
-import { Printer, Receipt, Tag, ClipboardList, FileText as FileTextIcon, FileCheck } from 'lucide-react'
+import { Printer, Receipt, Tag, ClipboardList, FileText as FileTextIcon, FileCheck, LayoutTemplate } from 'lucide-react'
 import { TicketLines } from '../components/TicketLines'
 import { MessageSquare } from 'lucide-react'
 import { loadTemplates } from '../lib/messages'
@@ -306,7 +306,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                     await api.print.ticket(ticket.id, kind).catch((err: Error) => showToast(err.message))
                   }
                   openMenu({ clientX: r.left, clientY: r.bottom + 4 }, [
-                    { label: 'Intake slip', icon: <ClipboardList />, onSelect: () => print('intake') },
+                    { label: 'Form (everything, as designed)', icon: <LayoutTemplate />, onSelect: () => print('form') },
+                    { label: 'Intake slip (customer copy)', icon: <ClipboardList />, onSelect: () => print('intake') },
                     { label: 'Quote', icon: <FileTextIcon />, onSelect: () => print('quote') },
                     { label: 'Invoice', icon: <FileCheck />, onSelect: () => print('invoice') },
                     { label: 'Receipt', icon: <Receipt />, onSelect: () => print('receipt') },

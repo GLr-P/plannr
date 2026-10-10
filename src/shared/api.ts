@@ -1034,7 +1034,7 @@ export interface BusinessInfo {
   labelSize: '62x29mm' | '2.25x1.25in' | '4x6in'
 }
 
-export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice'
+export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice' | 'form'
 
 // ---------- Updates ----------
 

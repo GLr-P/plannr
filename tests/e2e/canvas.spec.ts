@@ -1,8 +1,8 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { launch, shot } from './helpers'
+import { launch, root, shot } from './helpers'
 
 // Canvas templates: put anything anywhere and resize it (like Canva), then fill it in on a ticket.
 test.describe.configure({ mode: 'serial' })
@@ -176,6 +176,23 @@ test('a ticket from the canvas: fill it in; linked fields fill the customer', as
   expect(t.pickupOn).toBe('2026-10-24')
   const found = await page.evaluate(() => window.plannr.search.query('side door'))
   expect(found.some((r) => r.type === 'ticket')).toBe(true)
+
+  // Print → Form: the canvas as designed, with everything filled in
+  const out = join(dataDir, 'last-print.html')
+  await page.getByRole('button', { name: 'Print', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Form (everything, as designed)' }).click()
+  await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain('Leave at the side door')
+  const printed = readFileSync(out, 'utf8')
+  for (const text of ['Rosa Lima', '555-0123', '$150.00', 'Thank you for your order!', 'Special instructions']) expect(printed).toContain(text)
+  // What it looks like on paper
+  const preview = await app.evaluate(async ({ BrowserWindow }, html) => {
+    const w = new BrowserWindow({ show: false, width: 820, height: 1060, webPreferences: { javascript: false } })
+    await w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+    const img = await w.webContents.capturePage()
+    w.destroy()
+    return img.toPNG().toString('base64')
+  }, printed)
+  writeFileSync(join(root, 'test-results', 'screens', 'cv5-printed-form.png'), Buffer.from(preview, 'base64'))
 
   // After a restart the canvas and what was typed are still there
   await app.close()
