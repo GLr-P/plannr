@@ -533,6 +533,7 @@ function PropertiesBar({
             <FieldConfig
               attrs={fieldAttrs(a)}
               fieldNames={fieldNames}
+              inCanvas
               onSave={(next) => {
                 onPatch(next)
                 onFieldSettings(false)

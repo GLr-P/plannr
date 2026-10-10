@@ -36,6 +36,7 @@ const canvas: DocJSON = {
     field('Card Number/s', { value: '4111 1111 1111 1111' }, { x: 24, y: 100, w: 300, h: 60 }),
     field('Flower Price', { kind: 'money', value: '85' }, { x: 24, y: 180, w: 200, h: 60 }),
     field('Total (with tax)', { kind: 'calc', value: '$108.64' }, { x: 240, y: 180, w: 200, h: 60 }),
+    field('With fee', { kind: 'calc', formula: '({Flower Price} + 15) * 1.12', value: '' }, { x: 460, y: 180, w: 200, h: 60 }),
     field('Gift wrap', { kind: 'checkbox', value: 'true' }, { x: 24, y: 260, w: 200, h: 40 }),
     field('Delivery', { link: 'ticket.pickupOn', kind: 'date' }, { x: 240, y: 260, w: 200, h: 60 }),
     { type: 'canvasPart', attrs: { box: { x: 24, y: 340, w: 700, h: 80 }, part: 'payments' } }
@@ -61,6 +62,7 @@ describe('the Form printout', () => {
     expect(html).toContain('$108.64')
     expect(html).toContain('☑')
     expect(html).toContain('Oct 24, 2026')
+    expect(html).toContain('$112.00') // worked out at print time, even if never shown on screen
     expect(html).toContain('Owing') // payments part: $108.64 − $50.00
     expect(html).toMatch(/left:24px;top:100px;width:300px;height:60px/) // at its place on the page
   })

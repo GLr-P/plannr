@@ -380,6 +380,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
 export function FieldConfig({
   attrs,
   fieldNames = [],
+  inCanvas = false,
   onSave,
   onDelete,
   onCancel
@@ -387,6 +388,8 @@ export function FieldConfig({
   attrs: FieldAttrs
   /** The form's other fields, for calculated fields' formulas */
   fieldNames?: string[]
+  /** On a canvas the field's box sets its size, so there's no Width choice */
+  inCanvas?: boolean
   onSave: (a: Partial<FieldAttrs>) => void
   onDelete: () => void
   onCancel: () => void
@@ -464,7 +467,7 @@ export function FieldConfig({
           <textarea rows={3} value={options} onChange={(e) => setOptions(e.target.value)} aria-label="Choices" />
         </label>
       )}
-      <Segmented label="Width" value={draft.width} options={WIDTHS} onChange={(width) => set({ width })} />
+      {!inCanvas && <Segmented label="Width" value={draft.width} options={WIDTHS} onChange={(width) => set({ width })} />}
       <Segmented label="Label" value={draft.labelPos} options={LABEL_POSITIONS} onChange={(labelPos) => set({ labelPos })} />
       {draft.kind === 'textarea' && <Segmented label="Height" value={draft.rows as 2 | 4 | 8} options={HEIGHTS} onChange={(rows) => set({ rows })} />}
       {WITH_PLACEHOLDER.includes(draft.kind) && !link && (

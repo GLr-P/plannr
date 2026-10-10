@@ -1502,3 +1502,14 @@ input[type='date']::-webkit-calendar-picker-indicator {
   gap: 14px;
   margin-left: 24px;
 }
+
+/* On a canvas a field fills its box exactly (what you see is what prints) */
+.prose .cv-field.ff-l-left > .ff-label {
+  width: auto;
+  max-width: 45%;
+}
+.prose .cv-field > .ff-body > input,
+.prose .cv-field > .ff-body > select,
+.prose .cv-field .ff-money-box {
+  width: 100%;
+}

@@ -1,7 +1,7 @@
-import { formatCurrency, formatTicketNumber, type Customer, type DocJSON, type Ticket } from '../../shared/api'
+import { formatCurrency, formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type Ticket } from '../../shared/api'
 import { CANVAS_WIDTH, boxOf, fittedHeight, isCanvas, DEFAULT_TEXT_STYLE, type TextStyle } from '../../shared/canvas'
 import { fieldText } from './doc'
-import { parseNumber } from '../../shared/formula'
+import { collectFields, evaluateFormula, formatCalc, parseNumber, type FormValue } from '../../shared/formula'
 
 /*
  * "Form" printout: the ticket's form as it was designed (a canvas at its places, or a document in order), with every
@@ -12,6 +12,10 @@ import { parseNumber } from '../../shared/formula'
 export interface FormPrintData {
   ticket: Ticket
   customer: Customer | null
+  /** Shown at the top, like the other printouts */
+  business?: BusinessInfo
+  /** data: URL of the logo, if any */
+  logo?: string | null
   /** data: URL for a stored file (plannr://file/<id>), or null */
   fileData: (url: string) => string | null
   /** data: URLs of the ticket's photos */
@@ -30,11 +34,8 @@ const day = (iso: string): string => {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-/** What a field shows on paper. */
-export function printedValue(attrs: Record<string, unknown>, ticket: Ticket, customer: Customer | null): string {
-  const link = String(attrs.link ?? '')
-  const kind = String(attrs.kind ?? 'text')
-  const linked: Record<string, string> = {
+function linkedValues(ticket: Ticket, customer: Customer | null): Record<string, string> {
+  return {
     'customer.name': customer?.name || ticket.customerName,
     'customer.phone': customer?.phone || ticket.customerPhone,
     'customer.email': customer?.email || ticket.customerEmail,
@@ -46,7 +47,17 @@ export function printedValue(attrs: Record<string, unknown>, ticket: Ticket, cus
     'ticket.number': formatTicketNumber(ticket.number),
     'ticket.price': ticket.priceCents === null ? '' : formatCurrency(ticket.priceCents)
   }
-  const raw = link ? (linked[link] ?? '') : String(attrs.value ?? '')
+}
+
+/** What a field shows on paper. `fields` lets calculated fields be worked out again at print time. */
+export function printedValue(attrs: Record<string, unknown>, ticket: Ticket, customer: Customer | null, fields?: FormValue[]): string {
+  const link = String(attrs.link ?? '')
+  const kind = String(attrs.kind ?? 'text')
+  if (kind === 'calc' && typeof attrs.formula === 'string' && attrs.formula && fields) {
+    const v = evaluateFormula(attrs.formula, fields)
+    if (v !== null) return formatCalc(v, String(attrs.format || 'money'), formatCurrency)
+  }
+  const raw = link ? (linkedValues(ticket, customer)[link] ?? '') : String(attrs.value ?? '')
   if (kind === 'checkbox') return raw === 'true' ? '☑' : '☐'
   if (kind === 'date') return raw ? day(raw) : ''
   if (kind === 'money') {
@@ -56,15 +67,26 @@ export function printedValue(attrs: Record<string, unknown>, ticket: Ticket, cus
   return fieldText(kind, raw)
 }
 
+const fieldCache = new WeakMap<FormPrintData, FormValue[]>()
+function fieldsOf(d: FormPrintData): FormValue[] {
+  let f = fieldCache.get(d)
+  if (!f) {
+    const linked = linkedValues(d.ticket, d.customer)
+    f = collectFields(d.ticket.content, (link) => linked[link])
+    fieldCache.set(d, f)
+  }
+  return f
+}
+
 const textCss = (st: TextStyle): string =>
   `font-size:${st.size}px;font-weight:${st.bold ? 700 : 400};font-style:${st.italic ? 'italic' : 'normal'};text-align:${st.align};${st.color ? `color:${st.color};` : ''}`
 
 function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false): string {
   const label = String(attrs.label ?? '')
-  const value = printedValue(attrs, d.ticket, d.customer)
+  const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
   const pos = String(attrs.labelPos ?? (inline ? 'left' : 'top'))
   const isBox = attrs.kind === 'checkbox'
-  const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
+  const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
   if (pos === 'hidden') return `<div class="ff">${valueHtml}</div>`
   return `<div class="ff ${pos === 'left' ? 'left' : 'top'}"><div class="fl">${esc(label)}</div>${valueHtml}</div>`
 }
@@ -162,31 +184,38 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
 
 const STYLE = `
   * { box-sizing: border-box; }
-  body { margin: 0; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color: #111; }
-  .head { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 10px; }
-  .head b { color: #111; font-size: 14px; }
+  body { margin: 0; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color: #1a1a1a; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid #1a1a1a; }
+  .biz { display: flex; gap: 12px; align-items: center; }
+  .biz img { max-height: 54px; max-width: 160px; object-fit: contain; }
+  .biz-name { font-size: 17px; font-weight: 700; }
+  .biz-line { font-size: 11.5px; color: #555; }
+  .order { text-align: right; }
+  .order-no { font-size: 18px; font-weight: 700; letter-spacing: .02em; }
+  .order-sub { font-size: 12px; color: #444; }
   .canvas { position: relative; }
   .it { position: absolute; overflow: hidden; display: flex; flex-direction: column; }
   .it > * { flex: 1; min-height: 0; }
-  .ff { display: flex; flex-direction: column; gap: 2px; height: 100%; }
+  .ff { display: flex; flex-direction: column; gap: 3px; height: 100%; }
   .ff.left { flex-direction: row; align-items: center; gap: 10px; }
-  .fl { font-size: 11.5px; font-weight: 600; color: #444; flex-shrink: 0; }
+  .fl { font-size: 10.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: #6b6b66; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ff.left .fl { max-width: 45%; }
-  .fv { flex: 1; min-height: 22px; border: 1px solid #9a9a9a; border-radius: 4px; padding: 3px 7px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; }
-  .fv.tick { flex: 0 0 auto; border: 0; padding: 0; font-size: 18px; line-height: 1; }
-  .tx { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.3; }
+  .fv { flex: 1; min-height: 24px; background: #f6f6f3; border: 1px solid #dddcd6; border-radius: 5px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; }
+  .fv.calc { font-weight: 700; background: #fff; border-color: #1a1a1a; }
+  .fv.tick { flex: 0 0 auto; background: none; border: 0; padding: 0; font-size: 18px; line-height: 1; }
+  .tx { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.25; }
   .im { width: 100%; height: 100%; display: block; }
   .sh { width: 100%; height: 100%; }
   .ln { align-self: center; width: 100%; flex: 0 0 auto; margin: auto 0; }
   .photos { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
   .photos img { height: 90px; border-radius: 4px; }
-  table.pay td { padding: 2px 10px 2px 0; }
+  table.pay td { padding: 2px 12px 2px 0; }
   table.lines { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.lines td { padding: 3px 4px; border-bottom: 1px solid #ddd; }
   .muted { color: #666; }
   .docform p { margin: 4px 0; }
-  .docform h2, .docform h3, .docform h4 { margin: 12px 0 4px; }
-  .docform .ffi { display: block; margin: 4px 0; }
+  .docform h2, .docform h3, .docform h4 { margin: 14px 0 6px; }
+  .docform .ffi { display: block; margin: 6px 0; }
   .docform .ffi .ff { height: auto; }
   .docform .di { max-width: 100%; max-height: 240px; }
   .docform ul.tasks { list-style: none; padding-left: 4px; }
@@ -199,7 +228,12 @@ export function formHtml(d: FormPrintData): string {
   const printed = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
   const body = t.content ? (isCanvas(t.content) ? canvasHtml(t.content, d) : docHtml(t.content, d)) : '<p class="muted">This ticket has no form.</p>'
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body>
-    <div class="head"><b>${esc(title)}</b><span>${esc(printed)}</span></div>
+    <div class="head">
+      <div class="biz">${d.logo ? `<img src="${d.logo}" alt="">` : ''}<div>${d.business?.name ? `<div class="biz-name">${esc(d.business.name)}</div>` : ''}${
+        d.business ? `<div class="biz-line">${esc([d.business.phone, d.business.email, d.business.website].filter(Boolean).join(' · '))}</div>` : ''
+      }</div></div>
+      <div class="order"><div class="order-no">${esc(formatTicketNumber(t.number))}</div><div class="order-sub">${esc([t.device, printed].filter(Boolean).join(' · '))}</div></div>
+    </div>
     ${body}
   </body></html>`
 }

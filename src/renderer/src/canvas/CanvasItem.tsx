@@ -22,7 +22,7 @@ export function CanvasItemContent({ item, live, onValue }: { item: DocJSON; live
     case 'formField': {
       const attrs = fieldAttrs(a)
       return (
-        <span className={`${fieldClass(attrs)} cv-field`} data-label={attrs.label}>
+        <span className={`${fieldClass({ ...attrs, width: 'full' })} cv-field`} data-label={attrs.label}>
           {attrs.labelPos !== 'hidden' && <FieldLabel attrs={attrs} />}
           <FieldBody attrs={attrs} editable={live} store={(v) => onValue?.(v)} />
         </span>

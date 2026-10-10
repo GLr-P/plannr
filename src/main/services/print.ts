@@ -63,6 +63,8 @@ export function ticketPrintHtml(db: Db, dataDir: string, id: string, kind: Print
   return formHtml({
     ticket,
     customer: data.customer,
+    business,
+    logo: data.logo,
     fileData: (url) => logoDataUrl(db, dataDir, /^plannr:\/\/file\/([0-9a-f-]{36})$/.exec(url)?.[1] ?? null),
     photos: listPhotos(db, id)
       .map((p) => logoDataUrl(db, dataDir, p.fileId))
