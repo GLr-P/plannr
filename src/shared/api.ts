@@ -408,7 +408,19 @@ export interface TicketLayout {
   showLines: boolean
   showPhotos: boolean
   showEmails: boolean
+  /** How the Form printout looks: modern (the default), boxes, lines (like a paper form), clean, or elegant (serif) */
+  printStyle: string
+  /** Colour for the printout's labels and total, e.g. #db2777 */
+  printAccent: string
 }
+
+export const PRINT_STYLES = [
+  { id: 'modern', label: 'Modern' },
+  { id: 'boxes', label: 'Boxes' },
+  { id: 'lines', label: 'Lines' },
+  { id: 'clean', label: 'Clean' },
+  { id: 'elegant', label: 'Elegant' }
+] as const
 
 export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   titleLabel: 'Title',
@@ -426,7 +438,9 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   showPrice: true,
   showLines: true,
   showPhotos: true,
-  showEmails: true
+  showEmails: true,
+  printStyle: 'modern',
+  printAccent: '#000000'
 }
 
 /** The starter "Repair intake" template's wording (and tickets from before layouts existed) */

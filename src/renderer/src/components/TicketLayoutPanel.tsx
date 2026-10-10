@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { PanelTop } from 'lucide-react'
-import { ticketLayout, type TicketLayout } from '../../../shared/api'
+import { PRINT_STYLES, ticketLayout, type TicketLayout } from '../../../shared/api'
+
+const PRINT_COLOURS = ['#000000', '#db2777', '#9d174d', '#2f6ae0', '#15803d', '#b45309', '#7c3aed', '#0f766e']
 
 type BoolKey = { [K in keyof TicketLayout]: TicketLayout[K] extends boolean ? K : never }[keyof TicketLayout]
 type TextKey = { [K in keyof TicketLayout]: TicketLayout[K] extends string ? K : never }[keyof TicketLayout]
@@ -71,6 +73,32 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
           {check('showLines', 'Quote & invoice lines')}
           {check('showPhotos', 'Photos')}
           {check('showEmails', 'Emails with the customer')}
+        </div>
+        <div className="layout-group">
+          <h4>Printed form</h4>
+          <span className="layout-text">Style (Print → Form)</span>
+          <span className="segmented sm" role="radiogroup" aria-label="Print style">
+            {PRINT_STYLES.map((p) => (
+              <button key={p.id} type="button" role="radio" aria-checked={layout.printStyle === p.id} className={layout.printStyle === p.id ? 'active' : ''} onClick={() => set({ printStyle: p.id })}>
+                {p.label}
+              </button>
+            ))}
+          </span>
+          <span className="layout-text">Colour for labels and the total</span>
+          <span className="accent-swatches" role="radiogroup" aria-label="Print colour">
+            {PRINT_COLOURS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={layout.printAccent === c}
+                aria-label={c}
+                className={`accent-swatch ${layout.printAccent === c ? 'on' : ''}`}
+                style={{ background: c }}
+                onClick={() => set({ printAccent: c })}
+              />
+            ))}
+          </span>
         </div>
       </div>
       <p className="muted small">

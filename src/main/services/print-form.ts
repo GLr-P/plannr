@@ -92,6 +92,15 @@ export function labelSize(label: string, width: number, height: number): number 
   return Math.round(Math.max(10, Math.min(18, byWidth, byHeight)) * 2) / 2
 }
 
+/** The printout's look (from the ticket's template) */
+const printStyleOf = (d: FormPrintData): string => {
+  const s = d.ticket.layout?.printStyle
+  return s === 'boxes' || s === 'lines' || s === 'clean' || s === 'elegant' ? s : 'modern'
+}
+const accentOf = (d: FormPrintData): string => (/^#[0-9a-f]{6}$/i.test(d.ticket.layout?.printAccent ?? '') ? d.ticket.layout.printAccent : '#000000')
+/** Clean keeps labels small (the values carry the page); the others grow them to fill the space */
+const LABEL_MAX: Record<string, number> = { modern: 11.5, boxes: 18, lines: 16, clean: 11, elegant: 16 }
+
 function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false, box?: { w: number; h: number }): string {
   const label = String(attrs.label ?? '')
   const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
@@ -100,7 +109,9 @@ function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = fa
   const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
   if (pos === 'hidden') return `<div class="ff">${valueHtml}</div>`
   // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
-  const size = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
+  const max = LABEL_MAX[printStyleOf(d)]
+  const fit = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
+  const size = Math.min(fit, max)
   return `<div class="ff ${pos === 'left' ? 'left' : 'top'}"><div class="fl" style="font-size:${size}px">${esc(label)}</div>${valueHtml}</div>`
 }
 
@@ -140,7 +151,7 @@ function canvasHtml(doc: DocJSON, d: FormPrintData): string {
             ? `<div class="ln" style="border-top:${Math.max(1, border)}px solid ${color}"></div>`
             : `<div class="sh" style="background:${esc(String(a.fill || 'transparent'))};border:${border ? `${border}px solid ${color}` : 'none'};border-radius:${Number(a.radius ?? 8)}px"></div>`
       } else if (it.type === 'canvasPart') inner = partHtml(String(a.part ?? ''), d)
-      return `<div class="it" style="${at}">${inner}</div>`
+      return `<div class="it it-${it.type}" style="${at}">${inner}</div>`
     })
     .join('')
   return `<div class="canvas" style="width:${PRINT_WIDTH}px;height:${px(fittedHeight(doc))}">${items}</div>`
@@ -205,6 +216,35 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
 const STYLE = `
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /*
+   * Modern (the default): small coloured capitals for labels; answers written larger on a crisp underline, long ones
+   * on ruled lines; the total as a colour badge. Solid black lines of at least 1px and no grey tints, so it prints
+   * sharply on ordinary inkjets.
+   */
+  .s-modern .fl { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--accent); }
+  .s-modern .ff { gap: 4px; }
+  .s-modern .fv { flex: 0 0 auto; border: 0; border-bottom: 1.25px solid #000; border-radius: 0; padding: 2px 1px 3px; background: none; font-size: 15px; }
+  .s-modern .fv.area { flex: 1; border: 0; line-height: 27px; padding: 0 1px; background: repeating-linear-gradient(to bottom, transparent 0 24.5px, #000 24.5px 25.75px, transparent 25.75px 27px); }
+  .s-modern .fv.calc { align-self: flex-start; border: 0; background: var(--accent); color: #fff; padding: 4px 14px; border-radius: 4px; font-size: 17px; font-weight: 700; }
+  .s-modern .fv.tick { border: 0; }
+  /* Lines: like a paper order form. Values on an underline; long answers on ruled lines. */
+  .s-lines .fl { color: var(--accent); }
+  .s-lines .fv { border: 0; border-bottom: 1.5px solid #000; border-radius: 0; padding: 2px 2px 3px; background: none; }
+  .s-lines .fv.area { border: 0; line-height: 24px; padding: 0 2px; background: repeating-linear-gradient(to bottom, transparent 0 21px, #000 21px 22px, transparent 22px 24px); }
+  .s-lines .fv.calc { border-bottom: 4px double #000; }
+  /* One-line answers: the underline sits right under the writing, not at the bottom of the space */
+  .s-lines .fv:not(.area):not(.tick), .s-elegant .fv:not(.area):not(.tick) { flex: 0 0 auto; }
+  /* Clean: small coloured capitals for labels, bigger values, a thin rule between fields, the total as a badge. */
+  .s-clean .fl { text-transform: uppercase; letter-spacing: .09em; color: var(--accent); font-weight: 700; }
+  .s-clean .fv { border: 0; padding: 1px 0 0; background: none; font-size: 15.5px; }
+  .s-clean .it-formField { border-top: 1px solid #000; padding-top: 5px; }
+  .s-clean .fv.calc { align-self: flex-start; background: var(--accent); color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 17px; }
+  /* Elegant: a serif face, italic coloured labels, fine dotted underlines. */
+  .s-elegant body, body.s-elegant { font-family: Georgia, "Times New Roman", serif; }
+  .s-elegant .fl { font-style: italic; font-weight: 400; color: var(--accent); }
+  .s-elegant .fv { border: 0; border-bottom: 1px dotted #000; border-radius: 0; padding: 2px 2px 3px; background: none; font-size: 15px; }
+  .s-elegant .fv.area { border: 1px solid #000; border-radius: 0; padding: 6px 8px; }
+  .s-elegant .fv.calc { border-top: 1px solid #000; border-bottom: 3px double #000; font-size: 16px; }
   body { margin: 0; font: 14px/1.35 "Segoe UI", system-ui, sans-serif; color: #000; }
   .date { text-align: right; font-size: 11px; color: #000; margin-bottom: 6px; }
   .canvas { position: relative; }
@@ -241,7 +281,7 @@ export function formHtml(d: FormPrintData): string {
   const title = [formatTicketNumber(t.number), t.device].filter(Boolean).join(' · ')
   const printed = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
   const body = t.content ? (isCanvas(t.content) ? canvasHtml(t.content, d) : docHtml(t.content, d)) : '<p class="muted">This ticket has no form.</p>'
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body class="s-${printStyleOf(d)}" style="--accent:${accentOf(d)}">
     <div class="date">${esc(printed)}</div>
     ${body}
   </body></html>`

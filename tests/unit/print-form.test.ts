@@ -52,6 +52,16 @@ const data = (content: DocJSON) => ({
 })
 
 describe('the Form printout', () => {
+  it('uses the template’s print style and colour', () => {
+    const d = data(canvas)
+    d.ticket.layout = ticketLayout({ printStyle: 'clean', printAccent: '#db2777' })
+    const html = formHtml(d)
+    expect(html).toContain('<body class="s-clean" style="--accent:#db2777">')
+    expect(html).toMatch(/class="fl" style="font-size:11px"/) // clean keeps labels small
+    d.ticket.layout = ticketLayout({ printStyle: 'nonsense', printAccent: 'red; x' })
+    expect(formHtml(d)).toContain('<body class="s-modern" style="--accent:#000000">') // unknown values fall back to the default
+  })
+
   it('labels grow to fill their space on one line, within limits', () => {
     expect(labelSize('Price', 300, 40)).toBe(18) // lots of room: the largest size
     expect(labelSize('Recipient Phone Number', 186, 40)).toBeLessThan(16) // long label, narrow box: smaller
