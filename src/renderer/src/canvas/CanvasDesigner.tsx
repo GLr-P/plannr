@@ -301,6 +301,7 @@ export function CanvasDesigner({ doc, onChange }: { doc: DocJSON; onChange: (doc
 
       <PropertiesBar
         item={sel}
+        fieldNames={items.filter((it) => it.type === 'formField' && it !== sel).map((it) => String(it.attrs?.label ?? '')).filter(Boolean)}
         fieldSettings={fieldSettings}
         onFieldSettings={setFieldSettings}
         onPatch={(attrs) => sel && patchItem(itemId(sel), attrs)}
@@ -473,6 +474,7 @@ function NumberBox({ label, value, onChange, min = 0, max = 4000 }: { label: str
 /** Settings for the selected item: position and size, plus what fits its kind. */
 function PropertiesBar({
   item,
+  fieldNames,
   fieldSettings,
   onFieldSettings,
   onPatch,
@@ -483,6 +485,7 @@ function PropertiesBar({
   onEditText
 }: {
   item: DocJSON | null
+  fieldNames: string[]
   fieldSettings: boolean
   onFieldSettings: (open: boolean) => void
   onPatch: (attrs: Record<string, unknown>) => void
@@ -529,6 +532,7 @@ function PropertiesBar({
           {fieldSettings && (
             <FieldConfig
               attrs={fieldAttrs(a)}
+              fieldNames={fieldNames}
               onSave={(next) => {
                 onPatch(next)
                 onFieldSettings(false)

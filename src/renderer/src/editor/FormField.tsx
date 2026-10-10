@@ -1,8 +1,10 @@
 import { useEffect, useId, useState } from 'react'
 import { mergeAttributes, Node } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react'
 import { GripVertical, Link2, Settings2 } from 'lucide-react'
-import { formatCurrency, type CustomerSummary } from '../../../shared/api'
+import { formatCurrency, type CustomerSummary, type DocJSON } from '../../../shared/api'
+import { collectFields, evaluateFormula, formatCalc, formulaRefs, type FormValue } from '../../../shared/formula'
 import { api } from '../api'
 import { FIELD_LINKS, linkDef, useFormLinks } from './formLinks'
 
@@ -18,7 +20,8 @@ export const FIELD_KINDS = [
   { id: 'checkbox', label: 'Checkbox' },
   { id: 'select', label: 'Dropdown' },
   { id: 'choice', label: 'Pick one (buttons)' },
-  { id: 'multi', label: 'Pick several' }
+  { id: 'multi', label: 'Pick several' },
+  { id: 'calc', label: 'Calculated' }
 ] as const
 type FieldKind = (typeof FIELD_KINDS)[number]['id']
 
@@ -56,6 +59,18 @@ export interface FieldAttrs {
   rows: number
   /** Filled from (and saved to) the ticket or its customer, e.g. customer.name */
   link: string
+  /** Calculated fields: e.g. ({Flower price} + {Delivery fee}) * 1.12 (see shared/formula.ts) */
+  formula: string
+  /** Calculated fields: 'money' or 'number' */
+  format: string
+}
+
+/** A calculated field's result from the form's other fields ('' until something it uses is filled in). */
+export function calcResult(attrs: Pick<FieldAttrs, 'formula' | 'format'>, fields: FormValue[]): string {
+  const refs = formulaRefs(attrs.formula)
+  const used = fields.filter((x) => refs.some((r) => r.replace(/\s+/g, ' ').trim().toLowerCase() === x.label.replace(/\s+/g, ' ').trim().toLowerCase()))
+  if (refs.length && used.every((x) => x.kind !== 'calc' && !x.value.trim())) return ''
+  return formatCalc(evaluateFormula(attrs.formula, fields), attrs.format || 'money', formatCurrency)
 }
 
 /** "Pick several" values are stored as a JSON list. */
@@ -110,7 +125,9 @@ export const FormField = Node.create({
       placeholder: attr('placeholder', ''),
       hint: attr('hint', ''),
       rows: attr('rows', 2, (v) => Number(v) || 2),
-      link: attr('link', '')
+      link: attr('link', ''),
+      formula: attr('formula', ''),
+      format: attr('format', 'money')
     }
   },
 
@@ -129,6 +146,28 @@ export const FormField = Node.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(FieldView)
+  },
+
+  // Calculated fields: after any change to the document, work them out again in the same step
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('calculatedFields'),
+        appendTransaction: (transactions, _old, state) => {
+          if (!transactions.some((t) => t.docChanged)) return null
+          const links = useFormLinks.getState()
+          const fields = collectFields(state.doc.toJSON() as DocJSON, (link) => (links.active ? links.values[link as keyof typeof links.values] : undefined))
+          if (!fields.some((x) => x.kind === 'calc')) return null
+          const tr = state.tr
+          state.doc.descendants((node, pos) => {
+            if (node.type.name !== 'formField' || node.attrs.kind !== 'calc') return
+            const value = calcResult(node.attrs as FieldAttrs, fields)
+            if (value !== node.attrs.value) tr.setNodeMarkup(pos, undefined, { ...node.attrs, value })
+          })
+          return tr.docChanged ? tr : null
+        }
+      })
+    ]
   }
 })
 
@@ -214,6 +253,9 @@ export function FieldBody({ attrs, editable, store }: { attrs: FieldAttrs; edita
       )
       break
     }
+    case 'calc':
+      control = <input type="text" className="ff-calc-box" value={value} readOnly placeholder={editable ? '' : attrs.formula ? `= ${attrs.formula}` : 'Set the formula with the gear'} aria-label={aria} title={attrs.formula ? `= ${attrs.formula}` : undefined} />
+      break
     case 'date':
     case 'time':
       control = <input type={attrs.kind} value={value} readOnly={readOnly} aria-label={aria} onChange={(e) => setValue(e.target.value)} />
@@ -271,6 +313,10 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
   const attrs = fieldAttrs(node.attrs)
   const editable = editor.isEditable
   const [configuring, setConfiguring] = useState(!attrs.label && editable)
+  const otherNames = (): string[] =>
+    collectFields(editor.state.doc.toJSON() as DocJSON)
+      .map((x) => x.label)
+      .filter((l) => l && l !== attrs.label)
   /** After closing the settings, carry on typing right after the field (past the space that follows it). */
   const continueAfter = (): void => {
     const pos = typeof getPos === 'function' ? getPos() : undefined
@@ -298,6 +344,7 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
       {configuring && (
         <FieldConfig
           attrs={attrs}
+          fieldNames={otherNames()}
           onSave={(next) => {
             updateAttributes(next)
             setConfiguring(false)
@@ -332,11 +379,14 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
 
 export function FieldConfig({
   attrs,
+  fieldNames = [],
   onSave,
   onDelete,
   onCancel
 }: {
   attrs: FieldAttrs
+  /** The form's other fields, for calculated fields' formulas */
+  fieldNames?: string[]
   onSave: (a: Partial<FieldAttrs>) => void
   onDelete: () => void
   onCancel: () => void
@@ -407,6 +457,7 @@ export function FieldConfig({
         </label>
       </span>
       {link && <span className="ff-config-note">On a ticket this shows the {link.label.toLowerCase()}{'readOnly' in link ? '' : ', and editing it changes it there too'}.</span>}
+      {draft.kind === 'calc' && <FormulaEditor formula={draft.formula ?? ''} format={draft.format || 'money'} names={fieldNames} onChange={(patch) => set(patch)} />}
       {WITH_CHOICES.includes(draft.kind) && (
         <label>
           Choices (one per line)
@@ -469,6 +520,37 @@ function CustomerSuggestions({ query, onPick }: { query: string; onPick: (id: st
         </button>
       ))}
       <span className="ff-suggest-new">Or keep typing for a new customer</span>
+    </span>
+  )
+}
+
+/** A calculated field's formula: type it, or click the form's fields to put them in. */
+function FormulaEditor({ formula, format, names, onChange }: { formula: string; format: string; names: string[]; onChange: (patch: { formula?: string; format?: string }) => void }) {
+  const unknown = formulaRefs(formula).filter((r) => !names.some((n) => n.replace(/\s+/g, ' ').trim().toLowerCase() === r.replace(/\s+/g, ' ').trim().toLowerCase()))
+  const test = formula.trim() ? evaluateFormula(formula, names.map((label) => ({ label, kind: 'number', value: '1' }))) : 0
+  return (
+    <span className="ff-formula">
+      <label>
+        Formula
+        <input value={formula} placeholder="e.g. ({Price} + {Delivery fee}) * 1.12" onChange={(e) => onChange({ formula: e.target.value })} aria-label="Formula" spellCheck={false} />
+      </label>
+      {names.length > 0 && (
+        <span className="ff-formula-names">
+          {names.map((n) => (
+            <button key={n} type="button" className="chip-toggle" onClick={() => onChange({ formula: `${formula}${formula && !/[\s(+\-*/]$/.test(formula) ? ' + ' : ''}{${n}}` })}>
+              {n}
+            </button>
+          ))}
+        </span>
+      )}
+      <span className={`ff-config-note ${unknown.length || test === null ? 'warn' : ''}`}>
+        {unknown.length
+          ? `No field called ${unknown.map((u) => `“${u}”`).join(', ')} on this form.`
+          : test === null
+            ? 'This formula can’t be worked out yet: check the brackets and signs.'
+            : 'Use + − * / and brackets; 12% means 0.12, so tax at 12% is “* 1.12”. Click a field above to add it.'}
+      </span>
+      <Segmented label="Show as" value={format === 'number' ? 'number' : 'money'} options={[{ id: 'money', label: 'Money' }, { id: 'number', label: 'Number' }] as const} onChange={(v) => onChange({ format: v })} />
     </span>
   )
 }

@@ -27,6 +27,7 @@ interface FieldOptions {
   choices?: string[]
   placeholder?: string
   hint?: string
+  formula?: string
 }
 
 /** Types "/form", fills in the field's settings and clicks Done (the cursor carries on after the field). */
@@ -43,6 +44,7 @@ async function addField(o: FieldOptions): Promise<void> {
   if (o.width) await cfg.getByRole('radiogroup', { name: 'Width' }).getByRole('radio', { name: o.width }).click()
   if (o.labelPos) await cfg.getByRole('radiogroup', { name: 'Label' }).getByRole('radio', { name: o.labelPos }).click()
   if (o.height) await cfg.getByRole('radiogroup', { name: 'Height' }).getByRole('radio', { name: o.height }).click()
+  if (o.formula) await cfg.getByLabel('Formula').fill(o.formula)
   if (o.placeholder) await cfg.getByLabel('Placeholder').fill(o.placeholder)
   if (o.hint) await cfg.getByLabel('Hint').fill(o.hint)
   await cfg.getByRole('button', { name: 'Done' }).click()
@@ -117,6 +119,9 @@ test('build a flower shop order form from fill-in fields', async () => {
   await addField({ label: 'Delivery fee', type: 'Money', width: 'Third', labelPos: 'Above' })
   await addField({ label: 'Paid', type: 'Checkbox', width: 'Third', labelPos: 'Above' })
   await page.keyboard.press('Enter')
+  // Worked out from the prices, with 12% tax
+  await addField({ label: 'Total (with tax)', type: 'Calculated', formula: '({Flowers price} + {Delivery fee}) * 1.12', width: 'Half', labelPos: 'Above' })
+  await page.keyboard.press('Enter')
   await addField({ link: 'Pickup date', label: 'Ready by', width: 'Half' })
   await saved()
 
@@ -177,8 +182,12 @@ test('take an order: linked fields fill in the customer, choices light up', asyn
   await field('Colours').getByText('White').click()
   await expect(field('Colours').locator('.ff-option.on')).toHaveText(['Pink', 'White'])
   await field('Card message').locator('textarea').fill('Happy anniversary! Love always.')
+  await expect(field('Total (with tax)').locator('input')).toHaveValue('') // nothing to add up yet
   await field('Flowers price').locator('input').fill('85.00')
+  await expect(field('Total (with tax)').locator('input')).toHaveValue('$95.20')
   await field('Delivery fee').locator('input').fill('12.00')
+  await expect(field('Total (with tax)').locator('input')).toHaveValue('$108.64')
+  await expect(field('Total (with tax)').locator('input')).toHaveAttribute('readonly', '')
   await field('Paid').locator('input').check()
   // Linked to the ticket's pickup date
   await field('Ready by').locator('input').fill('2026-10-09')
@@ -209,6 +218,7 @@ test('the template decides the top of its tickets: names, and which parts show',
   await panel.getByLabel('Quote & invoice lines').uncheck()
   await panel.getByLabel('Photos').uncheck()
   await panel.getByLabel('Emails with the customer').uncheck()
+  await panel.getByLabel('Email', { exact: true }).uncheck() // this business doesn't take emails
   await saved()
   await shot(page, 'f5-template-top-panel')
 
@@ -241,6 +251,8 @@ test('the template decides the top of its tickets: names, and which parts show',
   await expect(page.locator('.props')).toContainText('Ordered')
   await expect(page.locator('.props')).toContainText('Delivery')
   await expect(page.locator('.photos-header')).toHaveCount(0)
+  await expect(prop('Customer phone')).toHaveCount(1)
+  await expect(prop('Customer email')).toHaveCount(0)
   await page.getByLabel('Order', { exact: true }).fill('Birthday bouquet')
 
   // Typing a returning customer's name offers them; picking links them instead of making a duplicate

@@ -82,6 +82,8 @@ test('drag anything anywhere, resize from the corners, with alignment guides', a
   await page.mouse.move(nameBox.x + 20 + 3, r.y + 20, { steps: 6 }) // left edge 3px off the name field's
   await expect(page.locator('.cv-guide-x')).toBeVisible()
   await shot(page, 'cv2-guides')
+  // A screenshot can report where the real (Windows) mouse is: put the test mouse back before letting go
+  await page.mouse.move(nameBox.x + 20 + 3, r.y + 20)
   await page.mouse.up()
   await expect.poll(async () => (await boxOf('Notes')).box.x).toBe(name.box.x)
 
@@ -127,6 +129,24 @@ test('add text, a box and a picture-free design; style and edit them', async () 
   await expect.poll(async () => (await boxes()).length).toBe(count - 1)
   await page.keyboard.press('Control+z')
   await expect.poll(async () => (await boxes()).length).toBe(count)
+  // A calculated field: worked out from another field
+  await page.locator('.cv-toolbar').getByRole('button', { name: 'Field', exact: true }).click()
+  let cfg = page.locator('.ff-config')
+  await cfg.getByLabel('Field label').fill('Deposit')
+  await cfg.getByLabel('Field type').selectOption({ label: 'Money' })
+  await cfg.getByRole('button', { name: 'Done' }).click()
+  await page.locator('.cv-toolbar').getByRole('button', { name: 'Field', exact: true }).click()
+  cfg = page.locator('.ff-config')
+  await cfg.getByLabel('Field label').fill('Balance')
+  await cfg.getByLabel('Field type').selectOption({ label: 'Calculated' })
+  await cfg.getByLabel('Formula').fill('250 - ')
+  await cfg.locator('.ff-formula-names').getByRole('button', { name: 'Deposit' }).click() // puts {Deposit} in
+  await expect(cfg.getByLabel('Formula')).toHaveValue('250 - {Deposit}')
+  await expect(cfg.locator('.ff-config-note')).not.toHaveClass(/warn/)
+  await shot(page, 'cv3b-formula')
+  await cfg.getByRole('button', { name: 'Done' }).click()
+  await expect(item('Balance')).toBeVisible()
+
   await page.keyboard.press('Escape') // clears the selection
   await saved()
   await page.locator('.main').evaluate((el) => el.scrollTo(0, 0))
@@ -145,6 +165,8 @@ test('a ticket from the canvas: fill it in; linked fields fill the customer', as
   await field('Phone').locator('input').fill('555-0123')
   await field('Special instructions').locator('textarea').fill('Leave at the side door')
   await field('Pickup').locator('input').fill('2026-10-24')
+  await field('Deposit').locator('input').fill('100')
+  await expect(field('Balance').locator('input')).toHaveValue('$150.00')
   await saved()
   await shot(page, 'cv4-ticket')
 

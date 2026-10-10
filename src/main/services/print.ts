@@ -88,7 +88,7 @@ export function ticketFields(doc: DocJSON | null): { label: string; value: strin
       let value = fieldText(a.kind ?? '', (a.value ?? '').trim()).trim()
       if (a.kind === 'checkbox' && value === 'No') value = ''
       // Linked fields (customer name, pickup date…) are printed from the ticket itself, in the header
-      if (label && value && !a.link && !/pass|pin\b|code|password|pattern/i.test(label)) out.push({ label, value })
+      if (label && value && !a.link && !/pass|pin\b|code|password|pattern|card\s*(num|no\b|#)|credit|cvv|cvc|expir/i.test(label)) out.push({ label, value })
     }
     for (const c of n.content ?? []) walk(c)
   }

@@ -57,7 +57,14 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
         </div>
         <div className="layout-group">
           <h4>Show at the top</h4>
-          {check('showCustomer', 'Customer (name, phone, email)')}
+          {check(
+            'showCustomer',
+            'Customer',
+            <div className="layout-sub">
+              {check('showCustomerPhone', 'Phone')}
+              {check('showCustomerEmail', 'Email')}
+            </div>
+          )}
           {check('showReceived', 'First date', text('receivedLabel', 'Called', 'Received'))}
           {check('showPickup', 'Second date (goes on the calendar)', text('pickupLabel', 'Called', 'Pickup'))}
           {check('showPrice', 'Price and payments')}

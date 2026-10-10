@@ -2,6 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import type { DocJSON } from '../../../shared/api'
 import { CANVAS_WIDTH, boxOf, fittedHeight, readingOrder } from '../../../shared/canvas'
 import { CanvasItemContent } from './CanvasItem'
+import { calcResult, fieldAttrs } from '../editor/FormField'
+import { useFormLinks } from '../editor/formLinks'
+import { collectFields } from '../../../shared/formula'
 
 /** The element's width, kept up to date as the window resizes. */
 export function useWidth(ref: RefObject<HTMLElement | null>): number {
@@ -27,6 +30,25 @@ export function CanvasView({ doc, editable, onChange }: { doc: DocJSON; editable
   const [current, setCurrent] = useState(doc)
   useEffect(() => setCurrent(doc), [doc])
   const items = current.content ?? []
+
+  // Calculated fields follow the fields they use (and linked ones from the ticket)
+  const links = useFormLinks()
+  useEffect(() => {
+    if (!editable) return
+    const fields = collectFields(current, (link) => (links.active ? links.values[link as keyof typeof links.values] : undefined))
+    let changed = false
+    const content = items.map((it) => {
+      if (it.type !== 'formField' || it.attrs?.kind !== 'calc') return it
+      const value = calcResult(fieldAttrs(it.attrs), fields)
+      if (value === String(it.attrs?.value ?? '')) return it
+      changed = true
+      return { ...it, attrs: { ...it.attrs, value } }
+    })
+    if (!changed) return
+    const next = { ...current, content }
+    setCurrent(next)
+    onChange(next)
+  }, [current, links.values, editable]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setValue = (id: unknown, value: string): void => {
     const next = { ...current, content: items.map((it) => (it.attrs?.id === id ? { ...it, attrs: { ...it.attrs, value } } : it)) }

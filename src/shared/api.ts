@@ -393,8 +393,10 @@ export interface TicketLayout {
   showSummary: boolean
   summaryLabel: string
   summaryPlaceholder: string
-  /** Customer with phone and email */
+  /** Customer, and their phone and email (each can be left out) */
   showCustomer: boolean
+  showCustomerPhone: boolean
+  showCustomerEmail: boolean
   showReceived: boolean
   receivedLabel: string
   /** The date that goes on the calendar (pickup, delivery, due…) */
@@ -415,6 +417,8 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   summaryLabel: 'Details',
   summaryPlaceholder: 'A short description',
   showCustomer: true,
+  showCustomerPhone: true,
+  showCustomerEmail: true,
   showReceived: true,
   receivedLabel: 'Received',
   showPickup: true,

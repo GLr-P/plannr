@@ -179,6 +179,10 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - Designer (`canvas/CanvasDesigner.tsx`): toolbar (text, heading, field, customer, title, dates, picture, box, line, photos, lines, payments), drag to move, 8 resize handles, alignment guides that snap to other items and the page centre (`snapBox`, Alt = free), arrow-key nudges, Delete, Ctrl+D, undo/redo, double-click to type, a properties bar (position and size, text size/bold/italic/align/colour, fill/border/corners, picture fit, field settings, front/back), and a draggable page height. New canvas templates start with a heading, customer details, dates and notes, and a layout that hides the ticket's own customer/dates/price/lines/photos (they go on the canvas).
    - On a ticket (`canvas/CanvasView.tsx`) the canvas is filled in; below 560 px wide (phones) items stack in reading order.
    - The fill-in field was split into `FieldLabel`/`FieldBody`/`useFieldValue` so documents and canvases share it.
+20. **Calculated fields; optional customer phone/email (requested 2026-10-10):** **Done (2026-10-10).**
+   - New field type **Calculated**: a formula over the form's other fields, e.g. `({Flower Price} + {Delivery Fee?} + {Addons?}) * 1.12` (`shared/formula.ts`: a small parser, never eval; field names in braces, ignoring case and spaces; + − * / ( ) and %; blank fields count as 0; unknown names, circles or division by zero give no answer). Shown as money or a number, read-only, and kept on the field (attrs.value) for search and printing; blank until something it uses is filled in. Documents recalculate in a ProseMirror `appendTransaction` plugin (FormField); canvases in CanvasView. The field settings list the form's other fields to click into the formula and warn about unknown names.
+   - Top of the ticket: the customer's phone and email can each be hidden (`showCustomerPhone`, `showCustomerEmail`).
+   - Printouts also leave out fields that look like card numbers (card no./number, credit, CVV/CVC, expiry), like passcodes.
 
 **Later:**
 - A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).

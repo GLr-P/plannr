@@ -403,7 +403,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showCustomer && (
+            {layout.showCustomer && layout.showCustomerPhone && (
               <div className="prop">
                 <span className="prop-label">
                   <Phone /> Phone
@@ -433,7 +433,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showCustomer && (
+            {layout.showCustomer && layout.showCustomerEmail && (
               <div className="prop">
                 <span className="prop-label">
                   <Mail /> Email

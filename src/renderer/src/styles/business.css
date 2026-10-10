@@ -1472,3 +1472,33 @@ input[type='date']::-webkit-calendar-picker-indicator {
   border-radius: 2px;
   background: var(--border-strong);
 }
+
+/* Calculated fields */
+.prose .ff-body > input.ff-calc-box {
+  background: var(--bg-subtle);
+  font-weight: 600;
+  cursor: default;
+}
+.ff-formula {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ff-formula-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ff-formula-names .chip-toggle {
+  height: 24px;
+  font-size: 12px;
+}
+.ff-config-note.warn {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.layout-sub {
+  display: flex;
+  gap: 14px;
+  margin-left: 24px;
+}
