@@ -34,6 +34,7 @@ const canvas: DocJSON = {
     { type: 'canvasText', attrs: { box: { x: 24, y: 0, w: 400, h: 30 }, text: 'Polka order', style: { size: 24, bold: true } } },
     field('Sender name', { link: 'customer.name' }),
     field('Card Number/s', { value: '4111 1111 1111 1111' }, { x: 24, y: 100, w: 300, h: 60 }),
+    field('Card message', { kind: 'textarea', value: 'Happy anniversary', noLines: true }, { x: 340, y: 100, w: 300, h: 60 }),
     field('Flower Price', { kind: 'money', value: '85' }, { x: 24, y: 180, w: 200, h: 60 }),
     field('Total (with tax)', { kind: 'calc', value: '$108.64' }, { x: 240, y: 180, w: 200, h: 60 }),
     field('With fee', { kind: 'calc', formula: '({Flower Price} + 15) * 1.12', value: '' }, { x: 460, y: 180, w: 200, h: 60 }),
@@ -81,6 +82,7 @@ describe('the Form printout', () => {
     expect(html).toContain('☑')
     expect(html).toContain('Oct 24, 2026')
     expect(html).toContain('$112.00') // worked out at print time, even if never shown on screen
+    expect(html).toMatch(/class="fv area[^"]*bare">Happy anniversary/) // printed without its line or box
     expect(html).toContain('Owing') // payments part: $108.64 − $50.00
     expect(html).toMatch(/left:22.4px;top:93.2px;width:279.6px;height:55.9px/) // at its place, at printed size
     expect(html).not.toContain('class="head"') // no bar at the top: just the date

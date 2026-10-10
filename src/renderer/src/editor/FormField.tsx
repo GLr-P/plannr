@@ -63,6 +63,8 @@ export interface FieldAttrs {
   formula: string
   /** Calculated fields: 'money' or 'number' */
   format: string
+  /** The Form printout shows this answer without its line or box */
+  noLines: boolean
 }
 
 /** A calculated field's result from the form's other fields ('' until something it uses is filled in). */
@@ -127,7 +129,8 @@ export const FormField = Node.create({
       rows: attr('rows', 2, (v) => Number(v) || 2),
       link: attr('link', ''),
       formula: attr('formula', ''),
-      format: attr('format', 'money')
+      format: attr('format', 'money'),
+      noLines: attr<boolean>('noLines', false, (v) => v === 'true')
     }
   },
 
@@ -479,6 +482,10 @@ export function FieldConfig({
       <label>
         Hint (small text under the box)
         <input value={draft.hint} onChange={(e) => set({ hint: e.target.value })} aria-label="Hint" />
+      </label>
+      <label className="check ff-config-check">
+        <input type="checkbox" checked={Boolean(draft.noLines)} onChange={(e) => set({ noLines: e.target.checked })} aria-label="Print without a line or box" />
+        Print without a line or box
       </label>
       <span className="ff-config-actions">
         <button type="button" className="btn sm danger" onClick={onDelete}>

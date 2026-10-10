@@ -106,7 +106,7 @@ function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = fa
   const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
   const pos = String(attrs.labelPos ?? (inline ? 'left' : 'top'))
   const isBox = attrs.kind === 'checkbox'
-  const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
+  const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''} ${attrs.noLines === true ? 'bare' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
   if (pos === 'hidden') return `<div class="ff">${valueHtml}</div>`
   // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
   const max = LABEL_MAX[printStyleOf(d)]
@@ -216,6 +216,8 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
 const STYLE = `
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* A field set to print without a line or box (any style) */
+  .fv.bare { border: 0 !important; background: none !important; padding-left: 0 !important; }
   /*
    * Modern (the default): small coloured capitals for labels; answers written larger on a crisp underline, long ones
    * on ruled lines; the total as a colour badge. Solid black lines of at least 1px and no grey tints, so it prints
