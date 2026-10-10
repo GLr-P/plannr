@@ -174,7 +174,11 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
    - A linked "Customer name" field on a ticket with no customer offers matching existing customers; a typed name becomes a new customer only when you leave the field (or on leaving the page).
    - Neutral wording elsewhere: lists ("Untitled", "Ticket"), the intake slip ("Ticket T-0001", "Details", the template's own names), the "Label" print, settings and message placeholders.
 
-19. **Free-form ticket designer (requested 2026-10-10):** the owner wants templates to work like Canva/Photoshop: put anything anywhere and resize it freely. **Next.**
+19. **Free-form ticket designer (requested 2026-10-10):** **Done (2026-10-10).** The owner wants templates to work like Canva/Photoshop: put anything anywhere and resize it freely.
+   - Templates → **New canvas template** (ticket templates). A canvas is stored as DocJSON `{ type: 'canvas', attrs: { height }, content: [items] }` (`shared/canvas.ts`), each item with `attrs.id` and `attrs.box` {x, y, w, h} in page units (`CANVAS_WIDTH` = 780, scaled to fit). Items: `formField` (same attrs as in documents, so linking, search, printing and copying just work), `canvasText` (attrs.text + style), `image`, `canvasShape` (box or line), `canvasPart` (the ticket's photos, quote lines or payments, supplied by the ticket page through `useTicketParts`).
+   - Designer (`canvas/CanvasDesigner.tsx`): toolbar (text, heading, field, customer, title, dates, picture, box, line, photos, lines, payments), drag to move, 8 resize handles, alignment guides that snap to other items and the page centre (`snapBox`, Alt = free), arrow-key nudges, Delete, Ctrl+D, undo/redo, double-click to type, a properties bar (position and size, text size/bold/italic/align/colour, fill/border/corners, picture fit, field settings, front/back), and a draggable page height. New canvas templates start with a heading, customer details, dates and notes, and a layout that hides the ticket's own customer/dates/price/lines/photos (they go on the canvas).
+   - On a ticket (`canvas/CanvasView.tsx`) the canvas is filled in; below 560 px wide (phones) items stack in reading order.
+   - The fill-in field was split into `FieldLabel`/`FieldBody`/`useFieldValue` so documents and canvases share it.
 
 **Later:**
 - A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).

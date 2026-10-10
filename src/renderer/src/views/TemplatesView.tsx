@@ -14,6 +14,13 @@ import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator } from '../components/common'
 import { TicketLayoutPanel } from '../components/TicketLayoutPanel'
 import type { TicketLayout } from '../../../shared/api'
+import { CanvasDesigner } from '../canvas/CanvasDesigner'
+import { starterCanvas } from '../canvas/presets'
+import { isCanvas } from '../../../shared/canvas'
+import { LayoutDashboard } from 'lucide-react'
+
+/** New canvas templates: the canvas holds the customer, dates and the rest, so the ticket's top shows just the title. */
+const CANVAS_LAYOUT = { showSummary: false, showCustomer: false, showReceived: false, showPickup: false, showPrice: false, showLines: false, showPhotos: false }
 
 const DEFAULT_KEY = 'defaultTemplateId'
 
@@ -38,16 +45,32 @@ export function TemplatesView() {
     <div className="page list-page">
       <div className="list-header">
         <h1>Templates</h1>
-        <button
-          type="button"
-          className="btn primary"
-          onClick={async () => {
-            const t = await api.templates.create({ name: 'New template', kind })
-            go({ view: 'template', id: t.id })
-          }}
-        >
-          <Plus /> New {kind} template
-        </button>
+        <span className="list-header-actions">
+          {kind === 'ticket' && (
+            <button
+              type="button"
+              className="btn"
+              title="A page where you put fields, text and pictures anywhere and size them freely"
+              onClick={async () => {
+                // The canvas places the customer and dates itself, so the ticket's own top shows just the title
+                const t = await api.templates.create({ name: 'New canvas template', kind, content: starterCanvas(), layout: CANVAS_LAYOUT })
+                go({ view: 'template', id: t.id })
+              }}
+            >
+              <LayoutDashboard /> New canvas template
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn primary"
+            onClick={async () => {
+              const t = await api.templates.create({ name: 'New template', kind })
+              go({ view: 'template', id: t.id })
+            }}
+          >
+            <Plus /> New {kind} template
+          </button>
+        </span>
       </div>
       <div className="segmented settings-tabs" role="tablist" aria-label="Template kinds">
         {(['ticket', 'note'] as const).map((k) => (
@@ -193,7 +216,12 @@ function TemplatePage({ template }: { template: Template }) {
           />
         </div>
         <div className="template-hint">
-          {template.kind === 'note' ? (
+          {isCanvas(template.content) ? (
+            <>
+              A canvas: put fields, text and pictures anywhere and resize them. Each new ticket starts as a copy; fields linked to the ticket (like the
+              customer) fill in by themselves.
+            </>
+          ) : template.kind === 'note' ? (
             <>
               New notes start as a copy of this. Type <kbd>/</kbd> for tables, callouts, checklists and fill-in fields.
             </>
@@ -205,7 +233,11 @@ function TemplatePage({ template }: { template: Template }) {
           )}
         </div>
         {template.kind === 'ticket' && <TicketLayoutPanel layout={template.layout} onChange={(layout) => saver.queue({ layout })} />}
-        <NoteEditor docId={template.id} content={template.content} editable onChange={onContent} options={template.kind === 'ticket' ? TICKET_EDITOR : undefined} />
+        {isCanvas(template.content) ? (
+          <CanvasDesigner doc={template.content!} onChange={onContent} />
+        ) : (
+          <NoteEditor docId={template.id} content={template.content} editable onChange={onContent} options={template.kind === 'ticket' ? TICKET_EDITOR : undefined} />
+        )}
       </div>
     </div>
   )

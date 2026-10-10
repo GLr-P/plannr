@@ -29,6 +29,9 @@ import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
 import { CustomerEmails } from '../components/CustomerEmails'
 import { useFormLinks, type FieldLink } from '../editor/formLinks'
+import { isCanvas } from '../../../shared/canvas'
+import { CanvasView } from '../canvas/CanvasView'
+import { useTicketParts } from '../canvas/CanvasItem'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { TicketPayments } from './MoneyView'
 
@@ -222,6 +225,29 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     })
   }, [customer, fields, trashed, ticket.number])
   useEffect(() => () => useFormLinks.setState({ active: false, values: {} }), [])
+
+  // Canvas templates can place the ticket's photos, quote lines and payments anywhere on the page.
+  useEffect(() => {
+    useTicketParts.setState({
+      parts: {
+        photos: () => <PhotoGallery ticketId={ticket.id} />,
+        lines: () => (
+          <TicketLines
+            ticketId={ticket.id}
+            taxExempt={taxExempt}
+            readOnly={trashed}
+            onTotal={onLinesTotal}
+            onTaxExempt={(exempt) => {
+              setTaxExempt(exempt)
+              void api.tickets.update(ticket.id, { taxExempt: exempt })
+            }}
+          />
+        ),
+        payments: () => (trashed ? null : <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />)
+      }
+    })
+  }, [ticket.id, ticket.number, taxExempt, trashed, onLinesTotal, fields.priceCents])
+  useEffect(() => () => useTicketParts.setState({ parts: {} }), [])
 
   const restore = async (): Promise<void> => {
     await api.tickets.restore(ticket.id)
@@ -466,7 +492,11 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
         {layout.showPhotos && <PhotoGallery ticketId={ticket.id} />}
 
         <div className="ticket-body">
-          <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} options={TICKET_EDITOR} />
+          {isCanvas(ticket.content) ? (
+            <CanvasView doc={ticket.content!} editable={!trashed} onChange={onContent} />
+          ) : (
+            <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} options={TICKET_EDITOR} />
+          )}
         </div>
 
         {layout.showEmails && customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}

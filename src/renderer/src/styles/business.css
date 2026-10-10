@@ -887,7 +887,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
   border-radius: 6px;
 }
 /* The field's settings */
-.prose .ff-config {
+.ff-config {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -911,7 +911,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
 .prose .ff-w-third .ff-config {
   left: auto;
 }
-.prose .ff-config label {
+.ff-config label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -948,9 +948,9 @@ input[type='date']::-webkit-calendar-picker-indicator {
   padding: 0 9px;
   font-size: 12.5px;
 }
-.prose .ff-config input,
-.prose .ff-config select,
-.prose .ff-config textarea {
+.ff-config input,
+.ff-config select,
+.ff-config textarea {
   font: inherit;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -960,9 +960,9 @@ input[type='date']::-webkit-calendar-picker-indicator {
   outline: none;
   resize: vertical;
 }
-.prose .ff-config input:focus,
-.prose .ff-config select:focus,
-.prose .ff-config textarea:focus {
+.ff-config input:focus,
+.ff-config select:focus,
+.ff-config textarea:focus {
   border-color: var(--accent);
 }
 .ff-config-actions {
@@ -1156,4 +1156,319 @@ input[type='date']::-webkit-calendar-picker-indicator {
 }
 .layout-panel > p {
   padding: 4px 14px 12px;
+}
+
+/* ---------- Canvas templates (put anything anywhere) ---------- */
+.cv-host {
+  width: 100%;
+  outline: none;
+}
+.cv-view {
+  position: relative;
+}
+.cv-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  font-size: 15px;
+  line-height: 1.45;
+  background: var(--bg);
+}
+.cv-page.prose > * + * {
+  margin-top: 0; /* items are placed by position, not spacing */
+}
+.cv-item {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+}
+.cv-item > * {
+  flex: 1;
+  min-height: 0;
+}
+/* Fields fill their box */
+.prose .cv-field.ff {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.prose .cv-field.ff > .ff-body {
+  height: 100%;
+}
+.prose .cv-field.ff-textarea > .ff-body > textarea {
+  flex: 1;
+  min-height: 0 !important;
+  field-sizing: fixed;
+}
+.cv-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  line-height: 1.3;
+}
+.cv-empty {
+  color: var(--text-faint);
+}
+.cv-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.cv-shape {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+.cv-line {
+  align-self: center;
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: auto;
+  flex: 0 0 auto;
+}
+.cv-part {
+  overflow: auto;
+}
+.cv-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  background: var(--bg-subtle);
+}
+.cv-placeholder svg {
+  width: 16px;
+  height: 16px;
+}
+/* On phones: one item after another */
+.cv-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.prose .cv-stack .cv-field.ff {
+  width: 100%;
+}
+.cv-stack .cv-image {
+  height: auto;
+  max-height: 240px;
+  object-fit: contain;
+}
+
+/* The designer */
+.cv-designer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cv-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.cv-toolbar-label {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.cv-toolbar-gap {
+  flex: 1;
+}
+.cv-tool {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  padding: 4px 4px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--text);
+}
+.cv-tool:hover {
+  background: var(--hover);
+}
+.cv-tool svg {
+  width: 17px;
+  height: 17px;
+  color: var(--text-muted);
+}
+.icon-btn.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.cv-props {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  font-size: 13px;
+}
+.cv-props-empty {
+  font-size: 13px;
+}
+.cv-props-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.cv-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.cv-num input {
+  width: 58px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.cv-swatches {
+  display: inline-flex;
+  gap: 3px;
+}
+.cv-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+}
+.cv-swatch.none {
+  background: linear-gradient(135deg, var(--bg) 45%, var(--danger) 47%, var(--danger) 53%, var(--bg) 55%);
+}
+.cv-swatch.on {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.cv-field-settings {
+  position: relative;
+}
+.cv-field-settings .ff-config {
+  top: calc(100% + 6px);
+}
+.cv-design-host {
+  padding: 8px 0 20px;
+}
+.cv-design {
+  box-shadow: 0 0 0 1px var(--border), 0 6px 24px rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  user-select: none;
+}
+.cv-design .cv-item {
+  cursor: move;
+}
+.cv-design .cv-item:hover {
+  outline: 1px dashed var(--border-strong);
+}
+.cv-design .cv-item.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.cv-shield {
+  position: absolute;
+  inset: 0;
+}
+.cv-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  z-index: 3;
+}
+.cv-handle-nw { left: 0; top: 0; cursor: nwse-resize; }
+.cv-handle-n { left: 50%; top: 0; cursor: ns-resize; }
+.cv-handle-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.cv-handle-e { left: 100%; top: 50%; cursor: ew-resize; }
+.cv-handle-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.cv-handle-s { left: 50%; top: 100%; cursor: ns-resize; }
+.cv-handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.cv-handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.cv-guide {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  background: #e5487a;
+}
+.cv-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.cv-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.cv-edit-text {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 2px solid var(--accent);
+  background: var(--bg);
+  resize: none;
+  padding: 0;
+  font-family: inherit;
+  line-height: 1.3;
+  color: var(--text);
+  user-select: text;
+}
+.cv-empty-page {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+.cv-page-resize {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+}
+.cv-page-resize span {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
 }

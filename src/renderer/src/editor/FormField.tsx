@@ -41,7 +41,7 @@ const HEIGHTS = [
 const WITH_CHOICES: string[] = ['select', 'choice', 'multi']
 const WITH_PLACEHOLDER: string[] = ['text', 'textarea', 'number', 'money', 'phone', 'email']
 
-interface FieldAttrs {
+export interface FieldAttrs {
   label: string
   kind: FieldKind
   options: string[]
@@ -134,11 +134,8 @@ export const FormField = Node.create({
 
 const currencySymbol = (): string => formatCurrency(0).replace(/[\d.,\s ]/g, '') || '$'
 
-function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeViewProps) {
-  const attrs = { ...node.attrs, rows: Number(node.attrs.rows) || 2 } as FieldAttrs
-  const editable = editor.isEditable
-  const [configuring, setConfiguring] = useState(!attrs.label && editable)
-  const group = useId()
+/** What a field shows and where its value goes: live from the ticket when it's linked, else its own value. */
+export function useFieldValue(attrs: FieldAttrs, editable: boolean, store: (value: string) => void) {
   const links = useFormLinks()
   const link = linkDef(attrs.link)
   const live = Boolean(link && links.active)
@@ -146,20 +143,35 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
   const readOnly = !editable || Boolean(link && (!links.active || ('readOnly' in link && link.readOnly)))
   const setValue = (v: string): void => {
     if (live) links.set(link!.id, v)
-    updateAttributes({ value: v }) // also kept on the field, for search and for printing
+    store(v) // also kept on the field, for search and for printing
   }
   const placeholder = link && !links.active ? `From the ticket: ${link.label.toLowerCase()}` : attrs.placeholder || undefined
-  const aria = attrs.label || 'Field'
-  /** After closing the settings, carry on typing right after the field (past the space that follows it). */
-  const continueAfter = (): void => {
-    const pos = typeof getPos === 'function' ? getPos() : undefined
-    if (pos == null) return
-    let at = pos + node.nodeSize
-    if (editor.state.doc.textBetween(at, Math.min(at + 1, editor.state.doc.content.size)) === ' ') at += 1
-    editor.view.focus() // commands.focus() alone waits a frame
-    editor.commands.setTextSelection(at)
-  }
+  return { links, link, live, value, readOnly, setValue, placeholder }
+}
 
+/** The field's classes: its type, width, label position and whether it's linked */
+export const fieldClass = (attrs: FieldAttrs): string =>
+  ['ff', `ff-${attrs.kind}`, `ff-w-${attrs.width}`, `ff-l-${attrs.labelPos}`, attrs.link ? 'ff-linked' : ''].filter(Boolean).join(' ')
+
+export function FieldLabel({ attrs }: { attrs: FieldAttrs }) {
+  const link = linkDef(attrs.link)
+  return (
+    <span className="ff-label">
+      {attrs.label || 'New field'}
+      {link && (
+        <span className="ff-link-badge" title={`Linked to the ${link.label.toLowerCase()}: editing it here changes it on the ticket`}>
+          <Link2 />
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** The box itself (input, choices, dropdown…), with existing customers offered under a linked name, and the hint */
+export function FieldBody({ attrs, editable, store }: { attrs: FieldAttrs; editable: boolean; store: (value: string) => void }) {
+  const group = useId()
+  const { links, link, live, value, readOnly, setValue, placeholder } = useFieldValue(attrs, editable, store)
+  const aria = attrs.label || 'Field'
   let control: React.ReactNode
   switch (attrs.kind) {
     case 'checkbox':
@@ -242,26 +254,37 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
       )
   }
 
-  const cls = ['ff', `ff-${attrs.kind}`, `ff-w-${attrs.width}`, `ff-l-${attrs.labelPos}`, link ? 'ff-linked' : ''].filter(Boolean).join(' ')
+
   return (
-    <NodeViewWrapper as="span" className={cls} data-label={attrs.label}>
-      {attrs.labelPos !== 'hidden' && (
-        <span className="ff-label">
-          {attrs.label || 'New field'}
-          {link && (
-            <span className="ff-link-badge" title={`Linked to the ${link.label.toLowerCase()}: editing it here changes it on the ticket`}>
-              <Link2 />
-            </span>
-          )}
-        </span>
-      )}
-      <span className="ff-body">
-        {control}
-        {link?.id === 'customer.name' && live && !links.hasCustomer && editable && (
-          <CustomerSuggestions query={value} onPick={(id) => links.pickCustomer(id)} />
-        )}
-        {attrs.hint && <span className="ff-hint">{attrs.hint}</span>}
-      </span>
+    <span className="ff-body">
+      {control}
+      {link?.id === 'customer.name' && live && !links.hasCustomer && editable && <CustomerSuggestions query={value} onPick={(id) => links.pickCustomer(id)} />}
+      {attrs.hint && <span className="ff-hint">{attrs.hint}</span>}
+    </span>
+  )
+}
+
+/** Field attrs with defaults filled in (older fields have fewer) */
+export const fieldAttrs = (raw: Record<string, unknown>): FieldAttrs => ({ ...(raw as unknown as FieldAttrs), rows: Number(raw.rows) || 2 })
+
+function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeViewProps) {
+  const attrs = fieldAttrs(node.attrs)
+  const editable = editor.isEditable
+  const [configuring, setConfiguring] = useState(!attrs.label && editable)
+  /** After closing the settings, carry on typing right after the field (past the space that follows it). */
+  const continueAfter = (): void => {
+    const pos = typeof getPos === 'function' ? getPos() : undefined
+    if (pos == null) return
+    let at = pos + node.nodeSize
+    if (editor.state.doc.textBetween(at, Math.min(at + 1, editor.state.doc.content.size)) === ' ') at += 1
+    editor.view.focus() // commands.focus() alone waits a frame
+    editor.commands.setTextSelection(at)
+  }
+
+  return (
+    <NodeViewWrapper as="span" className={fieldClass(attrs)} data-label={attrs.label}>
+      {attrs.labelPos !== 'hidden' && <FieldLabel attrs={attrs} />}
+      <FieldBody attrs={attrs} editable={editable} store={(value) => updateAttributes({ value })} />
       {editable && (
         <span className="ff-tools" contentEditable={false}>
           <span className="ff-grip" data-drag-handle draggable title="Drag to move" aria-hidden>
@@ -307,7 +330,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
   )
 }
 
-function FieldConfig({
+export function FieldConfig({
   attrs,
   onSave,
   onDelete,

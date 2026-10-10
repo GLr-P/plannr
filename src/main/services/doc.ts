@@ -1,7 +1,7 @@
 import type { DocJSON, EntityType } from '../../shared/api'
 import type { LinkTarget } from './links'
 
-const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader', 'fileAttachment'])
+const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader', 'fileAttachment', 'canvasText', 'formField'])
 const ENTITY_TYPES = new Set<EntityType>(['note', 'customer', 'ticket'])
 
 /** Plain text of a document, one line per block; used for search and previews. */
@@ -19,6 +19,7 @@ export function extractText(doc: DocJSON | null | undefined): string {
       line += `${line ? ' ' : ''}${label}: ${value}`
     } else if (node.type === 'hardBreak') line += ' '
     else if (node.type === 'fileAttachment') line += String(node.attrs?.name ?? '')
+    else if (node.type === 'canvasText') line += String(node.attrs?.text ?? '').replace(/\s+/g, ' ')
     node.content?.forEach(walk)
     if (BLOCKS.has(node.type)) {
       if (line.trim()) lines.push(line.trim())

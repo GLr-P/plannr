@@ -410,7 +410,7 @@ export interface TicketLayout {
 
 export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   titleLabel: 'Title',
-  titlePlaceholder: 'What is it? (e.g. Laptop screen, anniversary flowers)',
+  titlePlaceholder: 'What is it?',
   showSummary: true,
   summaryLabel: 'Details',
   summaryPlaceholder: 'A short description',
