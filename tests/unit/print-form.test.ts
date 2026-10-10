@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formHtml, printedValue } from '../../src/main/services/print-form'
+import { formHtml, labelSize, printedValue } from '../../src/main/services/print-form'
 import { intakeHtml, DEFAULT_BUSINESS } from '../../src/main/services/print'
 import { ticketLayout, type DocJSON, type Ticket } from '../../src/shared/api'
 
@@ -52,6 +52,14 @@ const data = (content: DocJSON) => ({
 })
 
 describe('the Form printout', () => {
+  it('labels grow to fill their space on one line, within limits', () => {
+    expect(labelSize('Price', 300, 40)).toBe(18) // lots of room: the largest size
+    expect(labelSize('Recipient Phone Number', 186, 40)).toBeLessThan(16) // long label, narrow box: smaller
+    expect(labelSize('Recipient Phone Number', 186, 40) * 22 * 0.58).toBeLessThanOrEqual(186) // still fits
+    expect(labelSize('A very long label that would never fit in this little box', 80, 40)).toBe(10) // never below 10
+    expect(labelSize('Price', 300, 14)).toBeLessThan(12.5) // a short box limits it too
+  })
+
   it('prints every value where it was placed, card numbers included', () => {
     const html = formHtml(data(canvas))
     expect(html).toContain('T-0012 · Birthday bouquet')
@@ -64,7 +72,9 @@ describe('the Form printout', () => {
     expect(html).toContain('Oct 24, 2026')
     expect(html).toContain('$112.00') // worked out at print time, even if never shown on screen
     expect(html).toContain('Owing') // payments part: $108.64 − $50.00
-    expect(html).toMatch(/left:24px;top:100px;width:300px;height:60px/) // at its place on the page
+    expect(html).toMatch(/left:22.4px;top:93.2px;width:279.6px;height:55.9px/) // at its place, at printed size
+    expect(html).not.toContain('class="head"') // no bar at the top: just the date
+    expect(html).toContain('class="date"')
   })
 
   it('a document form prints in order with its fields filled in', () => {

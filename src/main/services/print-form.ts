@@ -81,14 +81,27 @@ function fieldsOf(d: FormPrintData): FormValue[] {
 const textCss = (st: TextStyle): string =>
   `font-size:${st.size}px;font-weight:${st.bold ? 700 : 400};font-style:${st.italic ? 'italic' : 'normal'};text-align:${st.align};${st.color ? `color:${st.color};` : ''}`
 
-function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false): string {
+/**
+ * The biggest label size (px) that fits on one line in the space it has, between 10 and 18. Text width is estimated
+ * from the number of characters (Segoe UI averages a little over half its size per character), since the print
+ * window runs no scripts to measure it; the label never wraps either way.
+ */
+export function labelSize(label: string, width: number, height: number): number {
+  const byWidth = width / (Math.max(1, label.length) * 0.58)
+  const byHeight = height / 1.2
+  return Math.round(Math.max(10, Math.min(18, byWidth, byHeight)) * 2) / 2
+}
+
+function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false, box?: { w: number; h: number }): string {
   const label = String(attrs.label ?? '')
   const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
   const pos = String(attrs.labelPos ?? (inline ? 'left' : 'top'))
   const isBox = attrs.kind === 'checkbox'
   const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
   if (pos === 'hidden') return `<div class="ff">${valueHtml}</div>`
-  return `<div class="ff ${pos === 'left' ? 'left' : 'top'}"><div class="fl">${esc(label)}</div>${valueHtml}</div>`
+  // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
+  const size = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
+  return `<div class="ff ${pos === 'left' ? 'left' : 'top'}"><div class="fl" style="font-size:${size}px">${esc(label)}</div>${valueHtml}</div>`
 }
 
 function partHtml(part: string, d: FormPrintData): string {
@@ -100,30 +113,37 @@ function partHtml(part: string, d: FormPrintData): string {
   return `<table class="pay"><tr><td>Price</td><td>${priceCents === null ? '—' : formatCurrency(priceCents)}</td></tr><tr><td>Paid</td><td>${formatCurrency(paidCents)}</td></tr>${owing ? `<tr><td><b>Owing</b></td><td><b>${formatCurrency(owing)}</b></td></tr>` : ''}</table>`
 }
 
+/** Letter paper with 12 mm margins is about 727 px wide; the canvas is laid out at that size. */
+const PRINT_WIDTH = 727
+
 function canvasHtml(doc: DocJSON, d: FormPrintData): string {
+  const k = PRINT_WIDTH / CANVAS_WIDTH
+  const px = (n: number): string => `${Math.round(n * k * 10) / 10}px`
   const items = (doc.content ?? [])
     .map((it) => {
       const b = boxOf(it)
       const a = it.attrs ?? {}
-      const at = `left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
+      const at = `left:${px(b.x)};top:${px(b.y)};width:${px(b.w)};height:${px(b.h)};`
       let inner = ''
-      if (it.type === 'formField') inner = fieldHtml(a, d)
-      else if (it.type === 'canvasText') inner = `<div class="tx" style="${textCss({ ...DEFAULT_TEXT_STYLE, ...((a.style as Partial<TextStyle>) ?? {}) })}">${lines(String(a.text ?? ''))}</div>`
-      else if (it.type === 'image') {
+      if (it.type === 'formField') inner = fieldHtml(a, d, false, { w: b.w * k, h: b.h * k })
+      else if (it.type === 'canvasText') {
+        const st = { ...DEFAULT_TEXT_STYLE, ...((a.style as Partial<TextStyle>) ?? {}) }
+        inner = `<div class="tx" style="${textCss({ ...st, size: Math.round(st.size * k * 10) / 10, color: st.color || '#000' })}">${lines(String(a.text ?? ''))}</div>`
+      } else if (it.type === 'image') {
         const src = d.fileData(String(a.src ?? ''))
         inner = src ? `<img class="im" src="${src}" style="object-fit:${a.fit === 'cover' ? 'cover' : 'contain'}" alt="">` : ''
       } else if (it.type === 'canvasShape') {
         const border = Number(a.borderWidth ?? 2)
+        const color = esc(String(a.borderColor || '#222'))
         inner =
           a.shape === 'line'
-            ? `<div class="ln" style="border-top:${Math.max(1, border)}px solid ${esc(String(a.borderColor || '#999'))}"></div>`
-            : `<div class="sh" style="background:${esc(String(a.fill || 'transparent'))};border:${border ? `${border}px solid ${esc(String(a.borderColor || '#999'))}` : 'none'};border-radius:${Number(a.radius ?? 8)}px"></div>`
+            ? `<div class="ln" style="border-top:${Math.max(1, border)}px solid ${color}"></div>`
+            : `<div class="sh" style="background:${esc(String(a.fill || 'transparent'))};border:${border ? `${border}px solid ${color}` : 'none'};border-radius:${Number(a.radius ?? 8)}px"></div>`
       } else if (it.type === 'canvasPart') inner = partHtml(String(a.part ?? ''), d)
       return `<div class="it" style="${at}">${inner}</div>`
     })
     .join('')
-  // Letter paper with 12 mm margins is about 727 px wide: the page is scaled to fit
-  return `<div class="canvas" style="width:${CANVAS_WIDTH}px;height:${fittedHeight(doc)}px;zoom:${(727 / CANVAS_WIDTH).toFixed(3)}">${items}</div>`
+  return `<div class="canvas" style="width:${PRINT_WIDTH}px;height:${px(fittedHeight(doc))}">${items}</div>`
 }
 
 /** A document form, in order: headings, text, lists, tables and its fields with their values. */
@@ -184,42 +204,36 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
 
 const STYLE = `
   * { box-sizing: border-box; }
-  body { margin: 0; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color: #1a1a1a; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid #1a1a1a; }
-  .biz { display: flex; gap: 12px; align-items: center; }
-  .biz img { max-height: 54px; max-width: 160px; object-fit: contain; }
-  .biz-name { font-size: 17px; font-weight: 700; }
-  .biz-line { font-size: 11.5px; color: #555; }
-  .order { text-align: right; }
-  .order-no { font-size: 18px; font-weight: 700; letter-spacing: .02em; }
-  .order-sub { font-size: 12px; color: #444; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font: 14px/1.35 "Segoe UI", system-ui, sans-serif; color: #000; }
+  .date { text-align: right; font-size: 11px; color: #000; margin-bottom: 6px; }
   .canvas { position: relative; }
   .it { position: absolute; overflow: hidden; display: flex; flex-direction: column; }
   .it > * { flex: 1; min-height: 0; }
   .ff { display: flex; flex-direction: column; gap: 3px; height: 100%; }
   .ff.left { flex-direction: row; align-items: center; gap: 10px; }
-  .fl { font-size: 10.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: #6b6b66; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fl { font-weight: 600; color: #000; line-height: 1.15; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: clip; }
   .ff.left .fl { max-width: 45%; }
-  .fv { flex: 1; min-height: 24px; background: #f6f6f3; border: 1px solid #dddcd6; border-radius: 5px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; }
-  .fv.calc { font-weight: 700; background: #fff; border-color: #1a1a1a; }
-  .fv.tick { flex: 0 0 auto; background: none; border: 0; padding: 0; font-size: 18px; line-height: 1; }
+  .fv { flex: 1; min-height: 26px; background: #fff; border: 1px solid #000; border-radius: 3px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; overflow: hidden; }
+  .fv.calc { font-weight: 700; border-width: 2px; }
+  .fv.tick { flex: 0 0 auto; border: 0; padding: 0; font-size: 20px; line-height: 1; }
   .tx { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.25; }
   .im { width: 100%; height: 100%; display: block; }
   .sh { width: 100%; height: 100%; }
   .ln { align-self: center; width: 100%; flex: 0 0 auto; margin: auto 0; }
   .photos { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
-  .photos img { height: 90px; border-radius: 4px; }
+  .photos img { height: 90px; border-radius: 3px; }
   table.pay td { padding: 2px 12px 2px 0; }
   table.lines { width: 100%; border-collapse: collapse; font-size: 12px; }
-  table.lines td { padding: 3px 4px; border-bottom: 1px solid #ddd; }
-  .muted { color: #666; }
+  table.lines td { padding: 3px 4px; border-bottom: 1px solid #000; }
+  .muted { color: #000; }
   .docform p { margin: 4px 0; }
   .docform h2, .docform h3, .docform h4 { margin: 14px 0 6px; }
   .docform .ffi { display: block; margin: 6px 0; }
   .docform .ffi .ff { height: auto; }
   .docform .di { max-width: 100%; max-height: 240px; }
   .docform ul.tasks { list-style: none; padding-left: 4px; }
-  table.dt { border-collapse: collapse; width: 100%; } table.dt td, table.dt th { border: 1px solid #bbb; padding: 3px 6px; text-align: left; }
+  table.dt { border-collapse: collapse; width: 100%; } table.dt td, table.dt th { border: 1px solid #000; padding: 3px 6px; text-align: left; }
 `
 
 export function formHtml(d: FormPrintData): string {
@@ -228,12 +242,7 @@ export function formHtml(d: FormPrintData): string {
   const printed = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
   const body = t.content ? (isCanvas(t.content) ? canvasHtml(t.content, d) : docHtml(t.content, d)) : '<p class="muted">This ticket has no form.</p>'
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body>
-    <div class="head">
-      <div class="biz">${d.logo ? `<img src="${d.logo}" alt="">` : ''}<div>${d.business?.name ? `<div class="biz-name">${esc(d.business.name)}</div>` : ''}${
-        d.business ? `<div class="biz-line">${esc([d.business.phone, d.business.email, d.business.website].filter(Boolean).join(' · '))}</div>` : ''
-      }</div></div>
-      <div class="order"><div class="order-no">${esc(formatTicketNumber(t.number))}</div><div class="order-sub">${esc([t.device, printed].filter(Boolean).join(' · '))}</div></div>
-    </div>
+    <div class="date">${esc(printed)}</div>
     ${body}
   </body></html>`
 }
