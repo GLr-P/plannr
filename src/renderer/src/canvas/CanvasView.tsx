@@ -75,10 +75,11 @@ export function CanvasView({ doc, editable, onChange }: { doc: DocJSON; editable
       ) : (
         <div className="cv-view" style={{ height: height * scale }}>
           <div className="cv-page cv-live prose" style={{ width: CANVAS_WIDTH, height, transform: `scale(${scale})` }}>
-            {items.map((it) => {
+            {/* Reading order so Tab goes top-to-bottom, left-to-right; z-index keeps the designer's stacking */}
+            {readingOrder(items).map((it) => {
               const b = boxOf(it)
               return (
-                <div key={String(it.attrs?.id)} className={`cv-item cv-type-${it.type}`} style={{ left: b.x, top: b.y, width: b.w, height: b.h }}>
+                <div key={String(it.attrs?.id)} className={`cv-item cv-type-${it.type}`} style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: items.indexOf(it) + 1 }}>
                   <CanvasItemContent item={it} live={editable} onValue={(v) => setValue(it.attrs?.id, v)} />
                 </div>
               )
