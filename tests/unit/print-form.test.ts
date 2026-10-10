@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formHtml, labelSize, printedValue } from '../../src/main/services/print-form'
+import { fitScale, formHtml, labelSize, printedValue } from '../../src/main/services/print-form'
 import { intakeHtml, DEFAULT_BUSINESS } from '../../src/main/services/print'
 import { ticketLayout, type DocJSON, type Ticket } from '../../src/shared/api'
 
@@ -115,5 +115,12 @@ describe('the Form printout', () => {
     const slip = intakeHtml({ ticket: t, customer: null, payments: [], business: DEFAULT_BUSINESS, logo: null })
     expect(slip).not.toContain('4111')
     expect(slip).toContain('$108.64')
+  })
+  it('shrinks a tall canvas to fit on one sheet', () => {
+    const short = { type: 'canvas', attrs: { height: 600 }, content: [] }
+    const tall = { type: 'canvas', attrs: { height: 1400 }, content: [] }
+    expect(fitScale(short)).toBe(1)
+    expect(fitScale(tall)).toBeLessThan(0.75)
+    expect(fitScale(tall) * (1400 * (727 / 780) + 26)).toBeLessThanOrEqual(945)
   })
 })

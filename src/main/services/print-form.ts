@@ -129,6 +129,16 @@ function partHtml(part: string, d: FormPrintData): string {
 
 /** Letter paper with 12 mm margins is about 727 px wide; the canvas is laid out at that size. */
 const PRINT_WIDTH = 727
+/** ...and about 965 px tall; a little is kept spare so rounding never spills onto a blank second page */
+const PRINT_HEIGHT = 945
+/** The printed date above the form */
+const DATE_HEIGHT = 26
+
+/** How much a canvas form is shrunk to fit on one sheet (1 = it already fits) */
+export function fitScale(doc: DocJSON): number {
+  const tall = fittedHeight(doc) * (PRINT_WIDTH / CANVAS_WIDTH) + DATE_HEIGHT
+  return tall > PRINT_HEIGHT ? Math.floor((PRINT_HEIGHT / tall) * 1000) / 1000 : 1
+}
 
 function canvasHtml(doc: DocJSON, d: FormPrintData): string {
   const k = PRINT_WIDTH / CANVAS_WIDTH
@@ -293,7 +303,9 @@ export function formHtml(d: FormPrintData): string {
   const title = [formatTicketNumber(t.number), t.device].filter(Boolean).join(' · ')
   const printed = new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
   const body = t.content ? (isCanvas(t.content) ? canvasHtml(t.content, d) : docHtml(t.content, d)) : '<p class="muted">This ticket has no form.</p>'
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body class="s-${printStyleOf(d)}" style="--accent:${accentOf(d)}">
+  const scale = t.content && isCanvas(t.content) ? fitScale(t.content) : 1
+  const zoom = scale < 1 ? `zoom:${scale};` : ''
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body class="s-${printStyleOf(d)}" style="${zoom}--accent:${accentOf(d)}">
     <div class="date">${esc(printed)}</div>
     ${body}
   </body></html>`
