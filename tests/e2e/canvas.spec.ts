@@ -118,7 +118,11 @@ test('add text, a box and a picture-free design; style and edit them', async () 
   await item('Notes').click()
   await page.locator('.cv-props').getByRole('button', { name: 'Field settings' }).click()
   await page.locator('.ff-config').getByLabel('Field label').fill('Special instructions')
-  await page.locator('.ff-config').getByLabel('Print without a line or box').check()
+  await page.locator('.ff-config').getByRole('radiogroup', { name: 'Lines when printed' }).getByRole('radio', { name: 'None' }).click()
+  await page.locator('.ff-config').getByRole('button', { name: 'Answer italic' }).click()
+  await page.locator('.ff-config').getByLabel('Answer size').fill('18')
+  await page.locator('.ff-config').getByLabel('Answer size').scrollIntoViewIfNeeded()
+  await shot(page, 'cv2c-field-text-style')
   await page.locator('.ff-config').getByRole('button', { name: 'Done' }).click()
   await expect(item('Special instructions')).toBeVisible()
 
@@ -186,6 +190,7 @@ test('a ticket from the canvas: fill it in; linked fields fill the customer', as
   const printed = readFileSync(out, 'utf8')
   for (const text of ['Rosa Lima', '555-0123', '$150.00', 'Thank you for your order!', 'Special instructions']) expect(printed).toContain(text)
   expect(printed).toMatch(/bare">Leave at the side door/) // printed without its line or box
+  expect(printed).toMatch(/class="ff top vi"><div class="fl"[^>]*>Special instructions<\/div><div style="font-size:18px"/) // italic answer, its own size
   // What it looks like on paper
   const preview = await app.evaluate(async ({ BrowserWindow }, html) => {
     const w = new BrowserWindow({ show: false, width: 820, height: 1060, webPreferences: { javascript: false } })

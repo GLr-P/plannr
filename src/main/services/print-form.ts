@@ -106,13 +106,16 @@ function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = fa
   const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
   const pos = String(attrs.labelPos ?? (inline ? 'left' : 'top'))
   const isBox = attrs.kind === 'checkbox'
-  const valueHtml = `<div class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''} ${attrs.noLines === true ? 'bare' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
-  if (pos === 'hidden') return `<div class="ff">${valueHtml}</div>`
+  const linesMode = attrs.printLines === 'last' || attrs.printLines === 'none' ? attrs.printLines : attrs.noLines === true ? 'none' : ''
+  const valueStyle = Number(attrs.valueSize) > 0 ? ` style="font-size:${Number(attrs.valueSize)}px"` : ''
+  const valueHtml = `<div${valueStyle} class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''} ${linesMode === 'none' ? 'bare' : linesMode === 'last' ? 'last' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
+  const styles = [attrs.labelBold === false ? 'lb0' : '', attrs.labelItalic === true ? 'li' : '', attrs.valueBold === true ? 'vb' : '', attrs.valueItalic === true ? 'vi' : ''].filter(Boolean).join(' ')
+  if (pos === 'hidden') return `<div class="ff ${styles}">${valueHtml}</div>`
   // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
   const max = LABEL_MAX[printStyleOf(d)]
   const fit = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
-  const size = Math.min(fit, max)
-  return `<div class="ff ${pos === 'left' ? 'left' : 'top'}"><div class="fl" style="font-size:${size}px">${esc(label)}</div>${valueHtml}</div>`
+  const size = Number(attrs.labelSize) > 0 ? Number(attrs.labelSize) : Math.min(fit, max)
+  return `<div class="ff ${pos === 'left' ? 'left' : 'top'} ${styles}"><div class="fl" style="font-size:${size}px">${esc(label)}</div>${valueHtml}</div>`
 }
 
 function partHtml(part: string, d: FormPrintData): string {
@@ -218,6 +221,13 @@ const STYLE = `
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   /* A field set to print without a line or box (any style) */
   .fv.bare { border: 0 !important; background: none !important; padding-left: 0 !important; }
+  /* A field set to have one line, right under the last line of writing (any style) */
+  .fv.last { flex: 0 0 auto !important; border: 0 !important; border-bottom: 1.25px solid #000 !important; border-radius: 0 !important; background: none !important; padding: 2px 1px 3px !important; line-height: 1.35 !important; }
+  /* Text styles chosen per field */
+  .ff.lb0 .fl { font-weight: 400 !important; }
+  .ff.li .fl { font-style: italic; }
+  .ff.vb .fv { font-weight: 700; }
+  .ff.vi .fv { font-style: italic; }
   /*
    * Modern (the default): small coloured capitals for labels; answers written larger on a crisp underline, long ones
    * on ruled lines; the total as a colour badge. Solid black lines of at least 1px and no grey tints, so it prints

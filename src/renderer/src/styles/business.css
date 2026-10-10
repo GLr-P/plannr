@@ -638,7 +638,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 4px;
   font-weight: 500;
-  font-size: 0.9em;
+  font-size: var(--ffl, 0.9em);
   line-height: 1.3;
   color: var(--text-muted);
 }
@@ -687,7 +687,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
   width: 100%;
   min-width: 0;
   font: inherit;
-  font-size: 0.95em;
+  font-size: var(--ffv, 0.95em);
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1520,4 +1520,68 @@ input[type='date']::-webkit-calendar-picker-indicator {
   gap: 8px;
   color: var(--text);
   font-weight: 400;
+}
+
+/* Text styles chosen per field (on screen as on paper) */
+.prose .ff.ff-lb-off > .ff-label {
+  font-weight: 400;
+}
+.prose .ff.ff-li > .ff-label {
+  font-style: italic;
+}
+.prose .ff.ff-vb > .ff-body input,
+.prose .ff.ff-vb > .ff-body textarea,
+.prose .ff.ff-vb > .ff-body select {
+  font-weight: 700;
+}
+.prose .ff.ff-vi > .ff-body input,
+.prose .ff.ff-vi > .ff-body textarea,
+.prose .ff.ff-vi > .ff-body select {
+  font-style: italic;
+}
+.ff-style-toggles {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.ff-style-toggles .muted {
+  font-size: 12px;
+  margin: 0 2px 0 6px;
+}
+.ff-style-toggle {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+.ff-style-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+.ff-style-toggle.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* A bigger answer needs a taller box */
+.prose .ff[style*='--ffv'] .ff-body > input,
+.prose .ff[style*='--ffv'] .ff-body > select,
+.prose .ff[style*='--ffv'] .ff-money-box {
+  height: auto;
+  min-height: 32px;
+}
+.ff-size-box {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 4px !important;
+}
+.ff-size-box input {
+  width: 64px;
+  padding-left: 6px;
+  padding-right: 2px;
 }

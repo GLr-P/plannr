@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { Images, ListOrdered, Wallet } from 'lucide-react'
 import type { DocJSON } from '../../../shared/api'
 import { CANVAS_PARTS, DEFAULT_TEXT_STYLE, type CanvasPart, type TextStyle } from '../../../shared/canvas'
-import { FieldBody, FieldLabel, fieldAttrs, fieldClass } from '../editor/FormField'
+import { FieldBody, FieldLabel, fieldAttrs, fieldClass, fieldVars } from '../editor/FormField'
 
 /** The open ticket page supplies its photos, quote lines and payments for canvas templates to place. */
 export const useTicketParts = create<{ parts: Partial<Record<CanvasPart, () => ReactNode>> }>(() => ({ parts: {} }))
@@ -22,7 +22,7 @@ export function CanvasItemContent({ item, live, onValue }: { item: DocJSON; live
     case 'formField': {
       const attrs = fieldAttrs(a)
       return (
-        <span className={`${fieldClass({ ...attrs, width: 'full' })} cv-field`} data-label={attrs.label}>
+        <span className={`${fieldClass({ ...attrs, width: 'full' })} cv-field`} data-label={attrs.label} style={fieldVars(attrs)}>
           {attrs.labelPos !== 'hidden' && <FieldLabel attrs={attrs} />}
           <FieldBody attrs={attrs} editable={live} store={(v) => onValue?.(v)} />
         </span>

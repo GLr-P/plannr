@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react'
-import { GripVertical, Link2, Settings2 } from 'lucide-react'
+import { Bold, GripVertical, Italic, Link2, Settings2 } from 'lucide-react'
 import { formatCurrency, type CustomerSummary, type DocJSON } from '../../../shared/api'
 import { collectFields, evaluateFormula, formatCalc, formulaRefs, type FormValue } from '../../../shared/formula'
 import { api } from '../api'
@@ -63,9 +63,31 @@ export interface FieldAttrs {
   formula: string
   /** Calculated fields: 'money' or 'number' */
   format: string
-  /** The Form printout shows this answer without its line or box */
+  /** Older setting: printed without its line or box (now printLines 'none') */
   noLines: boolean
+  /** Lines on the Form printout: '' (the print style's usual), 'last' (one line under the last line of writing), 'none' */
+  printLines: string
+  /** Text style: labels are bold unless turned off; answers plain unless turned on */
+  labelBold: boolean
+  labelItalic: boolean
+  valueBold: boolean
+  valueItalic: boolean
+  /** Text sizes in px; 0 = automatic (the label fits its space on paper) */
+  labelSize: number
+  valueSize: number
 }
+
+/** A field's own text sizes, as CSS variables its label and box use */
+export function fieldVars(a: { labelSize?: unknown; valueSize?: unknown }): React.CSSProperties {
+  const style: Record<string, string> = {}
+  if (Number(a.labelSize) > 0) style['--ffl'] = `${Number(a.labelSize)}px`
+  if (Number(a.valueSize) > 0) style['--ffv'] = `${Number(a.valueSize)}px`
+  return style as React.CSSProperties
+}
+
+/** How a field's answer is lined on paper (the older noLines setting counts as none) */
+export const printLinesOf = (a: { printLines?: unknown; noLines?: unknown }): string =>
+  a.printLines === 'last' || a.printLines === 'none' ? a.printLines : a.noLines === true ? 'none' : ''
 
 /** A calculated field's result from the form's other fields ('' until something it uses is filled in). */
 export function calcResult(attrs: Pick<FieldAttrs, 'formula' | 'format'>, fields: FormValue[]): string {
@@ -130,7 +152,14 @@ export const FormField = Node.create({
       link: attr('link', ''),
       formula: attr('formula', ''),
       format: attr('format', 'money'),
-      noLines: attr<boolean>('noLines', false, (v) => v === 'true')
+      noLines: attr<boolean>('noLines', false, (v) => v === 'true'),
+      printLines: attr('printLines', ''),
+      labelBold: attr<boolean>('labelBold', true, (v) => v !== 'false'),
+      labelItalic: attr<boolean>('labelItalic', false, (v) => v === 'true'),
+      valueBold: attr<boolean>('valueBold', false, (v) => v === 'true'),
+      valueItalic: attr<boolean>('valueItalic', false, (v) => v === 'true'),
+      labelSize: attr('labelSize', 0, (v) => Number(v) || 0),
+      valueSize: attr('valueSize', 0, (v) => Number(v) || 0)
     }
   },
 
@@ -193,7 +222,19 @@ export function useFieldValue(attrs: FieldAttrs, editable: boolean, store: (valu
 
 /** The field's classes: its type, width, label position and whether it's linked */
 export const fieldClass = (attrs: FieldAttrs): string =>
-  ['ff', `ff-${attrs.kind}`, `ff-w-${attrs.width}`, `ff-l-${attrs.labelPos}`, attrs.link ? 'ff-linked' : ''].filter(Boolean).join(' ')
+  [
+    'ff',
+    `ff-${attrs.kind}`,
+    `ff-w-${attrs.width}`,
+    `ff-l-${attrs.labelPos}`,
+    attrs.link ? 'ff-linked' : '',
+    attrs.labelBold === false ? 'ff-lb-off' : '',
+    attrs.labelItalic ? 'ff-li' : '',
+    attrs.valueBold ? 'ff-vb' : '',
+    attrs.valueItalic ? 'ff-vi' : ''
+  ]
+    .filter(Boolean)
+    .join(' ')
 
 export function FieldLabel({ attrs }: { attrs: FieldAttrs }) {
   const link = linkDef(attrs.link)
@@ -331,7 +372,7 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
   }
 
   return (
-    <NodeViewWrapper as="span" className={fieldClass(attrs)} data-label={attrs.label}>
+    <NodeViewWrapper as="span" className={fieldClass(attrs)} data-label={attrs.label} style={fieldVars(attrs)}>
       {attrs.labelPos !== 'hidden' && <FieldLabel attrs={attrs} />}
       <FieldBody attrs={attrs} editable={editable} store={(value) => updateAttributes({ value })} />
       {editable && (
@@ -483,10 +524,38 @@ export function FieldConfig({
         Hint (small text under the box)
         <input value={draft.hint} onChange={(e) => set({ hint: e.target.value })} aria-label="Hint" />
       </label>
-      <label className="check ff-config-check">
-        <input type="checkbox" checked={Boolean(draft.noLines)} onChange={(e) => set({ noLines: e.target.checked })} aria-label="Print without a line or box" />
-        Print without a line or box
-      </label>
+      <span className="ff-config-row">
+        <span className="ff-config-label">Text style</span>
+        <span className="ff-style-toggles">
+          <span className="muted">Label</span>
+          <StyleToggle label="Label bold" on={draft.labelBold !== false} onChange={(labelBold) => set({ labelBold })}>
+            <Bold />
+          </StyleToggle>
+          <StyleToggle label="Label italic" on={Boolean(draft.labelItalic)} onChange={(labelItalic) => set({ labelItalic })}>
+            <Italic />
+          </StyleToggle>
+          <span className="muted">Answer</span>
+          <StyleToggle label="Answer bold" on={Boolean(draft.valueBold)} onChange={(valueBold) => set({ valueBold })}>
+            <Bold />
+          </StyleToggle>
+          <StyleToggle label="Answer italic" on={Boolean(draft.valueItalic)} onChange={(valueItalic) => set({ valueItalic })}>
+            <Italic />
+          </StyleToggle>
+        </span>
+      </span>
+      <span className="ff-config-row">
+        <span className="ff-config-label">Text size</span>
+        <span className="ff-style-toggles">
+          <SizeBox label="Label size" value={Number(draft.labelSize) || 0} onChange={(labelSize) => set({ labelSize })} />
+          <SizeBox label="Answer size" value={Number(draft.valueSize) || 0} onChange={(valueSize) => set({ valueSize })} />
+        </span>
+      </span>
+      <Segmented
+        label="Lines when printed"
+        value={printLinesOf(draft) || 'normal'}
+        options={[{ id: 'normal', label: 'Normal' }, { id: 'last', label: 'Last line only' }, { id: 'none', label: 'None' }] as const}
+        onChange={(v) => set({ printLines: v === 'normal' ? '' : v, noLines: false })}
+      />
       <span className="ff-config-actions">
         <button type="button" className="btn sm danger" onClick={onDelete}>
           Remove
@@ -562,5 +631,34 @@ function FormulaEditor({ formula, format, names, onChange }: { formula: string; 
       </span>
       <Segmented label="Show as" value={format === 'number' ? 'number' : 'money'} options={[{ id: 'money', label: 'Money' }, { id: 'number', label: 'Number' }] as const} onChange={(v) => onChange({ format: v })} />
     </span>
+  )
+}
+
+function StyleToggle({ label, on, onChange, children }: { label: string; on: boolean; onChange: (on: boolean) => void; children: React.ReactNode }) {
+  return (
+    <button type="button" className={`ff-style-toggle ${on ? 'on' : ''}`} aria-label={label} title={label} aria-pressed={on} onClick={() => onChange(!on)}>
+      {children}
+    </button>
+  )
+}
+
+/** A text size in px, or blank for automatic */
+function SizeBox({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="ff-size-box">
+      <span className="muted">{label.replace(' size', '')}</span>
+      <input
+        type="number"
+        min={8}
+        max={48}
+        value={value || ''}
+        placeholder="Auto"
+        aria-label={label}
+        onChange={(e) => {
+          const v = Number(e.target.value)
+          onChange(Number.isFinite(v) && v > 0 ? Math.min(48, Math.max(8, v)) : 0)
+        }}
+      />
+    </label>
   )
 }
