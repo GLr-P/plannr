@@ -14,7 +14,7 @@ import {
 import { indexEntity, unindexEntity } from './search'
 import { setLinks } from './links'
 import { digitsOnly, extractMentions, extractText, isDate, likeTerm, localDate } from './doc'
-import { getTemplate, getDefaultTemplateId } from './templates'
+import { getTemplate, getDefaultTemplateId , layoutForTicket } from './templates'
 import { syncPickupFromTicket } from './calendar'
 import { syncTicketPrice } from './items'
 
@@ -141,10 +141,12 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
 
 export function getTicket(db: Db, id: string): Ticket | null {
   const r = db.prepare(`SELECT ${COLS}, t.template_id, t.content_json ${FROM} WHERE t.id = ?`).get(id) as TicketRow | undefined
+  const layout = r ? layoutForTicket(db, id) : null
   if (!r) return null
   return {
     ...toSummary(r),
     templateId: r.template_id ?? null,
+    layout: layout!,
     content: r.content_json ? (JSON.parse(r.content_json) as DocJSON) : null
   }
 }

@@ -14,6 +14,7 @@ import {
   type ReminderKind
 } from '../../shared/api'
 import { getSetting } from './settings'
+import { layoutForTicket } from './templates'
 import { isDate } from './doc'
 
 /** The notifications a new event gets: the user's defaults for timed or all-day events. */
@@ -181,8 +182,9 @@ function defaultPickupTitle(db: Db, ticketId: string): string {
   const r = db
     .prepare('SELECT t.number, c.name FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id WHERE t.id = ?')
     .get(ticketId) as { number: number; name: string | null } | undefined
-  if (!r) return 'Pickup'
-  return `${r.name?.trim() || formatTicketNumber(r.number)} pickup`
+  const label = layoutForTicket(db, ticketId).pickupLabel // "pickup", or the template's own name for it (e.g. delivery)
+  if (!r) return label
+  return `${r.name?.trim() || formatTicketNumber(r.number)} ${label.toLowerCase()}`
 }
 
 export function updateEvent(db: Db, id: string, patch: EventUpdate): CalendarEvent {

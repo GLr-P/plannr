@@ -177,7 +177,7 @@ function Overview({ month, onMonth, onOpenItem }: { month: string; onMonth: (m: 
                     <span className="due-main">
                       <span className="due-name">{t.customerName || 'No customer'}</span>
                       <span className="due-sub">
-                        {t.device || 'No device'} · {statusLabel(t.status)}
+                        {t.device || 'Untitled'} · {statusLabel(t.status)}
                       </span>
                     </span>
                     <span className="due-amount owed">Owes {money0(t.priceCents - t.paidCents)}</span>

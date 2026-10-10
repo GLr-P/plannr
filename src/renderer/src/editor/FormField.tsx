@@ -1,8 +1,9 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react'
 import { GripVertical, Link2, Settings2 } from 'lucide-react'
-import { formatCurrency } from '../../../shared/api'
+import { formatCurrency, type CustomerSummary } from '../../../shared/api'
+import { api } from '../api'
 import { FIELD_LINKS, linkDef, useFormLinks } from './formLinks'
 
 export const FIELD_KINDS = [
@@ -236,6 +237,7 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
           readOnly={readOnly}
           aria-label={aria}
           onChange={(e) => setValue(e.target.value)}
+          onBlur={link?.id === 'customer.name' && live ? () => links.commit() : undefined}
         />
       )
   }
@@ -255,6 +257,9 @@ function FieldView({ node, updateAttributes, deleteNode, editor, getPos }: NodeV
       )}
       <span className="ff-body">
         {control}
+        {link?.id === 'customer.name' && live && !links.hasCustomer && editable && (
+          <CustomerSuggestions query={value} onPick={(id) => links.pickCustomer(id)} />
+        )}
         {attrs.hint && <span className="ff-hint">{attrs.hint}</span>}
       </span>
       {editable && (
@@ -410,6 +415,37 @@ function FieldConfig({
           Done
         </button>
       </span>
+    </span>
+  )
+}
+
+/** Existing customers matching what's typed in a linked "Customer name" field (the ticket has no customer yet). */
+function CustomerSuggestions({ query, onPick }: { query: string; onPick: (id: string) => void }) {
+  const [matches, setMatches] = useState<CustomerSummary[]>([])
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) return setMatches([])
+    const t = setTimeout(() => void api.customers.list({ query: q, limit: 5 }).then(setMatches), 150)
+    return () => clearTimeout(t)
+  }, [query])
+  if (!matches.length) return null
+  return (
+    <span className="ff-suggest" role="listbox" aria-label="Existing customers" contentEditable={false}>
+      {matches.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          role="option"
+          aria-selected={false}
+          className="ff-suggest-item"
+          onMouseDown={(e) => e.preventDefault()} // keep focus in the field, so leaving it doesn't create a new customer first
+          onClick={() => onPick(c.id)}
+        >
+          <span>{c.name || 'No name'}</span>
+          <span className="muted">{[c.phone, c.email].filter(Boolean).join(' · ')}</span>
+        </button>
+      ))}
+      <span className="ff-suggest-new">Or keep typing for a new customer</span>
     </span>
   )
 }

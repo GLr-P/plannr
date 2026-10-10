@@ -251,7 +251,7 @@ export function TicketSettings() {
       <section className="setting setting-stack">
         <div>
           <h3>Status names</h3>
-          <p className="muted">Rename the steps a repair goes through. Leave blank for the standard name.</p>
+          <p className="muted">Rename the steps a ticket goes through. Leave blank for the standard name.</p>
         </div>
         <div className="status-names">
           {TICKET_STATUSES.map((s) => (

@@ -395,5 +395,9 @@ export const migrations: string[] = [
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}
+  `,
+
+  /* 22: ticket templates choose what the top of their tickets shows (see TicketLayout) */ `
+  ALTER TABLE templates ADD COLUMN layout TEXT;
   `
 ]

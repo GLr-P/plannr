@@ -217,7 +217,7 @@ test('business details print on the intake slip and receipt; the passcode is lef
   const printed = async (kind: string): Promise<string> => {
     await page.getByRole('button', { name: 'Print', exact: true }).click()
     await page.getByRole('menuitem', { name: kind }).click()
-    await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Device label' ? '@page { size: 62mm 29mm' : 'Repair ticket T-0001')
+    await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Label' ? '@page { size: 62mm 29mm' : 'Ticket T-0001')
     return readFileSync(out, 'utf8')
   }
 
@@ -238,7 +238,7 @@ test('business details print on the intake slip and receipt; the passcode is lef
   await slipPage.screenshot({ path: join('test-results', 'screens', 'b11-intake-slip.png') })
   await slipPage.close()
 
-  const label = await printed('Device label')
+  const label = await printed('Label')
   expect(label).toContain('T-0001')
   const receipt = await printed('Receipt')
   expect(receipt).toContain('No payments recorded yet')

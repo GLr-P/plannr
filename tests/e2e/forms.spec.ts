@@ -155,6 +155,7 @@ test('take an order: linked fields fill in the customer, choices light up', asyn
 
   // No customer yet: typing the name creates one and links it to the ticket
   await field('Customer name').locator('input').fill('Maya Fernandes')
+  await field('Customer name').locator('input').press('Tab')
   await expect(prop('Customer name')).toHaveValue('Maya Fernandes')
   await expect(prop('Customer phone')).toBeEnabled()
   // The ticket's own phone box and the form's phone field are the same thing
@@ -195,11 +196,79 @@ test('take an order: linked fields fill in the customer, choices light up', asyn
   expect(found.some((r) => r.type === 'ticket')).toBe(true)
 })
 
+test('the template decides the top of its tickets: names, and which parts show', async () => {
+  await page.locator('.sidebar .nav-item', { hasText: 'Templates' }).click()
+  await page.locator('.note-row', { hasText: 'Flower order' }).click()
+  await page.locator('.layout-panel summary').click()
+  const panel = page.locator('.layout-panel')
+  await panel.locator('.layout-group', { hasText: 'Title box' }).getByLabel('Name').fill('Order')
+  await panel.getByLabel('Example text').first().fill('e.g. Anniversary bouquet')
+  await panel.getByLabel('Show it').uncheck()
+  await panel.locator('.layout-check', { hasText: 'First date' }).getByLabel('Called').fill('Ordered')
+  await panel.locator('.layout-check', { hasText: 'Second date' }).getByLabel('Called').fill('Delivery')
+  await panel.getByLabel('Quote & invoice lines').uncheck()
+  await panel.getByLabel('Photos').uncheck()
+  await panel.getByLabel('Emails with the customer').uncheck()
+  await saved()
+  await shot(page, 'f5-template-top-panel')
+
+  // "/Customer details" drops the customer section into a form (here, a blank ticket template)
+  await page.locator('.sidebar .nav-item', { hasText: 'Templates' }).click()
+  await page.getByRole('button', { name: 'New ticket template' }).click()
+  await page.getByLabel('Template name').fill('Quick order')
+  await page.locator('.prose').click()
+  await page.keyboard.press('Control+a')
+  await page.keyboard.press('Delete')
+  await page.keyboard.type('/customer')
+  await expect(page.locator('.menu-item[data-selected="true"]')).toContainText('Customer details')
+  await page.keyboard.press('Enter')
+  for (const label of ['Customer name', 'Phone', 'Email', 'Address']) await expect(field(label).locator('.ff-link-badge')).toBeVisible()
+  await saved()
+  // Ordinary notes don't offer it
+  await page.keyboard.press('Control+n')
+  await page.keyboard.type('Plain note')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/customer')
+  await expect(page.locator('.menu-item', { hasText: 'Customer details' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // A new order: the ticket follows the template
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).click()
+  await page.getByRole('button', { name: 'Choose template' }).click()
+  await page.locator('.menu-item', { hasText: 'Flower order' }).click()
+  await expect(page.getByLabel('Order', { exact: true })).toHaveAttribute('placeholder', 'e.g. Anniversary bouquet')
+  await expect(page.locator('.doc-subtitle')).toHaveCount(0)
+  await expect(page.locator('.props')).toContainText('Ordered')
+  await expect(page.locator('.props')).toContainText('Delivery')
+  await expect(page.locator('.photos-header')).toHaveCount(0)
+  await page.getByLabel('Order', { exact: true }).fill('Birthday bouquet')
+
+  // Typing a returning customer's name offers them; picking links them instead of making a duplicate
+  await field('Customer name').locator('input').fill('Maya')
+  const suggestion = field('Customer name').locator('.ff-suggest-item', { hasText: 'Maya Fernandes' })
+  await expect(suggestion).toBeVisible()
+  await shot(page, 'f6-customer-suggestion')
+  await suggestion.click()
+  await expect(prop('Customer name')).toHaveValue('Maya Fernandes')
+  await expect(field('Customer phone').locator('input')).toHaveValue('555-0199')
+  const mayas = await page.evaluate(() => window.plannr.customers.list({ query: 'Maya' }))
+  expect(mayas).toHaveLength(1)
+
+  // The calendar entry uses the template's name for the date
+  await prop('Pickup date').fill('2026-10-20')
+  await saved()
+  const ticketId = await page.evaluate(() => window.plannr.tickets.list({ query: 'Birthday bouquet' }).then((t) => t[0].id))
+  const events = await page.evaluate((id) => window.plannr.calendar.forLink(id), ticketId)
+  expect(events.map((e) => e.title)).toEqual(['Maya Fernandes delivery'])
+  await page.locator('.main').evaluate((el) => el.scrollTo(0, 0))
+  await shot(page, 'f7-order-ticket-top')
+})
+
 test('everything is kept after a restart; the phone layout stacks fields', async () => {
   await app.close()
   ;({ app, page } = await launch(dataDir))
   await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).click()
-  await page.locator('.ticket-row').first().click()
+  await page.locator('.ticket-row', { hasText: 'T-0001' }).click()
   await expect(field('Customer name').locator('input')).toHaveValue('Maya Fernandes')
   await expect(field('Colours').locator('.ff-option.on')).toHaveText(['Pink', 'White'])
   await expect(field('Size').locator('.ff-option.on')).toHaveText('Deluxe')

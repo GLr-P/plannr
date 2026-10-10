@@ -25,8 +25,21 @@ interface FormLinks {
   active: boolean
   values: Partial<Record<FieldLink, string>>
   set: (link: FieldLink, value: string) => void
+  /** The ticket has a customer (otherwise the name field offers existing customers) */
+  hasCustomer: boolean
+  /** Links an existing customer to the ticket */
+  pickCustomer: (id: string) => void
+  /** Leaving the name field: a typed name that wasn't picked becomes a new customer */
+  commit: () => void
 }
 
-export const useFormLinks = create<FormLinks>(() => ({ active: false, values: {}, set: () => undefined }))
+export const useFormLinks = create<FormLinks>(() => ({
+  active: false,
+  values: {},
+  set: () => undefined,
+  hasCustomer: false,
+  pickCustomer: () => undefined,
+  commit: () => undefined
+}))
 
 export const linkDef = (id: string | undefined) => FIELD_LINKS.find((l) => l.id === id)

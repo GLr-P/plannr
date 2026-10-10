@@ -13,7 +13,7 @@ export interface MessageTemplate {
 export const PLACEHOLDERS: [string, string][] = [
   ['{first_name}', 'Customer’s first name'],
   ['{customer}', 'Customer’s full name'],
-  ['{device}', 'Device'],
+  ['{device}', 'Ticket title'],
   ['{ticket}', 'Ticket number'],
   ['{status}', 'Status'],
   ['{total}', 'Ticket total'],
@@ -65,7 +65,7 @@ export function fillMessage(text: string, ctx: { ticket: TicketSummary; customer
   const vars: Record<string, string> = {
     first_name: name.split(/\s+/)[0] || 'there',
     customer: name || 'there',
-    device: ticket.device || 'device',
+    device: ticket.device || 'order',
     ticket: formatTicketNumber(ticket.number),
     status: statusLabel(ticket.status),
     total: ticket.priceCents ? formatCurrency(ticket.priceCents) : '(to be confirmed)',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { intakeHtml, labelHtml, receiptHtml, receiptTotals, ticketFields, DEFAULT_BUSINESS, type PrintData } from '../../src/main/services/print'
-import type { DocJSON, Ticket, Transaction } from '../../src/shared/api'
+import { ticketLayout, type DocJSON, type Ticket, type Transaction } from '../../src/shared/api'
 
 const field = (label: string, value: string, kind = 'text'): DocJSON => ({ type: 'formField', attrs: { label, value, kind } })
 const ticket = (over: Partial<Ticket> = {}): Ticket => ({
@@ -24,6 +24,7 @@ const ticket = (over: Partial<Ticket> = {}): Ticket => ({
   deletedAt: null,
   content: { type: 'doc', content: [{ type: 'paragraph', content: [field('Passcode', '1234'), field('Condition', 'Scuffed'), field('Charger left', 'true', 'checkbox'), field('Notes', '')] }] },
   templateId: null,
+  layout: ticketLayout({ titleLabel: 'Device', summaryLabel: 'Issue' }),
   ...over
 })
 const pay = (amountCents: number, taxExempt = false): Transaction => ({
@@ -61,7 +62,8 @@ describe('printouts', () => {
   it('intake slip: business, ticket number, customer (escaped), repair, terms and a signature line; no passcode', () => {
     const html = intakeHtml(data())
     expect(html).toContain('Nano Tech Services')
-    expect(html).toContain('Repair ticket T-0007')
+    expect(html).toContain('Ticket T-0007')
+    expect(html).toContain('<td>Device</td><td>iPhone 13</td>') // the template's own name for the title
     expect(html).toContain('Jane &lt;Doe&gt;')
     expect(html).toContain('Cracked screen')
     expect(html).toContain('Not responsible for data loss.')

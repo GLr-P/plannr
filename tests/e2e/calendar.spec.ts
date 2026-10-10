@@ -84,7 +84,7 @@ test('dragging a note from the sidebar creates a linked event', async () => {
   await expect(page.getByLabel('Event title')).toHaveValue('Order screens')
   await expect(popover().locator('.popover-link')).toContainText('Order screens')
   await page.keyboard.press('Escape')
-  await expect(dayCell(D10).locator('.fc-event')).toContainText('Order screens')
+  await expect(dayCell(D10).locator('.fc-event', { hasText: 'Order screens' })).toBeVisible() // the 10th may also be today, with another event
 })
 
 test('clicking an event shows why it is linked and opens the ticket', async () => {
@@ -173,6 +173,6 @@ test('settings and events survive a restart', async () => {
   await expect(page.getByRole('switch', { name: 'Keep running in the tray' })).toHaveAttribute('aria-checked', 'false')
   await nav('Calendar').click()
   await expect(dayCell(D16).locator('.fc-event')).toContainText('Jane Doe pickup')
-  await expect(dayCell(D10).locator('.fc-event')).toContainText('Order screens')
+  await expect(dayCell(D10).locator('.fc-event', { hasText: 'Order screens' })).toBeVisible() // the 10th may also be today, with another event
   await expect(dayCell(D22).locator('.fc-event')).toContainText('Supplier visit')
 })

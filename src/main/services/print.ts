@@ -1,4 +1,4 @@
-import { formatCurrency, formatTicketNumber, lineTotal, ticketTotals, type LineItem, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
+import { formatCurrency, formatTicketNumber, ticketLayout, lineTotal, ticketTotals, type LineItem, type BusinessInfo, type Customer, type DocJSON, type PrintKind, type Ticket, type Transaction } from '../../shared/api'
 import { splitTax } from './quickbooks'
 import type { Db } from '../db'
 import { getSetting } from './settings'
@@ -143,21 +143,22 @@ const STYLE = `
 
 export function intakeHtml({ ticket: t, customer, business: b, logo }: PrintData): string {
   const fields = ticketFields(t.content)
+  const l = t.layout ?? ticketLayout(null)
   const job = [
-    ['Device', t.device],
-    ['Problem', t.issue],
-    ['Received', day(t.receivedOn)],
-    ['Estimated pickup', day(t.pickupOn)],
-    ['Estimate', t.priceCents ? money(t.priceCents) : '']
+    [l.titleLabel, t.device],
+    [l.summaryLabel, l.showSummary ? t.issue : ''],
+    [l.receivedLabel, l.showReceived ? day(t.receivedOn) : ''],
+    [l.pickupLabel, l.showPickup ? day(t.pickupOn) : ''],
+    ['Estimate', l.showPrice && t.priceCents ? money(t.priceCents) : '']
   ].filter(([, v]) => v)
   return page(
     `Ticket ${formatTicketNumber(t.number)}`,
     `${header(b, logo)}
-    <h1>Repair ticket ${formatTicketNumber(t.number)}</h1>
-    <div class="muted">Keep this slip and bring it when you pick up your device.</div>
+    <h1>Ticket ${formatTicketNumber(t.number)}</h1>
+    <div class="muted">Please keep this slip. Bring it or quote the ticket number when you come back.</div>
     <div class="cols">
       ${customerBlock(t, customer)}
-      <section><h3>Repair</h3><table class="fields">${job.map(([k, v]) => `<tr><td>${k}</td><td>${lines(v!)}</td></tr>`).join('')}</table></section>
+      <section><h3>Details</h3><table class="fields">${job.map(([k, v]) => `<tr><td>${k}</td><td>${lines(v!)}</td></tr>`).join('')}</table></section>
     </div>
     ${fields.length ? `<section><h3>Details</h3><table class="fields">${fields.map((f) => `<tr><td>${esc(f.label)}</td><td>${lines(f.value)}</td></tr>`).join('')}</table></section>` : ''}
     ${b.intakeTerms ? `<div class="terms">${esc(b.intakeTerms)}</div>` : ''}
@@ -179,7 +180,7 @@ export function receiptTotals(payments: Transaction[], taxRate: number): { subto
 export function receiptHtml({ ticket: t, customer, payments, business: b, logo }: PrintData): string {
   const { subtotal, tax, total } = receiptTotals(payments, b.taxRate)
   const owing = t.priceCents ? Math.max(0, t.priceCents - total) : 0
-  const what = [t.device, t.issue].filter(Boolean).join(' — ') || 'Repair'
+  const what = [t.device, t.issue].filter(Boolean).join(' — ') || `Ticket ${formatTicketNumber(t.number)}`
   const taxLabel = `${esc(b.taxName || 'Tax')}${b.taxRate ? ` (${b.taxRate}%)` : ''}`
   return page(
     `Receipt ${formatTicketNumber(t.number)}`,
@@ -241,7 +242,7 @@ function linesTable(d: PrintData): { html: string; total: number } {
           return `<tr><td>${esc(what)}</td><td class="num">${l.kind === 'discount' ? '' : l.qty}</td><td class="num">${l.kind === 'discount' ? '' : money(l.unitCents)}</td><td class="num">${amount}</td></tr>`
         })
         .join('')
-    : `<tr><td>${lines([d.ticket.device, d.ticket.issue].filter(Boolean).join(' — ') || 'Repair')}</td><td></td><td></td><td class="num">${money(d.ticket.priceCents ?? 0)}</td></tr>`
+    : `<tr><td>${lines([d.ticket.device, d.ticket.issue].filter(Boolean).join(' — ') || `Ticket ${formatTicketNumber(d.ticket.number)}`)}</td><td></td><td></td><td class="num">${money(d.ticket.priceCents ?? 0)}</td></tr>`
   const total = items.length ? totals.total : (d.ticket.priceCents ?? 0)
   const taxLabel = `${esc(b.taxName || 'Tax')}${b.taxRate && !d.ticket.taxExempt ? ` (${b.taxRate}%${b.pricesIncludeTax ? ', included' : ''})` : ''}`
   const sums = items.length

@@ -12,6 +12,8 @@ import { useAutosave } from '../lib/useAutosave'
 import { relativeTime } from '../lib/format'
 import { NoteEditor } from '../editor/NoteEditor'
 import { ConfirmButton, SaveIndicator } from '../components/common'
+import { TicketLayoutPanel } from '../components/TicketLayoutPanel'
+import type { TicketLayout } from '../../../shared/api'
 
 const DEFAULT_KEY = 'defaultTemplateId'
 
@@ -130,11 +132,14 @@ export function TemplateView({ id }: { id: string }) {
   return <TemplatePage key={template.id} template={template} />
 }
 
+/** Ticket templates' editor knows it's for tickets (the / menu offers Customer details and Ticket dates). */
+const TICKET_EDITOR = { ticket: true }
+
 function TemplatePage({ template }: { template: Template }) {
   const [name, setName] = useState(template.name)
   const [icon, setIcon] = useState(template.icon)
   const [updatedAt, setUpdatedAt] = useState(template.updatedAt)
-  const saver = useAutosave<{ name?: string; content?: DocJSON; icon?: string }>(async (patch) => {
+  const saver = useAutosave<{ name?: string; content?: DocJSON; icon?: string; layout?: Partial<TicketLayout> }>(async (patch) => {
     await api.templates.update(template.id, patch)
     setUpdatedAt(Date.now())
   })
@@ -194,12 +199,13 @@ function TemplatePage({ template }: { template: Template }) {
             </>
           ) : (
             <>
-              Type <kbd>/</kbd> → <strong>Form field</strong> to add a fill-in box. Use the gear on a field to rename it or change its type. Values
-              typed here become defaults for new tickets.
+              Type <kbd>/</kbd> → <strong>Form field</strong> to add a fill-in box, or <strong>Customer details</strong> for the customer’s name,
+              phone, email and address. Use the gear on a field to change it. Values typed here become defaults for new tickets.
             </>
           )}
         </div>
-        <NoteEditor docId={template.id} content={template.content} editable onChange={onContent} />
+        {template.kind === 'ticket' && <TicketLayoutPanel layout={template.layout} onChange={(layout) => saver.queue({ layout })} />}
+        <NoteEditor docId={template.id} content={template.content} editable onChange={onContent} options={template.kind === 'ticket' ? TICKET_EDITOR : undefined} />
       </div>
     </div>
   )

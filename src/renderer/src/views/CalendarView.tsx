@@ -417,7 +417,7 @@ function TicketTray({ refreshKey }: { refreshKey: number }) {
               {t.pickupOn && <span className="tray-pickup">Pickup {formatDay(t.pickupOn)}</span>}
             </div>
             <div className="tray-item-main">{t.customerName || 'No customer'}</div>
-            <div className="tray-item-sub">{t.device || 'No device'}</div>
+            <div className="tray-item-sub">{t.device || 'Untitled'}</div>
           </div>
         ))}
       </div>

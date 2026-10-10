@@ -142,7 +142,7 @@ export function HomeView() {
                 <span className="mono">{formatTicketNumber(t.number)}</span>
                 <span className="history-main">
                   {t.customerName || 'No customer'}
-                  <span className="muted"> · {t.device || 'No device'}</span>
+                  <span className="muted"> · {t.device || 'Untitled'}</span>
                 </span>
                 <StatusPill status={t.status} />
                 <span className={`history-date ${t.pickupOn && t.pickupOn < todayISO() ? 'overdue' : ''}`}>

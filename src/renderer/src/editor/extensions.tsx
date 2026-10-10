@@ -25,6 +25,8 @@ import {
   ListOrdered,
   Minus,
   Paperclip,
+  UserRound,
+  CalendarRange,
   MessageSquareWarning,
   Quote,
   Table as TableIcon,
@@ -43,6 +45,8 @@ import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type
 interface SlashCommand {
   /** Only where files go to Plannr's own storage (not the vault) */
   plannrFiles?: boolean
+  /** Only in tickets and ticket templates */
+  ticketOnly?: boolean
   label: string
   hint: string
   icon: ReactNode
@@ -89,16 +93,25 @@ const ToggleKeys = Extension.create({
   }
 })
 
-/** Keeps each editor's image uploader on the editor, so slash commands store images in the right place. */
-const Uploader = Extension.create<{ upload: ImageUploader }, { upload: ImageUploader }>({
+/**
+ * Keeps each editor's image uploader on the editor, so slash commands store images in the right place, and
+ * whether it edits a ticket (or ticket template), which adds the ticket blocks to the / menu.
+ */
+const Uploader = Extension.create<{ upload: ImageUploader; ticket: boolean }, { upload: ImageUploader; ticket: boolean }>({
   name: 'uploader',
-  addOptions: () => ({ upload: defaultUploader }),
+  addOptions: () => ({ upload: defaultUploader, ticket: false }),
   addStorage() {
-    return { upload: this.options.upload }
+    return { upload: this.options.upload, ticket: this.options.ticket }
   }
 })
-const uploaderOf = (editor: Editor): ImageUploader =>
-  (editor.storage as unknown as Record<string, { upload?: ImageUploader } | undefined>).uploader?.upload ?? defaultUploader
+const storageOf = (editor: Editor) => (editor.storage as unknown as Record<string, { upload?: ImageUploader; ticket?: boolean } | undefined>).uploader
+const uploaderOf = (editor: Editor): ImageUploader => storageOf(editor)?.upload ?? defaultUploader
+
+/** A linked fill-in field (see formLinks.ts), as inserted by the ticket blocks below */
+const linkedField = (link: string, label: string, kind: string, width = 'half') => ({
+  type: 'formField',
+  attrs: { label, kind, link, width, labelPos: 'top', options: [], value: '', placeholder: '', hint: '', rows: 2 }
+})
 
 const SLASH_COMMANDS: SlashCommand[] = [
   { label: 'Text', hint: 'Plain paragraph', icon: <Type />, keywords: 'paragraph p', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
@@ -128,6 +141,16 @@ const SLASH_COMMANDS: SlashCommand[] = [
         if (files.length) return insertFiles(e.view, files)
       })
     } },
+  { label: 'Customer details', hint: 'Name, phone, email and address, linked to the ticket’s customer', icon: <UserRound />, keywords: 'customer client contact name phone email address', ticketOnly: true, run: (e, r) =>
+      e.chain().focus().deleteRange(r).insertContent([
+        { type: 'paragraph', content: [linkedField('customer.name', 'Customer name', 'text'), { type: 'text', text: ' ' }, linkedField('customer.phone', 'Phone', 'phone'), { type: 'text', text: ' ' }] },
+        { type: 'paragraph', content: [linkedField('customer.email', 'Email', 'email'), { type: 'text', text: ' ' }] },
+        { type: 'paragraph', content: [linkedField('customer.address', 'Address', 'textarea', 'full'), { type: 'text', text: ' ' }] }
+      ]).run() },
+  { label: 'Ticket dates', hint: 'The ticket’s two dates (the second goes on the calendar)', icon: <CalendarRange />, keywords: 'dates received pickup delivery due calendar', ticketOnly: true, run: (e, r) =>
+      e.chain().focus().deleteRange(r).insertContent([
+        { type: 'paragraph', content: [linkedField('ticket.receivedOn', 'Received', 'date'), { type: 'text', text: ' ' }, linkedField('ticket.pickupOn', 'Pickup', 'date'), { type: 'text', text: ' ' }] }
+      ]).run() },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },
   { label: 'Table', hint: 'Rows and columns (right-click to add more)', icon: <TableIcon />, keywords: 'table grid rows columns spreadsheet', run: (e, r) =>
@@ -150,7 +173,10 @@ const SlashCommands = Extension.create({
         items: ({ query, editor }) => {
           const q = query.toLowerCase()
           const plannrFiles = uploaderOf(editor) === defaultUploader
-          return SLASH_COMMANDS.filter((c) => (plannrFiles || !c.plannrFiles) && `${c.label} ${c.keywords}`.toLowerCase().includes(q)).map((c) => ({
+          const ticket = Boolean(storageOf(editor)?.ticket)
+          return SLASH_COMMANDS.filter(
+            (c) => (plannrFiles || !c.plannrFiles) && (ticket || !c.ticketOnly) && `${c.label} ${c.keywords}`.toLowerCase().includes(q)
+          ).map((c) => ({
             key: c.label,
             label: c.label,
             hint: c.hint,
@@ -211,6 +237,8 @@ export interface EditorOptions {
   upload?: ImageUploader
   /** @-links to notes/tickets/customers (off in the vault so vault text never feeds the links index) */
   mentions?: boolean
+  /** A ticket or ticket template: the / menu offers Customer details and Ticket dates */
+  ticket?: boolean
 }
 
 export function buildExtensions(docId: string, options: EditorOptions = {}) {
@@ -239,7 +267,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     FileAttachment,
     TableKit.configure({ table: { resizable: true } }),
     SlashCommands,
-    Uploader.configure({ upload: options.upload ?? defaultUploader }),
+    Uploader.configure({ upload: options.upload ?? defaultUploader, ticket: Boolean(options.ticket) }),
     ...(options.mentions === false ? [] : [mention(docId)])
   ]
 }

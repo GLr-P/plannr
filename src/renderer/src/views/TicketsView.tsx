@@ -70,7 +70,7 @@ export function TicketsView() {
         <div className="filter-field grow">
           <Search />
           <input
-            placeholder="Search name, phone, email, repair #, device…"
+            placeholder="Search name, phone, email, ticket #, title…"
             value={query}
             onChange={(e) => useFilters.setState({ query: e.target.value })}
             aria-label="Search tickets"
@@ -122,7 +122,7 @@ export function TicketsView() {
               <tr>
                 <th>#</th>
                 <th>Customer</th>
-                <th>Device · Issue</th>
+                <th>Ticket</th>
                 <th>Status</th>
                 <th>Received</th>
                 <th>Pickup</th>

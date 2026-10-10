@@ -132,7 +132,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
                 <button type="button" className="history-row" onClick={() => go({ view: 'ticket', id: t.id })}>
                   <span className="mono">{formatTicketNumber(t.number)}</span>
                   <span className="history-main">
-                    {t.device || 'No device'}
+                    {t.device || 'Untitled'}
                     {t.issue && <span className="muted"> · {t.issue}</span>}
                   </span>
                   <StatusPill status={t.status} />

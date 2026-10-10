@@ -327,6 +327,8 @@ export interface PartInput {
 export interface Ticket extends TicketSummary {
   content: DocJSON | null
   templateId: string | null
+  /** From its template: names for the built-in boxes and which parts show */
+  layout: TicketLayout
 }
 
 export interface TicketFilter {
@@ -378,6 +380,68 @@ export interface TemplateSummary {
 
 export interface Template extends TemplateSummary {
   content: DocJSON | null
+  /** Ticket templates: what the top of their tickets shows (only what differs from the defaults is stored) */
+  layout: Partial<TicketLayout> | null
+}
+
+/** The top of a ticket page, set per ticket template: names for the built-in boxes and which parts show. */
+export interface TicketLayout {
+  /** The big title box (also its name on printouts) */
+  titleLabel: string
+  titlePlaceholder: string
+  /** The line under the title */
+  showSummary: boolean
+  summaryLabel: string
+  summaryPlaceholder: string
+  /** Customer with phone and email */
+  showCustomer: boolean
+  showReceived: boolean
+  receivedLabel: string
+  /** The date that goes on the calendar (pickup, delivery, due…) */
+  showPickup: boolean
+  pickupLabel: string
+  /** Price and payments */
+  showPrice: boolean
+  /** Quote and invoice line items */
+  showLines: boolean
+  showPhotos: boolean
+  showEmails: boolean
+}
+
+export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
+  titleLabel: 'Title',
+  titlePlaceholder: 'What is it? (e.g. Laptop screen, anniversary flowers)',
+  showSummary: true,
+  summaryLabel: 'Details',
+  summaryPlaceholder: 'A short description',
+  showCustomer: true,
+  showReceived: true,
+  receivedLabel: 'Received',
+  showPickup: true,
+  pickupLabel: 'Pickup',
+  showPrice: true,
+  showLines: true,
+  showPhotos: true,
+  showEmails: true
+}
+
+/** The starter "Repair intake" template's wording (and tickets from before layouts existed) */
+export const REPAIR_TICKET_LAYOUT: Partial<TicketLayout> = {
+  titleLabel: 'Device',
+  titlePlaceholder: 'Device (e.g. iPhone 13 Pro)',
+  summaryLabel: 'Issue',
+  summaryPlaceholder: 'What’s wrong with it?'
+}
+
+/** A template's saved layout over the defaults (blank names fall back to the default ones). */
+export function ticketLayout(saved?: Partial<TicketLayout> | null): TicketLayout {
+  const out = { ...DEFAULT_TICKET_LAYOUT }
+  for (const [k, v] of Object.entries(saved ?? {}) as [keyof TicketLayout, unknown][]) {
+    if (!(k in out)) continue
+    if (typeof out[k] === 'boolean' && typeof v === 'boolean') (out as Record<string, unknown>)[k] = v
+    else if (typeof out[k] === 'string' && typeof v === 'string' && v.trim()) (out as Record<string, unknown>)[k] = v.trim().slice(0, 80)
+  }
+  return out
 }
 
 // ---------- Tasks ----------
@@ -1084,8 +1148,8 @@ export interface PlannrApi {
     /** Ticket templates unless another kind is asked for */
     list(kind?: TemplateKind): Promise<TemplateSummary[]>
     get(id: string): Promise<Template | null>
-    create(input?: { name?: string; content?: DocJSON | null; kind?: TemplateKind; icon?: string }): Promise<Template>
-    update(id: string, patch: { name?: string; content?: DocJSON; icon?: string }): Promise<void>
+    create(input?: { name?: string; content?: DocJSON | null; kind?: TemplateKind; icon?: string; layout?: Partial<TicketLayout> | null }): Promise<Template>
+    update(id: string, patch: { name?: string; content?: DocJSON; icon?: string; layout?: Partial<TicketLayout> | null }): Promise<void>
     remove(id: string): Promise<void>
   }
   links: {

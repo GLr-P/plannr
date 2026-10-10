@@ -59,6 +59,9 @@ export function TicketView({ id }: { id: string }) {
 
 type Fields = Omit<TicketUpdate, 'content' | 'taxExempt'>
 
+/** The ticket's body knows it's a ticket (the / menu offers Customer details and Ticket dates). */
+const TICKET_EDITOR = { ticket: true }
+
 function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<void> }) {
   const [fields, setFields] = useState<Required<Fields>>({
     customerId: ticket.customerId,
@@ -81,6 +84,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const [updatedAt, setUpdatedAt] = useState(ticket.updatedAt)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const trashed = ticket.deletedAt !== null
+  const layout = ticket.layout // from the ticket's template: names for the boxes and which parts show
 
   const saver = useAutosave<TicketUpdate>(async (patch) => {
     const s = await api.tickets.update(ticket.id, patch)
@@ -125,29 +129,52 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   }
 
   const setCustomerField = (patch: CustomerInput): void => {
+    if (!customerIdRef.current) return setLinkedCustomer(patch) // still a draft (typed in the form): it becomes a customer
     setCustomer((c) => (c ? { ...c, ...patch } : c))
     customerSaver.queue(patch)
   }
 
-  // Fill-in fields linked to the customer: typing into one when the ticket has no customer yet creates one.
+  // Fill-in fields linked to the customer, on a ticket with no customer yet: the name field offers existing
+  // customers; a typed name becomes a new customer when you leave the field (other details create it right away).
   const creating = useRef<Promise<void> | null>(null)
   const pendingCustomer = useRef<CustomerInput>({})
+  const mounted = useRef(true)
   const setLinkedCustomer = (patch: CustomerInput): void => {
     if (customerIdRef.current) return setCustomerField(patch)
     setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
     pendingCustomer.current = { ...pendingCustomer.current, ...patch }
-    if (creating.current) return
+    if (Object.keys(patch).some((k) => k !== 'name')) createDraftCustomer()
+  }
+  const createDraftCustomer = (): void => {
+    if (creating.current || customerIdRef.current) return
+    if (!Object.values(pendingCustomer.current).some((v) => v?.trim())) return
     creating.current = (async () => {
       const first = pendingCustomer.current
       pendingCustomer.current = {}
       const created = await api.customers.create(first)
       customerIdRef.current = created.id
+      if (!mounted.current) {
+        await api.tickets.update(ticket.id, { customerId: created.id }) // left the page while it was being made
+        return
+      }
       setCustomer((c) => ({ ...created, ...c, id: created.id }))
       set({ customerId: created.id }, true)
       if (Object.keys(pendingCustomer.current).length) customerSaver.queue(pendingCustomer.current) // typed while it was being created
       pendingCustomer.current = {}
     })().finally(() => (creating.current = null))
   }
+  const pickExisting = (id: string): void => {
+    pendingCustomer.current = {}
+    setCustomer(null)
+    void pickCustomer(id)
+  }
+  useEffect(
+    () => () => {
+      mounted.current = false
+      createDraftCustomer() // a name typed but never left: keep it
+    },
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const pickCustomer = async (customerId: string | null): Promise<void> => {
     await customerSaver.flush() // finish saving edits to the previous customer first
@@ -169,10 +196,17 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   }
   const setLinkedRef = useRef(setLinked)
   setLinkedRef.current = setLinked
+  const pickExistingRef = useRef(pickExisting)
+  pickExistingRef.current = pickExisting
+  const commitRef = useRef(createDraftCustomer)
+  commitRef.current = createDraftCustomer
   useEffect(() => {
     useFormLinks.setState({
       active: !trashed,
       set: (link, value) => setLinkedRef.current(link, value),
+      hasCustomer: Boolean(customer?.id),
+      pickCustomer: (id) => pickExistingRef.current(id),
+      commit: () => commitRef.current(),
       values: {
         'customer.name': customer?.name ?? '',
         'customer.phone': customer?.phone ?? '',
@@ -250,7 +284,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                     { label: 'Quote', icon: <FileTextIcon />, onSelect: () => print('quote') },
                     { label: 'Invoice', icon: <FileCheck />, onSelect: () => print('invoice') },
                     { label: 'Receipt', icon: <Receipt />, onSelect: () => print('receipt') },
-                    { label: 'Device label', icon: <Tag />, onSelect: () => print('label') }
+                    { label: 'Label', icon: <Tag />, onSelect: () => print('label') }
                   ])
                 }}
               >
@@ -275,148 +309,167 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
         <input
           className="doc-title"
           value={fields.device}
-          placeholder="Device (e.g. iPhone 13 Pro)"
+          placeholder={layout.titlePlaceholder}
           readOnly={trashed}
           autoFocus={!ticket.device && !trashed}
           onChange={(e) => set({ device: e.target.value })}
-          aria-label="Device"
+          aria-label={layout.titleLabel}
         />
-        <input
-          className="doc-subtitle"
-          value={fields.issue}
-          placeholder="What’s wrong with it?"
-          readOnly={trashed}
-          onChange={(e) => set({ issue: e.target.value })}
-          aria-label="Issue"
-        />
+        {layout.showSummary && (
+          <input
+            className="doc-subtitle"
+            value={fields.issue}
+            placeholder={layout.summaryPlaceholder}
+            readOnly={trashed}
+            onChange={(e) => set({ issue: e.target.value })}
+            aria-label={layout.summaryLabel}
+          />
+        )}
 
-        <div className="props">
-          <div className="prop">
-            <span className="prop-label">
-              <User /> Customer
-            </span>
-            {customer ? (
-              <span className="prop-value">
+        {(layout.showCustomer || layout.showReceived || layout.showPickup || layout.showPrice) && (
+          <div className="props">
+            {layout.showCustomer && (
+              <div className="prop">
+                <span className="prop-label">
+                  <User /> Customer
+                </span>
+                {customer ? (
+                  <span className="prop-value">
+                    <input
+                      className="prop-input"
+                      value={customer.name}
+                      placeholder="Name"
+                      readOnly={trashed}
+                      onChange={(e) => setCustomerField({ name: e.target.value })}
+                      aria-label="Customer name"
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn sm"
+                      title="Open customer"
+                      aria-label="Open customer"
+                      disabled={!customer.id}
+                      onClick={() => go({ view: 'customer', id: customer.id })}
+                    >
+                      <ExternalLink />
+                    </button>
+                    {!trashed && <ClearButton label="Change customer" onClick={() => void pickCustomer(null)} />}
+                  </span>
+                ) : trashed ? (
+                  <span className="prop-value muted">—</span>
+                ) : (
+                  <CustomerPicker onPick={(id) => void pickCustomer(id)} />
+                )}
+              </div>
+            )}
+            {layout.showReceived && (
+              <div className="prop">
+                <span className="prop-label">
+                  <CalendarDays /> {layout.receivedLabel}
+                </span>
+                <input
+                  type="date"
+                  className="prop-input"
+                  value={fields.receivedOn ?? ''}
+                  readOnly={trashed}
+                  onChange={(e) => set({ receivedOn: e.target.value || null }, true)}
+                  aria-label="Received date"
+                />
+              </div>
+            )}
+            {layout.showCustomer && (
+              <div className="prop">
+                <span className="prop-label">
+                  <Phone /> Phone
+                </span>
                 <input
                   className="prop-input"
-                  value={customer.name}
-                  placeholder="Name"
-                  readOnly={trashed}
-                  onChange={(e) => setCustomerField({ name: e.target.value })}
-                  aria-label="Customer name"
+                  value={customer?.phone ?? ''}
+                  placeholder={customer ? 'Add phone' : 'Pick a customer first'}
+                  disabled={!customer || trashed}
+                  onChange={(e) => setCustomerField({ phone: e.target.value })}
+                  aria-label="Customer phone"
                 />
-                <button
-                  type="button"
-                  className="icon-btn sm"
-                  title="Open customer"
-                  aria-label="Open customer"
-                  onClick={() => go({ view: 'customer', id: customer.id })}
-                >
-                  <ExternalLink />
-                </button>
-                {!trashed && <ClearButton label="Change customer" onClick={() => void pickCustomer(null)} />}
-              </span>
-            ) : trashed ? (
-              <span className="prop-value muted">—</span>
-            ) : (
-              <CustomerPicker onPick={(id) => void pickCustomer(id)} />
+              </div>
+            )}
+            {layout.showPickup && (
+              <div className="prop">
+                <span className="prop-label">
+                  <CalendarCheck /> {layout.pickupLabel}
+                </span>
+                <input
+                  type="date"
+                  className="prop-input"
+                  value={fields.pickupOn ?? ''}
+                  readOnly={trashed}
+                  onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
+                  aria-label="Pickup date"
+                />
+              </div>
+            )}
+            {layout.showCustomer && (
+              <div className="prop">
+                <span className="prop-label">
+                  <Mail /> Email
+                </span>
+                <input
+                  className="prop-input"
+                  value={customer?.email ?? ''}
+                  placeholder={customer ? 'Add email' : 'Pick a customer first'}
+                  disabled={!customer || trashed}
+                  onChange={(e) => setCustomerField({ email: e.target.value })}
+                  aria-label="Customer email"
+                />
+              </div>
+            )}
+            {layout.showPrice && (
+              <div className="prop">
+                <span className="prop-label">
+                  <DollarSign /> Price
+                </span>
+                <input
+                  className="prop-input"
+                  value={priceText}
+                  placeholder="$0.00"
+                  inputMode="decimal"
+                  readOnly={trashed || fromLines}
+                  title={fromLines ? 'Worked out from the line items below' : undefined}
+                  onChange={(e) => setPriceText(e.target.value)}
+                  onBlur={() => {
+                    const cents = parseMoney(priceText)
+                    setPriceText(formatMoney(cents))
+                    if (cents !== fields.priceCents) set({ priceCents: cents }, true)
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                  aria-label="Price"
+                />
+              </div>
             )}
           </div>
-          <div className="prop">
-            <span className="prop-label">
-              <CalendarDays /> Received
-            </span>
-            <input
-              type="date"
-              className="prop-input"
-              value={fields.receivedOn ?? ''}
-              readOnly={trashed}
-              onChange={(e) => set({ receivedOn: e.target.value || null }, true)}
-              aria-label="Received date"
-            />
-          </div>
-          <div className="prop">
-            <span className="prop-label">
-              <Phone /> Phone
-            </span>
-            <input
-              className="prop-input"
-              value={customer?.phone ?? ''}
-              placeholder={customer ? 'Add phone' : 'Pick a customer first'}
-              disabled={!customer || trashed}
-              onChange={(e) => setCustomerField({ phone: e.target.value })}
-              aria-label="Customer phone"
-            />
-          </div>
-          <div className="prop">
-            <span className="prop-label">
-              <CalendarCheck /> Pickup
-            </span>
-            <input
-              type="date"
-              className="prop-input"
-              value={fields.pickupOn ?? ''}
-              readOnly={trashed}
-              onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
-              aria-label="Pickup date"
-            />
-          </div>
-          <div className="prop">
-            <span className="prop-label">
-              <Mail /> Email
-            </span>
-            <input
-              className="prop-input"
-              value={customer?.email ?? ''}
-              placeholder={customer ? 'Add email' : 'Pick a customer first'}
-              disabled={!customer || trashed}
-              onChange={(e) => setCustomerField({ email: e.target.value })}
-              aria-label="Customer email"
-            />
-          </div>
-          <div className="prop">
-            <span className="prop-label">
-              <DollarSign /> Price
-            </span>
-            <input
-              className="prop-input"
-              value={priceText}
-              placeholder="$0.00"
-              inputMode="decimal"
-              readOnly={trashed || fromLines}
-              title={fromLines ? 'Worked out from the line items below' : undefined}
-              onChange={(e) => setPriceText(e.target.value)}
-              onBlur={() => {
-                const cents = parseMoney(priceText)
-                setPriceText(formatMoney(cents))
-                if (cents !== fields.priceCents) set({ priceCents: cents }, true)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-              aria-label="Price"
-            />
-          </div>
-        </div>
+        )}
 
-        <TicketLines
-          ticketId={ticket.id}
-          taxExempt={taxExempt}
-          readOnly={trashed}
-          onTotal={onLinesTotal}
-          onTaxExempt={(exempt) => {
-            setTaxExempt(exempt)
-            void api.tickets.update(ticket.id, { taxExempt: exempt })
-          }}
-        />
+        {layout.showLines && (
+          <TicketLines
+            ticketId={ticket.id}
+            taxExempt={taxExempt}
+            readOnly={trashed}
+            onTotal={onLinesTotal}
+            onTaxExempt={(exempt) => {
+              setTaxExempt(exempt)
+              void api.tickets.update(ticket.id, { taxExempt: exempt })
+            }}
+          />
+        )}
 
-        {!trashed && <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
+        {!trashed && layout.showPrice && <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
 
-        <PhotoGallery ticketId={ticket.id} />
+        {layout.showPhotos && <PhotoGallery ticketId={ticket.id} />}
 
         <div className="ticket-body">
-          <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} />
+          <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} options={TICKET_EDITOR} />
         </div>
 
-        {customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}
+        {layout.showEmails && customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}
         <LinkedEvents id={ticket.id} refreshKey={fields.pickupOn} />
         <Backlinks id={ticket.id} />
       </div>

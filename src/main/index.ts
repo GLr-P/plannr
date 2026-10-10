@@ -12,7 +12,7 @@ import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
-import { ensureStarterTemplate } from './services/templates'
+import { ensureStarterTemplate, ensureTicketLayouts } from './services/templates'
 import { ensureStarterNoteTemplates } from './services/note-templates'
 import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
@@ -172,6 +172,7 @@ if (!app.requestSingleInstanceLock()) {
     loadDisplayPrefs(db)
     ensureOnboardingState(db)
     ensureStarterTemplate(db)
+    ensureTicketLayouts(db)
     ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)
 
