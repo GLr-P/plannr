@@ -5,6 +5,7 @@ import { formatTicketNumber, type DocJSON } from '../../shared/api'
 import { resolveFilePath } from './files'
 import { createCustomer } from './customers'
 import { digitsOnly, fieldText, localDate } from './doc'
+import { readingOrder } from '../../shared/canvas'
 
 /*
  * Your data in plain files, and contacts in from other apps.
@@ -142,6 +143,17 @@ function block(n: DocJSON, files: (id: string) => string | null, indent = ''): s
       const line = (r: string[]): string => `| ${Array.from({ length: width }, (_, i) => r[i] ?? '').join(' | ')} |`
       return [line(rows[0]), `|${' --- |'.repeat(width)}`, ...rows.slice(1).map(line)].join('\n')
     }
+    case 'canvas':
+      // A free-form page: its text, fields and pictures, top to bottom
+      return readingOrder(n.content ?? [])
+        .map((it) => {
+          if (it.type === 'canvasText') return String(it.attrs?.text ?? '')
+          if (it.type === 'formField') return `**${esc(String(it.attrs?.label ?? ''))}:** ${fieldText(String(it.attrs?.kind ?? ''), String(it.attrs?.value ?? ''))}`
+          if (it.type === 'image') return image(it, files)
+          return ''
+        })
+        .filter((t) => t.trim())
+        .join('\n\n')
     default:
       return kids(n.content)
   }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { FileText, Pin, PinOff, RotateCcw, Trash2, X } from 'lucide-react'
+import { FileText, Pin, PinOff, RotateCcw, Trash2, X, Move, PencilLine } from 'lucide-react'
 import type { DocJSON, Note, NoteUpdate } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -11,6 +11,9 @@ import { SaveIndicator } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { NoteEditor } from '../editor/NoteEditor'
+import { CanvasDesigner } from '../canvas/CanvasDesigner'
+import { CanvasView } from '../canvas/CanvasView'
+import { isCanvas } from '../../../shared/canvas'
 import { IconPicker, openPanel } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { styleNote } from '../menus'
@@ -79,6 +82,17 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
   }
 
   const onChange = useCallback((doc: DocJSON) => queue({ content: doc }), [queue])
+  // Free-form pages: Arrange moves and resizes things; Fill in types into the fields. A page with fields opens to fill in.
+  const canvas = isCanvas(note.content)
+  const [canvasDoc, setCanvasDoc] = useState<DocJSON | null>(canvas ? note.content : null)
+  const [arrange, setArrange] = useState(() => canvas && !(note.content?.content ?? []).some((it) => it.type === 'formField'))
+  const onCanvas = useCallback(
+    (doc: DocJSON) => {
+      setCanvasDoc(doc)
+      queue({ content: doc })
+    },
+    [queue]
+  )
   const onReady = useCallback((editor: Editor) => {
     editorRef.current = editor
   }, [])
@@ -218,13 +232,28 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
           )}
         </div>
 
-        <NoteEditor
-          docId={note.id}
-          content={note.content}
-          editable={!trashed}
-          onChange={onChange}
-          onReady={onReady}
-        />
+        {canvas && canvasDoc ? (
+          <>
+            {!trashed && (
+              <div className="note-canvas-mode" role="radiogroup" aria-label="Page mode">
+                <button type="button" role="radio" aria-checked={arrange} className={`chip-btn ${arrange ? 'active' : ''}`} onClick={() => setArrange(true)}>
+                  <Move /> Arrange
+                </button>
+                <button type="button" role="radio" aria-checked={!arrange} className={`chip-btn ${!arrange ? 'active' : ''}`} onClick={() => setArrange(false)}>
+                  <PencilLine /> Fill in
+                </button>
+                <span className="muted small">{arrange ? 'Add things from the bar, drag to move, drag corners to resize.' : 'Type into the fields. Switch to Arrange to change the layout.'}</span>
+              </div>
+            )}
+            {arrange && !trashed ? (
+              <CanvasDesigner key="arrange" doc={canvasDoc} onChange={onCanvas} forTicket={false} />
+            ) : (
+              <CanvasView key="fill" doc={canvasDoc} editable={!trashed} onChange={onCanvas} />
+            )}
+          </>
+        ) : (
+          <NoteEditor docId={note.id} content={note.content} editable={!trashed} onChange={onChange} onReady={onReady} />
+        )}
 
         <LinkedEvents id={note.id} />
         <Backlinks id={note.id} />

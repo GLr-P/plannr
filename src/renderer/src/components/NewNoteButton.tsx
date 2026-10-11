@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, FileText, Plus } from 'lucide-react'
+import { ChevronDown, FileText, LayoutDashboard, Plus } from 'lucide-react'
 import type { TemplateSummary } from '../../../shared/api'
 import { api } from '../api'
 import { newNote } from '../actions'
@@ -35,6 +35,10 @@ export function NewNoteButton({ folderId = null, primary = false }: { folderId?:
           <button type="button" className="menu-item" onClick={() => void newNote(folderId)}>
             <FileText />
             <span className="menu-label">Blank note</span>
+          </button>
+          <button type="button" className="menu-item" onClick={() => void newNote(folderId, undefined, undefined, true)}>
+            <LayoutDashboard />
+            <span className="menu-label">Free-form page</span>
           </button>
           {templates.map((t) => (
             <button key={t.id} type="button" className="menu-item" onClick={() => void newNote(folderId, undefined, t.id)}>

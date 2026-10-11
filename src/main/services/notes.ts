@@ -1,4 +1,5 @@
 import type { Db } from '../db'
+import { newCanvas } from '../../shared/canvas'
 import { newId, now, tx } from '../db'
 import type { DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate } from '../../shared/api'
 import { indexEntity, unindexEntity } from './search'
@@ -97,7 +98,7 @@ export function getNoteSummary(db: Db, id: string): NoteSummary {
   return toSummary(row)
 }
 
-export function createNote(db: Db, input: { title?: string; folderId?: string | null; templateId?: string | null } = {}): Note {
+export function createNote(db: Db, input: { title?: string; folderId?: string | null; templateId?: string | null; canvas?: boolean } = {}): Note {
   const id = newId()
   const t = now()
   const template = input.templateId
@@ -105,7 +106,7 @@ export function createNote(db: Db, input: { title?: string; folderId?: string | 
         | { content_json: string | null; icon: string }
         | undefined)
     : undefined
-  const content = template?.content_json ? (JSON.parse(template.content_json) as DocJSON) : null
+  const content = template?.content_json ? (JSON.parse(template.content_json) as DocJSON) : input.canvas ? newCanvas() : null
   tx(db, () => {
     db.prepare('INSERT INTO notes (id, title, folder_id, icon, content_json, content_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
       id,

@@ -14,6 +14,7 @@ import * as templates from './services/templates'
 import { backlinks } from './services/links'
 import * as calendar from './services/calendar'
 import * as holidays from './services/holidays'
+import * as news from './services/news'
 import * as money from './services/money'
 import { search } from './services/search'
 import { saveFile } from './services/files'
@@ -34,6 +35,7 @@ export type CoreApi = Pick<
   | 'links'
   | 'calendar'
   | 'holidays'
+  | 'news'
   | 'folders'
   | 'search'
   | 'settings'
@@ -144,6 +146,18 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
         return holidays.holidaysStale(db) ? holidays.refreshHolidays(db, hooks.fetchText) : holidays.holidayStatus(db)
       },
       refresh: async () => holidays.refreshHolidays(db, hooks.fetchText)
+    },
+    news: {
+      feed: async () => news.newsFeed(db),
+      refresh: async () => (await news.refreshNews(db, hooks.fetchText)).feed,
+      configure: async (patch) => {
+        news.configureNews(db, patch)
+        return patch.sources ? (await news.refreshNews(db, hooks.fetchText)).feed : news.newsFeed(db)
+      },
+      findPlace: async (query) => news.findPlace(query, hooks.fetchText),
+      suggest: async (place) => news.suggestSources(place),
+      detect: async (url) => news.detectSource(url, hooks.fetchText),
+      mark: async (id, patch) => news.markNews(db, id, patch)
     },
     folders: {
       list: async () => folders.listFolders(db),

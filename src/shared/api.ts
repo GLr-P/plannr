@@ -94,7 +94,7 @@ export interface StoredFile {
 }
 
 /** Asks the window to show something (notifications, switching profile) */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true }
 
 /** One profile on this PC (e.g. work and personal): its own data folder, so everything in it is separate from the others */
 export interface Profile {
@@ -639,6 +639,108 @@ export interface HolidayStatus {
   error: string | null
 }
 
+// ---------- News (local news, events, alerts and weather; see services/news.ts) ----------
+
+/**
+ * Where news comes from:
+ * - rss: any RSS or Atom feed (news sites, Google News searches)
+ * - page: a web page that lists news without a feed (links under the page's address are read as stories)
+ * - roads: road closures and construction around your place (DriveBC, British Columbia)
+ * - weather: forecast and weather warnings (Environment Canada in Canada, Open-Meteo elsewhere)
+ * - facebook: a public Facebook page, shown with Facebook's own page box (not read by Plannr)
+ */
+export type NewsSourceKind = 'rss' | 'page' | 'roads' | 'weather' | 'facebook'
+
+export interface NewsSource {
+  id: string
+  kind: NewsSourceKind
+  name: string
+  url: string
+  enabled: boolean
+}
+
+export const NEWS_TOPICS = [
+  { id: 'alerts', label: 'Alerts & closures' },
+  { id: 'civic', label: 'Council & elections' },
+  { id: 'events', label: 'Events' },
+  { id: 'community', label: 'Community' },
+  { id: 'business', label: 'Business' },
+  { id: 'sports', label: 'Sports' },
+  { id: 'crime', label: 'Police & courts' },
+  { id: 'sad', label: 'Sad news' },
+  { id: 'markets', label: 'Stocks & markets' }
+] as const
+export type NewsTopic = (typeof NEWS_TOPICS)[number]['id']
+
+export interface NewsPlace {
+  name: string
+  /** Province or state */
+  region: string
+  country: string
+  /** Two letters, e.g. CA */
+  countryCode: string
+  lat: number
+  lon: number
+}
+
+export interface NewsPrefs {
+  place: NewsPlace | null
+  /** Topics left out of the feed (sad news and markets by default) */
+  hideTopics: NewsTopic[]
+  /** Stories with any of these words are left out */
+  muted: string[]
+  /** Stories with any of these words go to Need to know */
+  boost: string[]
+  /** Stories older than this are cleared away (saved ones stay) */
+  keepDays: number
+  /** A Windows notification for urgent alerts (weather warnings, closures, advisories) */
+  notifyUrgent: boolean
+}
+
+export interface NewsItem {
+  id: string
+  sourceId: string
+  sourceName: string
+  sourceKind: NewsSourceKind
+  title: string
+  summary: string
+  url: string
+  image: string
+  publishedAt: number
+  topic: NewsTopic
+  /** Shown under Need to know */
+  important: boolean
+  /** Left out by your topics or muted words (shown only when asked) */
+  filtered: boolean
+  /** When the story's event happens, if it says */
+  when: { date: string; startTime: string | null; endTime: string | null } | null
+  read: boolean
+  saved: boolean
+  /** The calendar event made from it */
+  eventId: string | null
+}
+
+export interface NewsWeather {
+  place: string
+  /** e.g. "Mostly cloudy" */
+  now: string
+  temp: number | null
+  forecast: { label: string; text: string }[]
+  warnings: { title: string; url: string }[]
+  url: string
+  updatedAt: number
+}
+
+export interface NewsFeed {
+  items: NewsItem[]
+  weather: NewsWeather | null
+  sources: NewsSource[]
+  prefs: NewsPrefs
+  refreshedAt: number | null
+  /** Sources that couldn't be read last time */
+  errors: { sourceId: string; message: string }[]
+}
+
 // ---------- Vault ----------
 
 export type VaultItemKind = 'login' | 'card' | 'note'
@@ -1105,8 +1207,8 @@ export interface PlannrApi {
   notes: {
     list(opts?: NoteListOptions): Promise<NoteSummary[]>
     get(id: string): Promise<Note | null>
-    /** `templateId`: start as a copy of a note template */
-    create(input?: { title?: string; folderId?: string | null; templateId?: string | null }): Promise<Note>
+    /** `templateId`: start as a copy of a note template; `canvas`: a free-form page (put things anywhere) */
+    create(input?: { title?: string; folderId?: string | null; templateId?: string | null; canvas?: boolean }): Promise<Note>
     update(id: string, patch: NoteUpdate): Promise<NoteSummary>
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
@@ -1208,6 +1310,20 @@ export interface PlannrApi {
   settings: {
     get(key: string): Promise<unknown>
     set(key: string, value: unknown): Promise<void>
+  }
+  news: {
+    /** Stored stories (newest first), weather and settings; nothing is downloaded */
+    feed(): Promise<NewsFeed>
+    /** Downloads every source now */
+    refresh(): Promise<NewsFeed>
+    configure(patch: { sources?: NewsSource[]; prefs?: Partial<NewsPrefs> }): Promise<NewsFeed>
+    /** Towns matching a name, for choosing your place */
+    findPlace(query: string): Promise<NewsPlace[]>
+    /** Good sources for a place (local news search, weather, roads, regional news sites) */
+    suggest(place: NewsPlace): Promise<NewsSource[]>
+    /** Works out what a pasted link is (feed, web page or Facebook page) */
+    detect(url: string): Promise<NewsSource>
+    mark(id: string, patch: { read?: boolean; saved?: boolean; hidden?: boolean; eventId?: string | null }): Promise<void>
   }
   holidays: {
     /** Holidays in [from, to] for the chosen region (observances only if enabled) */
@@ -1406,6 +1522,7 @@ export const API_SHAPE = {
   links: ['backlinks'],
   calendar: ['range', 'get', 'create', 'update', 'remove', 'skipOccurrence', 'forLink', 'drop'],
   holidays: ['range', 'status', 'configure', 'refresh'],
+  news: ['feed', 'refresh', 'configure', 'findPlace', 'suggest', 'detect', 'mark'],
   vault: [
     'status',
     'setup',

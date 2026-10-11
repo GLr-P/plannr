@@ -17,6 +17,7 @@ import { VaultView } from './views/VaultView'
 import { MoneyView } from './views/MoneyView'
 import { InventoryView } from './views/InventoryView'
 import { TasksView } from './views/TasksView'
+import { NewsView } from './views/NewsView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, newTicket, openEntity } from './actions'
@@ -37,6 +38,7 @@ function navigateTo(target: NavigateTarget): void {
   if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
   else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
   else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
+  else if ('news' in target) useNav.getState().go({ view: 'news' })
   else openEntity(target.type, target.id)
 }
 
@@ -128,6 +130,8 @@ function MainView() {
       return <InventoryView />
     case 'tasks':
       return <TasksView />
+    case 'news':
+      return <NewsView />
     case 'settings':
       return <SettingsView />
   }

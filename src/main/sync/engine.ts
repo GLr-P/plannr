@@ -66,7 +66,9 @@ export const SYNCED_SETTINGS = [
   'starterTemplateCreated',
   'starterNoteTemplatesCreated',
   'vaultAutoLockMinutes',
-  'eventReminders'
+  'eventReminders',
+  'news.sources',
+  'news.prefs'
 ]
 
 const nowMs = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`
@@ -144,6 +146,13 @@ export class SyncEngine {
 
   private base(): string {
     return `/api/s/${this.k.space}`
+  }
+
+  /** A public web page or feed, downloaded by the sync server for this device (phones can't read other sites themselves) */
+  async fetchText(url: string): Promise<string> {
+    const bytes = await this.transport.getBytes(`${this.base()}/fetch?u=${encodeURIComponent(url)}`)
+    if (!bytes) throw new Error('Not found')
+    return new TextDecoder().decode(bytes)
   }
 
   /** First device: creates the space on the server (needs the owner secret from setup). */

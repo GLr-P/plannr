@@ -19,8 +19,7 @@ import {
   Sparkles,
   Users,
   Wallet,
-  Wrench
-} from 'lucide-react'
+  Wrench, Newspaper } from 'lucide-react'
 import { suggestPrefix } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
@@ -44,6 +43,7 @@ const FEATURES: { id: string; icon: ReactNode; title: string; text: string }[] =
   { id: 'inventory', icon: <Package />, title: 'Inventory', text: 'Parts in stock, their cost and price. Parts used on tickets come off stock.' },
   { id: 'money', icon: <Wallet />, title: 'Money', text: 'Income, expenses, bills and subscriptions, and who still owes you.' },
   { id: 'vault', icon: <Lock />, title: 'Vault', text: 'Passwords, cards and documents, locked with your own passcode.' },
+  { id: 'news', icon: <Newspaper />, title: 'News', text: 'Local news, events, closures, elections and the weather where you live. Add stories to your calendar.' },
   { id: 'notes', icon: <FileText />, title: 'Notes', text: 'Notes with checklists, tables, toggles and photos, in folders and sections.' },
   { id: 'templates', icon: <LayoutTemplate />, title: 'Templates', text: 'Starting points for tickets and notes. Make your own anytime.' }
 ]

@@ -13,6 +13,7 @@ export async function launch(dataDir: string, extraEnv: Record<string, string> =
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
   delete env.ELECTRON_RUN_AS_NODE // set by VS Code; would make Electron act as plain Node
   env.PLANNR_DATA_DIR = dataDir
+  env.PLANNR_NEWS_FIXTURES = join(root, 'tests', 'fixtures', 'news') // news never comes from the internet in tests
   Object.assign(env, extraEnv)
   // PLANNR_EXE runs the tests against a packaged build (release/win-unpacked/Plannr.exe) instead of out/.
   const app = process.env.PLANNR_EXE

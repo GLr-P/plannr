@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
 import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { holidaysStale, refreshHolidays } from './services/holidays'
+import { newsPrefs, newsStale, refreshNews } from './services/news'
 import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
@@ -296,6 +297,24 @@ if (!app.requestSingleInstanceLock()) {
       }
       updateHolidays()
       setInterval(updateHolidays, 6 * 60 * 60 * 1000)
+    }
+    // Local news every 30 minutes; urgent alerts (weather warnings, closures, advisories) can show a notification.
+    if (!isTest || process.env.PLANNR_NEWS_FIXTURES) {
+      const updateNews = (): void => {
+        if (!newsStale(db)) return
+        void refreshNews(db, fetchText)
+          .then(({ urgent }) => {
+            if (!background || !newsPrefs(db).notifyUrgent || !Notification.isSupported()) return
+            for (const item of urgent.slice(0, 3)) {
+              const n = new Notification({ title: item.title, body: `${item.sourceName} · Local news`, icon: resourcePath('icon.png') })
+              n.on('click', () => showWindow(getWindow, { news: true }))
+              n.show()
+            }
+          })
+          .catch(() => undefined)
+      }
+      setTimeout(updateNews, 8_000)
+      setInterval(updateNews, 10 * 60 * 1000)
     }
     if (background) {
       refreshTray = createTray(getWindow, quit, effectiveTheme, {

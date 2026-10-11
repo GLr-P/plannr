@@ -3,7 +3,8 @@ export const HOME_SECTIONS = [
   { id: 'tasks', label: 'Tasks due' },
   { id: 'tickets', label: 'Open tickets' },
   { id: 'pinned', label: 'Pinned notes' },
-  { id: 'recent', label: 'Recent notes' }
+  { id: 'recent', label: 'Recent notes' },
+  { id: 'news', label: 'Local news' }
 ] as const
 export type HomeSection = (typeof HOME_SECTIONS)[number]['id']
 const IDS = HOME_SECTIONS.map((s) => s.id) as HomeSection[]

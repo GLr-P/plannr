@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
-import { CalendarDays, DollarSign, FileText, Flag, Pin, Wrench } from 'lucide-react'
-import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { AlertTriangle, CalendarDays, DollarSign, FileText, Flag, Newspaper, Pin, Wrench } from 'lucide-react'
+import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type NewsFeed, type NewsItem, type TicketSummary } from '../../../shared/api'
 import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
@@ -41,6 +41,7 @@ export function HomeView() {
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [dueTasks, setDueTasks] = useState<Task[]>([])
+  const [news, setNews] = useState<NewsFeed | null>(null)
   const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void upcomingBills(7).then(setBills)
@@ -48,10 +49,58 @@ export function HomeView() {
     void api.calendar.range(todayISO(), addDays(todayISO(), 7)).then(setUpcoming)
     void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
+    void api.news.feed().then(setNews)
   }, [remote])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
+  // Local news: what you need to know, then what's coming up this week, else the latest
+  const newsItems: NewsItem[] = (() => {
+    if (!news) return []
+    const shown = news.items.filter((i) => !i.filtered && i.sourceKind !== 'weather')
+    const urgent = shown.filter((i) => i.important).slice(0, 3)
+    const soon = shown.filter((i) => i.when && i.when.date >= todayISO() && i.when.date <= addDays(todayISO(), 7) && !urgent.includes(i)).slice(0, 3)
+    const picked = [...urgent, ...soon]
+    return picked.length ? picked : shown.slice(0, 3)
+  })()
+
   const blocks: Record<HomeSection, ReactNode> = {
+    news: news && news.sources.length > 0 && (newsItems.length > 0 || news.weather) && (
+      <section>
+        <h2 className="section-title">
+          Around {news.prefs.place?.name ?? 'you'}
+          {news.weather?.temp != null && (
+            <span className="muted">
+              {' '}
+              · {news.weather.temp}° {news.weather.now}
+            </span>
+          )}
+        </h2>
+        <ul className="ticket-history">
+          {news.weather?.warnings.map((w) => (
+            <li key={w.title}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'news' })}>
+                <AlertTriangle className="row-lead news-urgent-icon" />
+                <span className="history-main">{w.title}</span>
+                <span className="history-date">Weather</span>
+              </button>
+            </li>
+          ))}
+          {newsItems.map((i) => (
+            <li key={i.id}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'news' })}>
+                {i.important ? <AlertTriangle className="row-lead news-urgent-icon" /> : i.when ? <CalendarDays className="row-lead" /> : <Newspaper className="row-lead" />}
+                {i.when && <span className="upcoming-day">{dayLabel(i.when.date)}</span>}
+                <span className="history-main">
+                  {i.title}
+                  <span className="muted"> · {i.sourceName}</span>
+                </span>
+                <span className="history-date">{relativeTime(i.publishedAt)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
     tasks: dueTasks.length > 0 && (
       <section>
         <h2 className="section-title">

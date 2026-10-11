@@ -153,3 +153,27 @@ describe('sync between devices', () => {
     await expect(stranger.engine.hello()).rejects.toThrow(/Not allowed/)
   })
 })
+
+describe('news through the sync server (phones)', () => {
+  it('downloads a public page for a signed-in device only', async () => {
+    const real = globalThis.fetch
+    const asked: string[] = []
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      asked.push(String(input))
+      return new Response('<rss><channel><title>Local</title></channel></rss>')
+    }) as typeof fetch
+    try {
+      expect(await a.engine.fetchText('https://www.castanet.net/rss/page-87.xml')).toContain('<title>Local</title>')
+      expect(asked).toEqual(['https://www.castanet.net/rss/page-87.xml'])
+      // Not for strangers, and only public https addresses
+      const stranger = await device(srv, newSyncKey(), 'stranger')
+      const denied = await srv.fetch(`/api/s/${'x'.repeat(16)}/fetch?u=${encodeURIComponent('https://example.com/')}`, { headers: { Authorization: 'Bearer nope' } })
+      expect(denied.status).toBe(401)
+      await expect(stranger.engine.fetchText('https://example.com/')).resolves.toMatch(/Not allowed/)
+      await expect(a.engine.fetchText('http://192.168.1.1/')).resolves.toMatch(/Not allowed/)
+      expect(asked).toHaveLength(1)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})

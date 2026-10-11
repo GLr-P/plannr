@@ -27,7 +27,7 @@ const post = (msg: WorkerReply): void => (self as unknown as Worker).postMessage
 const emit = (event: string): void => post({ event })
 
 /** Holiday feeds come through the sync service (the browser can't read Google's calendar directly). */
-const fetchText = async (url: string): Promise<string> => {
+const fetchHolidays = async (url: string): Promise<string> => {
   const res = await fetch(`/api/ics?u=${encodeURIComponent(url)}`)
   if (!res.ok) throw new Error(`Couldn’t download holidays (${res.status})`)
   return res.text()
@@ -63,9 +63,11 @@ async function openStorage(profile: string): Promise<{ db: Db; persistent: boole
 }
 
 function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncService } {
+  // Holiday calendars come through a public helper; news through this device's sync space (signed in)
+  const fetchText = (url: string): Promise<string> => (url.includes('calendar.google.com') ? fetchHolidays(url) : sync.fetchText(url))
   const core = createCoreApi(db, DATA, { moneyChanged: () => undefined, calendarChanged: () => undefined, fetchText })
   const vault = new VaultCore(db, DATA, () => emit('vault-locked'))
-  const sync = new SyncService(
+  const sync: SyncService = new SyncService(
     db,
     DATA,
     (touched) => {
@@ -249,7 +251,7 @@ const ready = new Promise<string>((resolve) => (begin = resolve)).then(async (pr
   ensureSearchIndex(db)
   const built = createWebApi(db)
   await built.sync.start() // loads the saved sync key, so boot knows whether this phone is connected
-  if (holidaysStale(db)) void refreshHolidays(db, fetchText).catch(() => undefined)
+  if (holidaysStale(db)) void refreshHolidays(db, fetchHolidays).catch(() => undefined)
   return { ...built, persistent }
 })
 

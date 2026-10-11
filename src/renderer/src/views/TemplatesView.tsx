@@ -234,7 +234,7 @@ function TemplatePage({ template }: { template: Template }) {
         </div>
         {template.kind === 'ticket' && <TicketLayoutPanel layout={template.layout} onChange={(layout) => saver.queue({ layout })} />}
         {isCanvas(template.content) ? (
-          <CanvasDesigner doc={template.content!} onChange={onContent} />
+          <CanvasDesigner doc={template.content!} onChange={onContent} forTicket={template.kind === 'ticket'} />
         ) : (
           <NoteEditor docId={template.id} content={template.content} editable onChange={onContent} options={template.kind === 'ticket' ? TICKET_EDITOR : undefined} />
         )}

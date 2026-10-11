@@ -441,3 +441,24 @@
   font-size: 12.5px;
   white-space: nowrap;
 }
+
+/* Free-form pages in notes */
+.note-canvas-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 12px;
+  flex-wrap: wrap;
+}
+.note-canvas-mode .chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.note-canvas-mode .chip-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.note-canvas-mode .muted {
+  margin-left: 6px;
+}

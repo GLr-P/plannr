@@ -8,6 +8,7 @@
  *   GET  /api/s/:space/pull?since=&limit= changes after a change number
  *   PUT/GET/HEAD /api/s/:space/blob/:id  encrypted file contents (R2 if bound, else in D1 in 1.5 MB parts)
  *   GET  /api/ics?u=                     a public holiday calendar from Google (the phone app can't fetch it itself)
+ *   GET  /api/s/<space>/fetch?u=         a public web page or feed for a signed-in device (news on the phone)
  *
  * Anything else is served from the static assets (the phone web app), when they're bound.
  */
@@ -105,13 +106,29 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
     return json({ ok: true })
   }
 
-  const m = /^\/api\/s\/([A-Za-z0-9_-]+)\/(hello|push|pull|blob)(?:\/([A-Za-z0-9_.-]+))?$/.exec(url.pathname)
+  const m = /^\/api\/s\/([A-Za-z0-9_-]+)\/(hello|push|pull|blob|fetch)(?:\/([A-Za-z0-9_.-]+))?$/.exec(url.pathname)
   if (!m) return json({ error: 'Not found' }, 404)
   const [, space, action, blobId] = m
   // Every device proves it has the space's key: the token is derived from it, and only its hash is stored here.
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
   const row = await env.DB.prepare('SELECT auth_hash FROM spaces WHERE id = ?').bind(space).first<{ auth_hash: string }>()
   if (!row || !token || (await sha256Hex(token)) !== row.auth_hash) return json({ error: 'Not allowed' }, 401)
+
+  if (action === 'fetch') {
+    // Only public https pages, small, and only for devices that are signed in to a space
+    const target = url.searchParams.get('u') ?? ''
+    let parsed: URL
+    try {
+      parsed = new URL(target)
+    } catch {
+      return json({ error: 'Bad address' }, 400)
+    }
+    if (parsed.protocol !== 'https:' || /^(localhost|127.|10.|192.168.|169.254.)/.test(parsed.hostname)) return json({ error: 'Not allowed' }, 400)
+    const res = await fetch(parsed.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Plannr news)', Accept: 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8' }, redirect: 'follow' })
+    const body = await res.arrayBuffer()
+    if (body.byteLength > 3_000_000) return json({ error: 'Too big' }, 413)
+    return new Response(body, { status: res.ok ? 200 : 502, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'private, max-age=300', ...CORS } })
+  }
 
   if (action === 'hello') {
     const r = await env.DB.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM changes WHERE space = ?').bind(space).first<{ seq: number }>()

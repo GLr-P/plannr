@@ -17,6 +17,7 @@ export type Route =
   | { view: 'money'; itemId?: string }
   | { view: 'inventory' }
   | { view: 'tasks' }
+  | { view: 'news' }
   | { view: 'settings' }
 
 interface NavState {

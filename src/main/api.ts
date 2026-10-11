@@ -348,9 +348,30 @@ export function registerIpc(api: PlannrApi): void {
   }
 }
 
-/** Downloads text (holiday feeds). PLANNR_HOLIDAY_FIXTURE points tests at a saved feed instead of the internet. */
+/** Saved copies of real news sources, for tests (PLANNR_NEWS_FIXTURES = the folder) */
+const NEWS_FIXTURES: [RegExp, string][] = [
+  [/castanet.net/, 'castanet.xml'],
+  [/news.google.com/, 'google.xml'],
+  [/open511/, 'roads.json'],
+  [/weather.gc.ca/, 'weather.xml'],
+  [/geocoding-api/, 'geocode.json'],
+  [/osoyoos.ca/, 'town-news.html']
+]
+
+/**
+ * Downloads text (holiday calendars, news). Tests never use the internet: PLANNR_HOLIDAY_FIXTURE is a saved
+ * holiday feed and PLANNR_NEWS_FIXTURES a folder of saved news sources.
+ */
 export async function fetchText(url: string): Promise<string> {
-  if (process.env.PLANNR_HOLIDAY_FIXTURE) return readFileSync(process.env.PLANNR_HOLIDAY_FIXTURE, 'utf8')
+  const holidayFixture = process.env.PLANNR_HOLIDAY_FIXTURE
+  if (holidayFixture && url.includes('calendar.google.com')) return readFileSync(holidayFixture, 'utf8')
+  const newsFixtures = process.env.PLANNR_NEWS_FIXTURES
+  if (newsFixtures) {
+    const hit = NEWS_FIXTURES.find(([re]) => re.test(url))
+    if (!hit) throw new Error('Offline (test)')
+    return readFileSync(join(newsFixtures, hit[1]), 'utf8')
+  }
+  if (holidayFixture) throw new Error('Offline (test)')
   const res = await net.fetch(url)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.text()

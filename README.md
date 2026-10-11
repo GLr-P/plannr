@@ -12,12 +12,13 @@ Plannr started as the one app a small business owner wanted instead of five: som
 
 | | |
 |---|---|
-| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
+| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos, or a free-form page where you put text, fill-in fields and pictures anywhere. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
 | **Calendar** | Month, week and day views. Drag notes and tickets onto a day. Reminders pop up in Windows. Public holidays included. |
 | **Customers** | The people and companies you work with: their details and everything you've done for them. Search by name, email or phone number in any format. |
 | **Tickets** | Track jobs, repairs, orders or requests from start to finish: status, dates, price, photos and a form you design, either as a document or on a free-form canvas where you put fields, text and pictures anywhere. Print a slip, a receipt or a label. Rename the statuses to fit your work. |
 | **Money** | Income (tax included, tax on top, or no tax), expenses, bills and subscriptions with auto-pay, who still owes you, and monthly totals. CSV export. |
 | **Vault** | Passwords, cards and documents, encrypted with your own passcode (AES-256). Locks itself when you step away. |
+| **News** | What's happening where you live: local news, events, closures, elections and the weather, from the sources you choose (news sites, your town's news page, Facebook pages). Sad news and stock markets are left out unless you want them. Put any story on your calendar in one click. |
 
 Don't need some of it? Untick it during the welcome tour (or later in Settings) and it leaves the menu.
 
@@ -56,10 +57,11 @@ Works on Windows 10 and 11 (64-bit). Your data lives in `%APPDATA%\Plannr\data`,
 
 Plannr has no account, no server and no tracking, and it never sends your notes, contacts or other data anywhere unless you ask it to. Your data stays in `%APPDATA%\Plannr\data` on your computer.
 
-It makes two automatic connections, neither of which sends any of your data, and you can turn both off:
+It makes these automatic connections, none of which sends any of your data, and you can turn each off:
 
 - **Update check:** it asks GitHub whether a newer version of Plannr has been released (Settings → General → Updates).
 - **Public holidays:** it downloads your country's public holiday calendar from Google (Settings → General → Holidays → Off).
+- **News** (only if you set it up): it downloads the news sources you chose, and looks up your town's location with Open-Meteo when you pick it. Nothing about you is sent.
 
 If you connect **Google Calendar**, **Zoho Mail** or **QuickBooks Online**, Plannr exchanges data with that service only, and only what Settings describes. Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.
 

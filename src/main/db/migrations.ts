@@ -399,5 +399,28 @@ export const migrations: string[] = [
 
   /* 22: ticket templates choose what the top of their tickets shows (see TicketLayout) */ `
   ALTER TABLE templates ADD COLUMN layout TEXT;
+  `,
+
+  /* 23: local news (stories are kept on each device; the sources and preferences sync as settings) */ `
+  CREATE TABLE news_items (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    summary TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    image TEXT NOT NULL DEFAULT '',
+    published_at INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL,
+    read_at INTEGER,
+    saved INTEGER NOT NULL DEFAULT 0,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    event_id TEXT,
+    severe INTEGER NOT NULL DEFAULT 0,
+    alerted INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX news_items_published ON news_items(published_at);
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
   `
 ]

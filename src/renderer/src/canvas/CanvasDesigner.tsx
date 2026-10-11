@@ -79,7 +79,8 @@ interface Drag {
   moved: boolean
 }
 
-export function CanvasDesigner({ doc, onChange }: { doc: DocJSON; onChange: (doc: DocJSON) => void }) {
+/** `forTicket`: offer the ticket's own parts (customer, title, dates, photos, lines, payments); off for notes */
+export function CanvasDesigner({ doc, onChange, forTicket = true }: { doc: DocJSON; onChange: (doc: DocJSON) => void; forTicket?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const width = useWidth(hostRef)
   const scale = width ? Math.min(1, width / CANVAS_WIDTH) : 1
@@ -284,15 +285,23 @@ export function CanvasDesigner({ doc, onChange }: { doc: DocJSON; onChange: (doc
         <ToolButton icon={<Type />} label="Text" onClick={() => add([textItem(y())])} />
         <ToolButton icon={<Heading />} label="Heading" onClick={() => add([textItem(y(), true)])} />
         <ToolButton icon={<FormInput />} label="Field" onClick={() => add([fieldItem(y())], { configure: true })} />
-        <ToolButton icon={<UserRound />} label="Customer" title="Customer details: name, phone, email, address" onClick={() => add(customerItems(y()))} />
-        <ToolButton icon={<TextCursorInput />} label="Title" title="The ticket's title" onClick={() => add([titleItem(y())])} />
-        <ToolButton icon={<CalendarRange />} label="Dates" title="The ticket's two dates" onClick={() => add(dateItems(y()))} />
+        {forTicket && (
+          <>
+            <ToolButton icon={<UserRound />} label="Customer" title="Customer details: name, phone, email, address" onClick={() => add(customerItems(y()))} />
+            <ToolButton icon={<TextCursorInput />} label="Title" title="The ticket's title" onClick={() => add([titleItem(y())])} />
+            <ToolButton icon={<CalendarRange />} label="Dates" title="The ticket's two dates" onClick={() => add(dateItems(y()))} />
+          </>
+        )}
         <ToolButton icon={<ImageIcon />} label="Picture" onClick={() => void addPicture()} />
         <ToolButton icon={<Square />} label="Box" onClick={() => add([boxItem(y())])} />
         <ToolButton icon={<Minus />} label="Line" onClick={() => add([lineItem(y())])} />
-        <ToolButton icon={<Images />} label="Photos" title="The ticket's photos" onClick={() => add([partItem(y(), 'photos')])} />
-        <ToolButton icon={<ListOrdered />} label="Lines" title="Quote & invoice lines" onClick={() => add([partItem(y(), 'lines' as CanvasPart)])} />
-        <ToolButton icon={<Wallet />} label="Payments" title="Price & payments" onClick={() => add([partItem(y(), 'payments')])} />
+        {forTicket && (
+          <>
+            <ToolButton icon={<Images />} label="Photos" title="The ticket's photos" onClick={() => add([partItem(y(), 'photos')])} />
+            <ToolButton icon={<ListOrdered />} label="Lines" title="Quote & invoice lines" onClick={() => add([partItem(y(), 'lines' as CanvasPart)])} />
+            <ToolButton icon={<Wallet />} label="Payments" title="Price & payments" onClick={() => add([partItem(y(), 'payments')])} />
+          </>
+        )}
         <span className="cv-toolbar-gap" />
         <IconButton icon={<Undo2 />} label="Undo (Ctrl+Z)" onClick={undo} disabled={!history.current.past.length} />
         <IconButton icon={<Redo2 />} label="Redo (Ctrl+Y)" onClick={redo} disabled={!history.current.future.length} />

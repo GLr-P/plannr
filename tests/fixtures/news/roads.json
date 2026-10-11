@@ -1,0 +1,49 @@
+{
+ "events": [
+  {
+   "jurisdiction_url": "https://api.open511.gov.bc.ca/jurisdiction",
+   "url": "https://api.open511.gov.bc.ca/events/drivebc.ca/RIDE-102472",
+   "id": "drivebc.ca/RIDE-102472",
+   "headline": "CONSTRUCTION",
+   "status": "ACTIVE",
+   "created": "2026-09-17T06:09:46-07:00",
+   "updated": "2026-09-29T11:42:44-07:00",
+   "description": "Mowing from Highway 97, In Osoyoos to Highway 3, In Keremeos. Starting Thu Sep 17 until Thu Oct 15. From 6:00 AM to 4:00 PM PDT, every day. Last update: September 29th, 2026 at 11:42am PDT. Watch for crews and equipment working.",
+   "+ivr_message": "Mowing from Highway 97, In Osoyoos to Highway 3, In Keremeos. Starting Thu Sep 17 until Thu Oct 15. From 6:00 AM to 4:00 PM PDT, every day. Last update: September 29th, 2026 at 11:42am PDT. Watch for crews and equipment working.",
+   "+linear_reference_km": 0,
+   "schedule": {
+    "intervals": [
+     "2026-09-17T13:00/2026-10-15T23:00"
+    ]
+   },
+   "event_type": "CONSTRUCTION",
+   "event_subtypes": [
+    "ROAD_CONSTRUCTION"
+   ],
+   "severity": "MINOR",
+   "roads": [
+    {
+     "name": "Highway 97",
+     "from": "97th Street",
+     "direction": "BOTH",
+     "state": "ALL_LANES_OPEN"
+    }
+   ],
+   "areas": [
+    {
+     "url": "http://www.geonames.org/8630138",
+     "name": "Okanagan-Shuswap District",
+     "id": "drivebc.ca/5"
+    }
+   ]
+  }
+ ],
+ "pagination": {
+  "offset": "0"
+ },
+ "meta": {
+  "url": "/events",
+  "up_url": "",
+  "version": "v1"
+ }
+}

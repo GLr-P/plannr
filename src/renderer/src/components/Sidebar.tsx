@@ -19,8 +19,7 @@ import {
   Wrench,
   Package,
   CheckSquare,
-  type LucideIcon
-} from 'lucide-react'
+  type LucideIcon, Newspaper } from 'lucide-react'
 import type { Folder as FolderT, NoteSummary, SidebarDest, SidebarSection } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -441,6 +440,7 @@ export function Sidebar() {
     calendar: <NavItem key="calendar" icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} {...navDrop('calendar')} />,
     money: <NavItem key="money" icon={<Wallet />} label="Money" target={{ view: 'money' }} {...navDrop('money')} />,
     tasks: <NavItem key="tasks" icon={<CheckSquare />} label="Tasks" target={{ view: 'tasks' }} count={dueTasks || undefined} {...navDrop('tasks')} />,
+    news: <NavItem key="news" icon={<Newspaper />} label="News" target={{ view: 'news' }} {...navDrop('news')} />,
     inventory: <NavItem key="inventory" icon={<Package />} label="Inventory" target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
     notes: (
       <NavItem
