@@ -8,8 +8,12 @@ import { api } from '../api'
  */
 export const useDisplay = create<{ version: number; prefs: DisplayPrefs }>(() => ({ version: 0, prefs: displayPrefs() }))
 
+/** Reloads them (another device may have changed them). Only an actual change re-renders the page, so a sync
+ *  doesn't throw you back to the top of whatever you're reading. */
 export async function loadDisplay(): Promise<void> {
+  const before = JSON.stringify(displayPrefs())
   setDisplayPrefs(await api.display.get())
+  if (JSON.stringify(displayPrefs()) === before) return
   useDisplay.setState((s) => ({ version: s.version + 1, prefs: { ...displayPrefs() } }))
 }
 

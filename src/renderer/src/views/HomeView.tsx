@@ -58,7 +58,7 @@ export function HomeView() {
   // Local news: what you need to know, then what's coming up this week, else the latest
   const newsItems: NewsItem[] = (() => {
     if (!news) return []
-    const shown = news.items.filter((i) => !i.filtered && i.sourceKind !== 'weather')
+    const shown = news.items.filter((i) => !i.filtered && i.sourceKind !== 'weather' && i.page === 'local')
     const urgent = shown.filter((i) => i.important).slice(0, 3)
     const soon = shown.filter((i) => i.when && i.when.date >= todayISO() && i.when.date <= addDays(todayISO(), 7) && !urgent.includes(i)).slice(0, 3)
     const picked = [...urgent, ...soon]
@@ -66,7 +66,7 @@ export function HomeView() {
   })()
 
   const blocks: Record<HomeSection, ReactNode> = {
-    news: news && news.sources.length > 0 && (newsItems.length > 0 || news.weather) && (
+    news: news && news.sources.some((s) => !s.page) && (newsItems.length > 0 || news.weather) && (
       <section>
         <h2 className="section-title">
           Around {news.prefs.place?.name ?? 'you'}

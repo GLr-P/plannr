@@ -355,7 +355,13 @@ const NEWS_FIXTURES: [RegExp, string][] = [
   [/open511/, 'roads.json'],
   [/weather.gc.ca/, 'weather.xml'],
   [/geocoding-api/, 'geocode.json'],
-  [/osoyoos.ca/, 'town-news.html']
+  [/osoyoos.ca/, 'town-news.html'],
+  [/bapcsales|buildapcsales/, 'bapcsales.xml'],
+  [/redflagdeals/, 'rfd.xml'],
+  [/cheapshark/, 'cheapshark.json'],
+  [/epicgames/, 'epic.json'],
+  [/gematsu/, 'gematsu.xml'],
+  [/techpowerup/, 'techpowerup.xml']
 ]
 
 /**
@@ -372,7 +378,8 @@ export async function fetchText(url: string): Promise<string> {
     return readFileSync(join(newsFixtures, hit[1]), 'utf8')
   }
   if (holidayFixture) throw new Error('Offline (test)')
-  const res = await net.fetch(url)
+  // Some services (e.g. CheapShark) want to know which app is asking
+  const res = await net.fetch(url, { headers: { 'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Plannr/${app.getVersion()} (+https://github.com/GLr-P/plannr)` } })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.text()
 }

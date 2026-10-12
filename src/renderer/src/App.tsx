@@ -38,7 +38,7 @@ function navigateTo(target: NavigateTarget): void {
   if ('calendarDate' in target) useNav.getState().go({ view: 'calendar', date: target.calendarDate })
   else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
   else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
-  else if ('news' in target) useNav.getState().go({ view: 'news' })
+  else if ('news' in target) useNav.getState().go({ view: 'news', page: target.page })
   else openEntity(target.type, target.id)
 }
 
@@ -131,7 +131,7 @@ function MainView() {
     case 'tasks':
       return <TasksView />
     case 'news':
-      return <NewsView />
+      return <NewsView page={route.page} />
     case 'settings':
       return <SettingsView />
   }

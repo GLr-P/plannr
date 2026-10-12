@@ -26,6 +26,12 @@ const fakeFetch: news.FetchText = async (url) => {
   if (url.includes('weather.gc.ca')) return fixture('weather.xml')
   if (url.includes('geocoding')) return fixture('geocode.json')
   if (url.includes('osoyoos.ca')) return fixture('town-news.html')
+  if (url.includes('bapcsales')) return fixture('bapcsales.xml')
+  if (url.includes('redflagdeals')) return fixture('rfd.xml')
+  if (url.includes('cheapshark')) return fixture('cheapshark.json')
+  if (url.includes('epicgames')) return fixture('epic.json')
+  if (url.includes('gematsu')) return fixture('gematsu.xml')
+  if (url.includes('techpowerup')) return fixture('techpowerup.xml')
   throw new Error(`offline: ${url}`)
 }
 
@@ -207,5 +213,83 @@ describe('setting up', () => {
     expect((await news.detectSource('https://www.facebook.com/profile.php?id=61584567862257', fakeFetch)).kind).toBe('facebook')
     expect(await news.detectSource('castanet.net/rss/page-87.xml', fakeFetch)).toMatchObject({ kind: 'rss', name: 'Castanet.net - Oliver/Osoyoos' })
     expect(await news.detectSource('https://www.osoyoos.ca/community/news-alerts', fakeFetch)).toMatchObject({ kind: 'page', name: 'Osoyoos – News' })
+  })
+})
+
+describe('pages for games and PC parts', () => {
+  const now = Date.parse('2026-10-11T17:40:00-07:00')
+
+  it('reads CheapShark game deals and Epic free games', () => {
+    const deals = news.parseCheapShark(fixture('cheapshark.json'), now)
+    expect(deals[0]).toMatchObject({ title: 'Silver Pines – US$22.26 (38% off)', url: expect.stringMatching(/^https:\/\/www\.cheapshark\.com\/redirect\?dealID=/) })
+    expect(deals[0].summary).toBe('Was US$35.98 · at Steam · Metacritic 85 · Steam reviews: Very Positive (88%)'.replace('(88%)', deals[0].summary.match(/\(\d+%\)$/)?.[0] ?? ''))
+    const free = news.parseEpicFree(fixture('epic.json'), now)
+    const titles = free.map((f) => f.title)
+    expect(titles).toEqual(expect.arrayContaining(['Free now: Out of Sight', 'Free now: TerraScape', 'Free soon: Bad Cheese', 'Free soon: Agent A: A puzzle in disguise']))
+    expect(titles.some((t) => /Ghostrunner|Castlevania/.test(t))).toBe(false) // discounted, not free
+    expect(free.find((f) => f.title === 'Free now: Out of Sight')).toMatchObject({ url: 'https://store.epicgames.com/en-US/p/out-of-sight-b96ca8' })
+    expect(free.find((f) => f.title === 'Free soon: Bad Cheese')?.summary).toMatch(/^Free to keep on the Epic Games Store from Oct 15 to Oct 22\./)
+  })
+
+  it('works out discounts', () => {
+    expect(news.discountOf('[Monitor] Acer Predator X32 ($1100-400=$700) [CanadaComputers]')).toBe(36)
+    expect(news.discountOf('KAMRUI Mini PCs from $360.99, Save Up to 35%')).toBe(35)
+    expect(news.discountOf('Hollow Knight – US$7.49 (50% off)')).toBe(50)
+    expect(news.discountOf('Samsung 990 Pro 2TB, was $299.99 now $179.99')).toBe(40)
+    expect(news.discountOf('New GPU announced')).toBeNull()
+  })
+
+  it('sorts game and hardware stories into their own topics', () => {
+    expect(news.topicOf('Tekken 8 DLC character Roger Jr. launches November 11', 'rss', false)).toBe('releases')
+    expect(news.topicOf('[GPU] RTX 5070 ($729) [Newegg]', 'rss', false)).toBe('deals')
+    expect(news.topicOf('Free games: claim Bad Cheese for free', 'rss', false)).toBe('free')
+    expect(news.topicOf('RTX 5080 Super specs leak ahead of CES', 'rss', false)).toBe('rumors')
+    expect(news.topicOf('Ryzen 9 9950X3D review: the fastest gaming CPU', 'rss', false)).toBe('reviews')
+    expect(news.topicOf('Modder boots Googlebook OS on Apple Silicon Macs', 'rss', false)).toBe('general')
+    expect(news.topicOf('Silver Pines – US$22.26 (38% off)', 'gamedeals', false)).toBe('deals')
+    // Game names and deal wording aren't sad news or markets
+    expect(news.topicOf('Fatal Fury: City of the Wolves DLC character Reina announced', 'rss', false)).toBe('releases')
+    expect(news.topicOf('Deaths Door – US$1.99 (90% off)', 'rss', false)).toBe('deals')
+    expect(news.topicOf('[Amazon.ca] Running shoes back in stock', 'rss', false)).not.toBe('markets')
+  })
+
+  it('a Games page: free games and big discounts are Top picks; release dates are Coming up', async () => {
+    news.configureNews(db, { prefs: { place: { name: 'Osoyoos', region: 'British Columbia', country: 'Canada', countryCode: 'CA', lat: 49, lon: -119 } } })
+    const page = news.addNewsPage(db, 'games')
+    expect(page).toMatchObject({ name: 'Games', minDiscount: 60 })
+    const sources = news.newsSources(db).filter((s) => s.page === page.id)
+    expect(sources.map((s) => s.kind)).toEqual(['freegames', 'gamedeals', 'rss', 'rss', 'rss'])
+    expect(sources[0].url).toContain('country=CA')
+    const { feed } = await news.refreshNews(db, fakeFetch, now)
+    const mine = feed.items.filter((i) => i.page === page.id)
+    expect(mine.find((i) => i.title === 'Free now: Out of Sight')).toMatchObject({ topic: 'free', important: true })
+    expect(mine.find((i) => i.title === 'Free soon: Bad Cheese')).toMatchObject({ important: false, when: { date: '2026-10-15', startTime: null, endTime: null } })
+    expect(mine.find((i) => i.title.startsWith('Silver Pines'))).toMatchObject({ discount: 38, important: false }) // under 60% off
+    expect(mine.find((i) => i.title.startsWith('Tekken 8 DLC'))?.when?.date).toBe('2026-11-11')
+    expect(feed.items.filter((i) => i.page === 'local')).toEqual([]) // nothing leaks onto the local page
+  })
+
+  it('a PC parts page: only PC parts, Canadian deal sites in Canada, discounts as Top picks', async () => {
+    news.configureNews(db, { prefs: { place: { name: 'Osoyoos', region: 'British Columbia', country: 'Canada', countryCode: 'CA', lat: 49, lon: -119 } } })
+    const page = news.addNewsPage(db, 'pc', 'Shop deals')
+    expect(page.name).toBe('Shop deals')
+    expect(news.newsSources(db).filter((s) => s.page === page.id).map((s) => s.name)).toEqual(['r/bapcsalescanada (top today)', 'RedFlagDeals – Hot Deals', 'TechPowerUp (new hardware)', 'Tom’s Hardware'])
+    expect(news.presetPage('pc', 'US').sources[0].name).toBe('r/buildapcsales (top today)')
+    const { feed } = await news.refreshNews(db, fakeFetch, now)
+    const mine = feed.items.filter((i) => i.page === page.id)
+    const shown = mine.filter((i) => !i.filtered)
+    // Laundry soap and shoes from RedFlagDeals are left out; the monitor and keyboard deals stay
+    expect(mine.find((i) => /Laundry Detergent/.test(i.title))?.filtered).toBe(true)
+    expect(shown.some((i) => /Wireless Keyboard/.test(i.title))).toBe(true)
+    expect(mine.find((i) => /Acer Predator X32/.test(i.title))).toMatchObject({ discount: 36, important: true, filtered: false })
+    expect(mine.find((i) => /Daily Thread/.test(i.title))?.filtered).toBe(true)
+  })
+
+  it('deleting a page deletes its sources and stories', async () => {
+    const page = news.addNewsPage(db, 'games')
+    await news.refreshNews(db, fakeFetch, now)
+    news.configureNews(db, { pages: [] })
+    expect(news.newsSources(db).some((s) => s.page === page.id)).toBe(false)
+    expect(news.newsFeed(db, now).items.some((i) => i.page === page.id)).toBe(false)
   })
 })

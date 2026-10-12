@@ -154,6 +154,10 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
         news.configureNews(db, patch)
         return patch.sources ? (await news.refreshNews(db, hooks.fetchText)).feed : news.newsFeed(db)
       },
+      addPage: async (preset, name) => {
+        news.addNewsPage(db, preset, name)
+        return (await news.refreshNews(db, hooks.fetchText)).feed
+      },
       findPlace: async (query) => news.findPlace(query, hooks.fetchText),
       suggest: async (place) => news.suggestSources(place),
       detect: async (url) => news.detectSource(url, hooks.fetchText),

@@ -94,7 +94,7 @@ export interface StoredFile {
 }
 
 /** Asks the window to show something (notifications, switching profile) */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true; page?: string }
 
 /** One profile on this PC (e.g. work and personal): its own data folder, so everything in it is separate from the others */
 export interface Profile {
@@ -651,8 +651,10 @@ export interface HolidayStatus {
  * - roads: road closures and construction around your place (DriveBC, British Columbia)
  * - weather: forecast and weather warnings (Environment Canada in Canada, Open-Meteo elsewhere)
  * - facebook: a public Facebook page, shown with Facebook's own page box (not read by Plannr)
+ * - gamedeals: the best-rated game deals (CheapShark)
+ * - freegames: games free to keep on the Epic Games Store, now and next
  */
-export type NewsSourceKind = 'rss' | 'page' | 'roads' | 'weather' | 'facebook'
+export type NewsSourceKind = 'rss' | 'page' | 'roads' | 'weather' | 'facebook' | 'gamedeals' | 'freegames'
 
 export interface NewsSource {
   id: string
@@ -662,20 +664,55 @@ export interface NewsSource {
   enabled: boolean
   /** Its new stories always go under Need to know (e.g. your town's notices) */
   important?: boolean
+  /** Which News page it belongs to (missing = the local page) */
+  page?: string
 }
 
+/** Topics: the local page sorts into the local ones, your other pages (games, deals, tech…) into the others */
 export const NEWS_TOPICS = [
-  { id: 'alerts', label: 'Alerts & closures' },
-  { id: 'civic', label: 'Council & elections' },
-  { id: 'events', label: 'Events' },
-  { id: 'community', label: 'Community' },
-  { id: 'business', label: 'Business' },
-  { id: 'sports', label: 'Sports' },
-  { id: 'crime', label: 'Police & courts' },
-  { id: 'sad', label: 'Sad news' },
-  { id: 'markets', label: 'Stocks & markets' }
+  { id: 'alerts', label: 'Alerts & closures', for: 'local' },
+  { id: 'civic', label: 'Council & elections', for: 'local' },
+  { id: 'events', label: 'Events', for: 'local' },
+  { id: 'community', label: 'Community', for: 'local' },
+  { id: 'business', label: 'Business', for: 'local' },
+  { id: 'sports', label: 'Sports', for: 'local' },
+  { id: 'crime', label: 'Police & courts', for: 'local' },
+  { id: 'deals', label: 'Deals & sales', for: 'interest' },
+  { id: 'free', label: 'Free', for: 'interest' },
+  { id: 'releases', label: 'Releases & launches', for: 'interest' },
+  { id: 'reviews', label: 'Reviews', for: 'interest' },
+  { id: 'rumors', label: 'Leaks & rumours', for: 'interest' },
+  { id: 'general', label: 'News', for: 'interest' },
+  { id: 'sad', label: 'Sad news', for: 'both' },
+  { id: 'markets', label: 'Stocks & markets', for: 'both' }
 ] as const
 export type NewsTopic = (typeof NEWS_TOPICS)[number]['id']
+export const topicsFor = (local: boolean) => NEWS_TOPICS.filter((t) => t.for === 'both' || t.for === (local ? 'local' : 'interest'))
+
+/** The local page's id (its settings are NewsPrefs) */
+export const LOCAL_NEWS_PAGE = 'local'
+
+/** A News page of your own besides the local one: e.g. Games, PC parts. Its sources say `page: id`. */
+export interface NewsPage {
+  id: string
+  name: string
+  hideTopics: NewsTopic[]
+  muted: string[]
+  boost: string[]
+  /** Only stories with one of these words (blank = all), e.g. GPU, SSD, monitor on a PC parts page */
+  only: string[]
+  /** Deals at least this much off are Top picks */
+  minDiscount: number
+  /** A Windows notification for new Top picks */
+  notify: boolean
+}
+
+export const NEWS_PRESETS = [
+  { id: 'games', name: 'Games', text: 'Game sales, free games and upcoming releases' },
+  { id: 'pc', name: 'PC parts', text: 'The best PC part deals and new hardware' },
+  { id: 'blank', name: 'New page', text: 'Start empty and add your own sources' }
+] as const
+export type NewsPreset = (typeof NEWS_PRESETS)[number]['id']
 
 export interface NewsPlace {
   name: string
@@ -704,6 +741,10 @@ export interface NewsPrefs {
 
 export interface NewsItem {
   id: string
+  /** The News page it's on */
+  page: string
+  /** How much off, when it's a deal that says (e.g. 40) */
+  discount: number | null
   sourceId: string
   sourceName: string
   sourceKind: NewsSourceKind
@@ -740,6 +781,8 @@ export interface NewsFeed {
   items: NewsItem[]
   weather: NewsWeather | null
   sources: NewsSource[]
+  /** Your pages besides the local one */
+  pages: NewsPage[]
   prefs: NewsPrefs
   refreshedAt: number | null
   /** Sources that couldn't be read last time */
@@ -1321,7 +1364,9 @@ export interface PlannrApi {
     feed(): Promise<NewsFeed>
     /** Downloads every source now */
     refresh(): Promise<NewsFeed>
-    configure(patch: { sources?: NewsSource[]; prefs?: Partial<NewsPrefs> }): Promise<NewsFeed>
+    configure(patch: { sources?: NewsSource[]; prefs?: Partial<NewsPrefs>; pages?: NewsPage[] }): Promise<NewsFeed>
+    /** A new page from a starting point (Games, PC parts or empty), with good sources for where you live */
+    addPage(preset: NewsPreset, name?: string): Promise<NewsFeed>
     /** Towns matching a name, for choosing your place */
     findPlace(query: string): Promise<NewsPlace[]>
     /** Good sources for a place (local news search, weather, roads, regional news sites) */
@@ -1527,7 +1572,7 @@ export const API_SHAPE = {
   links: ['backlinks'],
   calendar: ['range', 'get', 'create', 'update', 'remove', 'skipOccurrence', 'forLink', 'drop'],
   holidays: ['range', 'status', 'configure', 'refresh'],
-  news: ['feed', 'refresh', 'configure', 'findPlace', 'suggest', 'detect', 'mark'],
+  news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark'],
   vault: [
     'status',
     'setup',

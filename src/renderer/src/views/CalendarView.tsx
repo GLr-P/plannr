@@ -78,8 +78,8 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
     setBills(due)
     setGoogleEvents(gev)
     const news = await api.news.feed()
-    setNewsSetUp(news.sources.length > 0)
-    setNewsItems(news.items.filter((i) => i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
+    setNewsSetUp(news.sources.some((s) => !s.page))
+    setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
     setVersion((v) => v + 1)
   }, [range])
   useEffect(() => {

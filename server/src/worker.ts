@@ -124,7 +124,7 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
       return json({ error: 'Bad address' }, 400)
     }
     if (parsed.protocol !== 'https:' || /^(localhost|127.|10.|192.168.|169.254.)/.test(parsed.hostname)) return json({ error: 'Not allowed' }, 400)
-    const res = await fetch(parsed.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Plannr news)', Accept: 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8' }, redirect: 'follow' })
+    const res = await fetch(parsed.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Plannr news; +https://github.com/GLr-P/plannr)', Accept: 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8' }, redirect: 'follow' })
     const body = await res.arrayBuffer()
     if (body.byteLength > 3_000_000) return json({ error: 'Too big' }, 413)
     return new Response(body, { status: res.ok ? 200 : 502, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'private, max-age=300', ...CORS } })

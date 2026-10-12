@@ -147,3 +147,67 @@ test('Home shows the local news', async () => {
   await section.locator('.history-row').first().click()
   await expect(page.locator('.news-header h1')).toHaveText('News')
 })
+
+test('a sync from another device doesn’t jump back to the top of the page', async () => {
+  await nav('News').click()
+  await page.locator('.news-card').first().waitFor()
+  await page.locator('.main').evaluate((el) => (el.scrollTop = 600))
+  const before = await page.locator('.main').evaluate((el) => el.scrollTop)
+  expect(before).toBeGreaterThan(300)
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.send('data-changed'))
+  await page.waitForTimeout(800)
+  expect(await page.locator('.main').evaluate((el) => el.scrollTop)).toBe(before)
+})
+
+test('add a Games page: free games and big deals are Top picks, release dates are Coming up', async () => {
+  await nav('News').click()
+  await page.getByRole('button', { name: 'Add a news page' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add a news page' })
+  await dialog.getByRole('radio', { name: /Games/ }).click()
+  await shot(page, 'news7-add-page')
+  await dialog.getByRole('button', { name: 'Add page' }).click()
+  await expect(page.getByRole('tab', { name: 'Games' })).toHaveAttribute('aria-selected', 'true')
+  const picks = page.locator('.news-picks')
+  await expect(picks).toContainText('Top picks')
+  await expect(page.locator('.news-main')).toContainText('Bad Cheese') // free next week
+  await expect(page.locator('.news-main')).toContainText('Silver Pines – US$22.26 (38% off)')
+  await expect(page.locator('.news-card', { hasText: 'Silver Pines' }).locator('.news-discount')).toHaveText('−38%')
+  // Nothing from Local here, and nothing from here on Local
+  await expect(page.locator('.news-main')).not.toContainText('Osoyoos Fire Rescue')
+  await shot(page, 'news8-games')
+  await page.getByRole('tab', { name: 'Local' }).click()
+  await expect(page.locator('.news-main')).not.toContainText('Silver Pines')
+  await expect(page.locator('.news-weather')).toBeVisible()
+})
+
+test('add a PC parts page and tune it', async () => {
+  await page.getByRole('button', { name: 'Add a news page' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add a news page' })
+  await dialog.getByRole('radio', { name: /PC parts/ }).click()
+  await dialog.getByLabel('Page name').fill('Shop deals')
+  await dialog.getByRole('button', { name: 'Add page' }).click()
+  await expect(page.getByRole('tab', { name: 'Shop deals' })).toHaveAttribute('aria-selected', 'true')
+  const main = page.locator('.news-main')
+  await expect(main).toContainText('Acer Predator X32')
+  await expect(main).not.toContainText('Laundry Detergent') // not a PC part
+  await shot(page, 'news9-pc-parts')
+
+  await page.getByRole('button', { name: 'Page settings' }).click()
+  const settings = page.getByRole('dialog', { name: 'Page settings' })
+  await expect(settings.getByLabel('Only words')).toHaveValue(/gpu, graphics card/)
+  await settings.getByLabel('Important words').fill('keyboard')
+  await settings.getByRole('checkbox', { name: 'Notify me about new Top picks' }).check()
+  await shot(page, 'news10-page-settings')
+  await settings.getByRole('button', { name: 'Save' }).click()
+  await expect(page.locator('.news-picks')).toContainText('Wireless Keyboard')
+  const feed = await page.evaluate(() => window.plannr.news.feed())
+  expect(feed.pages.find((p) => p.name === 'Shop deals')).toMatchObject({ boost: ['keyboard'], notify: true })
+
+  // Delete it: its sources go too
+  await page.getByRole('button', { name: 'Page settings' }).click()
+  await settings.getByRole('button', { name: 'Delete page' }).click()
+  await settings.getByRole('button', { name: /Delete “Shop deals”/ }).click()
+  await expect(page.getByRole('tab', { name: 'Shop deals' })).toHaveCount(0)
+  const after = await page.evaluate(() => window.plannr.news.feed())
+  expect(after.sources.some((s) => /redflagdeals/.test(s.url))).toBe(false)
+})

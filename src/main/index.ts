@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
 import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { holidaysStale, refreshHolidays } from './services/holidays'
-import { newsPrefs, newsStale, refreshNews } from './services/news'
+import { newsStale, refreshNews } from './services/news'
 import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
@@ -303,11 +303,12 @@ if (!app.requestSingleInstanceLock()) {
       const updateNews = (): void => {
         if (!newsStale(db)) return
         void refreshNews(db, fetchText)
-          .then(({ urgent }) => {
-            if (!background || !newsPrefs(db).notifyUrgent || !Notification.isSupported()) return
+          .then(({ urgent, feed }) => {
+            if (!background || !Notification.isSupported()) return
             for (const item of urgent.slice(0, 3)) {
-              const n = new Notification({ title: item.title, body: `${item.sourceName} · Local news`, icon: resourcePath('icon.png') })
-              n.on('click', () => showWindow(getWindow, { news: true }))
+              const pageName = item.page === 'local' ? 'Local news' : (feed.pages.find((p) => p.id === item.page)?.name ?? 'News')
+              const n = new Notification({ title: item.title, body: `${item.sourceName} · ${pageName}`, icon: resourcePath('icon.png') })
+              n.on('click', () => showWindow(getWindow, { news: true, ...(item.page !== 'local' ? { page: item.page } : {}) }))
               n.show()
             }
           })

@@ -547,3 +547,95 @@
   gap: 8px;
   margin: 4px 0;
 }
+
+/* Pages: Local, Games, PC parts… */
+.news-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg-subtle);
+}
+.news-pages button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.news-pages button.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.news-pages .news-add-page {
+  width: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.news-pages .news-add-page svg {
+  width: 15px;
+  height: 15px;
+}
+.news-picks .section-title {
+  color: #ea580c;
+}
+.news-discount {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(22, 163, 74, 0.13);
+  color: #15803d;
+}
+[data-theme='dark'] .news-discount {
+  color: #6dd394;
+}
+.news-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+.news-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.news-preset svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+.news-preset.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.news-delete-page {
+  margin-right: auto;
+}
+.news-setup-alt {
+  margin-top: 14px;
+}
+@media (max-width: 640px) {
+  .news-presets {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Top picks on your own pages: a highlight, not an alarm */
+.news-picks .news-card.important {
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--border));
+  border-left-color: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 6%, var(--bg));
+}

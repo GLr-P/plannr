@@ -6,8 +6,11 @@ import {
   CalendarCheck,
   CalendarPlus,
   CloudSun,
+  Cpu,
   ExternalLink,
   EyeOff,
+  Flame,
+  Gamepad2,
   ListPlus,
   MapPin,
   Newspaper,
@@ -19,7 +22,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
-import { NEWS_TOPICS, type NewsFeed, type NewsItem, type NewsPlace, type NewsPrefs, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
+import { LOCAL_NEWS_PAGE, NEWS_PRESETS, NEWS_TOPICS, topicsFor, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
 import { useData } from '../store/data'
@@ -28,7 +31,7 @@ import { relativeTime, todayISO } from '../lib/format'
 import { formatTime } from '../lib/time'
 import { showToast, undoToast } from '../lib/toast'
 
-const KIND_LABEL: Record<NewsSourceKind, string> = { rss: 'News feed', page: 'Web page', roads: 'Roads', weather: 'Weather', facebook: 'Facebook page' }
+const KIND_LABEL: Record<NewsSourceKind, string> = { rss: 'News feed', page: 'Web page', roads: 'Roads', weather: 'Weather', facebook: 'Facebook page', gamedeals: 'Game deals', freegames: 'Free games' }
 const topicLabel = (t: NewsTopic): string => NEWS_TOPICS.find((x) => x.id === t)?.label ?? t
 
 type Tab = 'foryou' | 'saved' | NewsTopic
@@ -39,14 +42,16 @@ const whenLabel = (w: NonNullable<NewsItem['when']>): string => {
   return w.startTime ? `${day} · ${formatTime(w.startTime)}${w.endTime ? `–${formatTime(w.endTime)}` : ''}` : day
 }
 
-export function NewsView() {
+export function NewsView({ page: startPage }: { page?: string }) {
   const [feed, setFeed] = useState<NewsFeed | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pageId, setPageId] = useState<string>(startPage ?? LOCAL_NEWS_PAGE)
   const [tab, setTab] = useState<Tab>('foryou')
   const [query, setQuery] = useState('')
   const [showFiltered, setShowFiltered] = useState(false)
   const [more, setMore] = useState(30)
   const [settings, setSettings] = useState(false)
+  const [addingPage, setAddingPage] = useState(false)
   const [adding, setAdding] = useState<NewsItem | null>(null)
   const prefs = useUi((s) => s.prefs)
   const look = { photos: prefs.newsPhotos !== '0', compact: prefs.newsCompact === '1', urgent: prefs.newsUrgent !== '0', coming: prefs.newsComing !== '0' }
@@ -74,6 +79,13 @@ export function NewsView() {
       clearInterval(timer)
     }
   }, [refresh])
+
+  const showPage = (id: string): void => {
+    setPageId(id)
+    setTab('foryou')
+    setShowFiltered(false)
+    setMore(30)
+  }
 
   const patchItem = (id: string, patch: Partial<NewsItem>): void => setFeed((f) => (f ? { ...f, items: f.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) } : f))
 
@@ -108,41 +120,72 @@ export function NewsView() {
     }
   }
 
-  const facebook = feed?.sources.filter((s) => s.kind === 'facebook' && s.enabled) ?? []
-  const needsSetup = feed !== null && feed.sources.length === 0
+  // The page shown: the local one, or one of yours (Games, PC parts…)
+  const page = feed?.pages.find((p) => p.id === pageId) ?? null
+  const local = page === null
+  const pageSources = feed?.sources.filter((s) => (s.page ?? LOCAL_NEWS_PAGE) === (page?.id ?? LOCAL_NEWS_PAGE)) ?? []
+  const pageItems = useMemo(() => feed?.items.filter((i) => i.page === (page?.id ?? LOCAL_NEWS_PAGE)) ?? [], [feed, page])
+  const facebook = local ? pageSources.filter((s) => s.kind === 'facebook' && s.enabled) : []
+  const weather = local ? (feed?.weather ?? null) : null
+  const hideTopics = page ? page.hideTopics : (feed?.prefs.hideTopics ?? [])
 
   const groups = useMemo(() => {
     if (!feed) return null
     const today = todayISO()
     const q = query.trim().toLowerCase()
     const matches = (i: NewsItem): boolean => !q || `${i.title} ${i.summary} ${i.sourceName}`.toLowerCase().includes(q)
-    const visible = feed.items.filter((i) => matches(i) && (showFiltered || !i.filtered))
-    const hiddenCount = feed.items.filter((i) => i.filtered && matches(i)).length
+    const visible = pageItems.filter((i) => matches(i) && (showFiltered || !i.filtered))
+    const hiddenCount = pageItems.filter((i) => i.filtered && matches(i)).length
     if (tab === 'saved') return { list: visible.filter((i) => i.saved), hiddenCount }
-    if (tab !== 'foryou') return { list: feed.items.filter((i) => matches(i) && i.topic === tab), hiddenCount: 0 }
-    const urgent = prefs.newsUrgent === '0' ? [] : visible.filter((i) => i.important).slice(0, 8)
+    if (tab !== 'foryou') return { list: pageItems.filter((i) => matches(i) && i.topic === tab), hiddenCount: 0 }
+    const urgent = prefs.newsUrgent === '0' ? [] : visible.filter((i) => i.important).slice(0, local ? 8 : 12)
     const coming = visible
       .filter((i) => i.when && i.when.date >= today && !urgent.includes(i))
       .sort((a, b) => (a.when!.date + (a.when!.startTime ?? '')).localeCompare(b.when!.date + (b.when!.startTime ?? '')))
       .slice(0, 10)
     const shown = new Set([...urgent, ...coming].map((i) => i.id))
     return { urgent, coming, latest: visible.filter((i) => !shown.has(i.id)), hiddenCount }
-  }, [feed, tab, query, showFiltered, prefs.newsUrgent])
+  }, [feed, pageItems, tab, query, showFiltered, prefs.newsUrgent, local])
 
   if (!feed) return <div className="page news-page" />
-  if (needsSetup)
+  const pageTabs = (
+    <div className="news-pages" role="tablist" aria-label="News pages">
+      {[{ id: LOCAL_NEWS_PAGE, name: 'Local' }, ...feed.pages].map((p) => (
+        <button key={p.id} type="button" role="tab" aria-selected={pageId === p.id || (local && p.id === LOCAL_NEWS_PAGE)} className={pageId === p.id || (local && p.id === LOCAL_NEWS_PAGE) ? 'active' : ''} onClick={() => showPage(p.id)}>
+          {p.name}
+        </button>
+      ))}
+      <button type="button" className="news-add-page" title="Add a page: games, PC parts, or your own" aria-label="Add a news page" onClick={() => setAddingPage(true)}>
+        <Plus />
+      </button>
+    </div>
+  )
+  const addPageDialog = addingPage && (
+    <AddPageDialog
+      onClose={() => setAddingPage(false)}
+      onAdded={(f) => {
+        setFeed(f)
+        setAddingPage(false)
+        showPage(f.pages[f.pages.length - 1]?.id ?? LOCAL_NEWS_PAGE)
+      }}
+    />
+  )
+  if (local && pageSources.length === 0)
     return (
       <div className="page news-page">
-        <NewsSetup onDone={setFeed} />
+        {feed.pages.length > 0 && <div className="list-header news-header">{pageTabs}</div>}
+        <NewsSetup onDone={setFeed} onAddPage={() => setAddingPage(true)} />
+        {addPageDialog}
       </div>
     )
 
-  const topicsWithStories = NEWS_TOPICS.filter((t) => feed.items.some((i) => i.topic === t.id))
+  const topicsWithStories = topicsFor(local).filter((t) => pageItems.some((i) => i.topic === t.id))
   return (
     <div className="page news-page">
       <div className="list-header news-header">
         <h1>News</h1>
-        {feed.prefs.place && (
+        {pageTabs}
+        {local && feed.prefs.place && (
           <span className="news-place">
             <MapPin /> {feed.prefs.place.name}
           </span>
@@ -153,17 +196,17 @@ export function NewsView() {
             <RefreshCw className={busy ? 'spin' : ''} />
           </button>
           <button type="button" className="btn sm" onClick={() => setSettings(true)}>
-            <Settings2 /> Sources & topics
+            <Settings2 /> {local ? 'Sources & topics' : 'Page settings'}
           </button>
         </div>
       </div>
 
       <div className="news-tabs" role="tablist" aria-label="Show">
         <TabChip id="foryou" tab={tab} setTab={setTab} label="For you" />
-        <TabChip id="saved" tab={tab} setTab={setTab} label={`Saved${feed.items.some((i) => i.saved) ? ` · ${feed.items.filter((i) => i.saved).length}` : ''}`} />
+        <TabChip id="saved" tab={tab} setTab={setTab} label={`Saved${pageItems.some((i) => i.saved) ? ` · ${pageItems.filter((i) => i.saved).length}` : ''}`} />
         <span className="news-tabs-sep" />
         {topicsWithStories.map((t) => (
-          <TabChip key={t.id} id={t.id} tab={tab} setTab={setTab} label={t.label} dim={feed.prefs.hideTopics.includes(t.id)} />
+          <TabChip key={t.id} id={t.id} tab={tab} setTab={setTab} label={t.label} dim={hideTopics.includes(t.id)} />
         ))}
         <label className="news-search">
           <Search />
@@ -171,28 +214,39 @@ export function NewsView() {
         </label>
       </div>
 
-      <div className={`news-layout ${feed.weather || facebook.length ? 'with-aside' : ''}`}>
+      <div className={`news-layout ${weather || facebook.length ? 'with-aside' : ''}`}>
         <div className="news-main">
-          {feed.errors.length > 0 && (
+          {feed.errors.some((e) => pageSources.some((s) => s.id === e.sourceId)) && (
             <div className="news-errors small muted">
-              Couldn’t check {feed.errors.map((e) => feed.sources.find((s) => s.id === e.sourceId)?.name ?? 'a source').join(', ')} just now. Showing what was there before.
+              Couldn’t check{' '}
+              {feed.errors
+                .map((e) => pageSources.find((s) => s.id === e.sourceId)?.name)
+                .filter(Boolean)
+                .join(', ')}{' '}
+              just now. Showing what was there before.
+            </div>
+          )}
+          {pageSources.length === 0 && (
+            <div className="empty-state welcome">
+              <p>This page has no sources yet.</p>
+              <button type="button" className="btn sm" onClick={() => setSettings(true)}>
+                <Plus /> Add sources
+              </button>
             </div>
           )}
           {groups && 'urgent' in groups ? (
             <>
               {look.urgent && groups.urgent!.length > 0 && (
-                <section className="news-section news-urgent">
-                  <h2 className="section-title">
-                    <AlertTriangle /> Need to know
-                  </h2>
+                <section className={`news-section ${local ? 'news-urgent' : 'news-picks'}`}>
+                  <h2 className="section-title">{local ? <AlertTriangle /> : <Flame />} {local ? 'Need to know' : 'Top picks'}</h2>
                   {groups.urgent!.map((i) => (
-                    <NewsCard key={i.id} item={i} actions={actions} compact />
+                    <NewsCard key={i.id} item={i} actions={actions} compact={local} photos={look.photos} />
                   ))}
                 </section>
               )}
               {look.coming && groups.coming!.length > 0 && (
                 <section className="news-section news-coming">
-                  <h2 className="section-title">Coming up</h2>
+                  <h2 className="section-title">{local ? 'Coming up' : 'Coming up: releases and dates'}</h2>
                   <div className="news-coming-list">
                     {groups.coming!.map((i) => (
                       <ComingRow key={i.id} item={i} actions={actions} />
@@ -202,7 +256,7 @@ export function NewsView() {
               )}
               <section className="news-section">
                 <h2 className="section-title">Latest</h2>
-                {groups.latest!.length === 0 && <div className="empty-state">No stories yet{busy ? ' – checking now…' : '.'}</div>}
+                {groups.latest!.length === 0 && pageSources.length > 0 && <div className="empty-state">No stories yet{busy ? ' – checking now…' : '.'}</div>}
                 {groups.latest!.slice(0, more).map((i) => (
                   <NewsCard key={i.id} item={i} actions={actions} compact={look.compact} photos={look.photos} />
                 ))}
@@ -223,27 +277,33 @@ export function NewsView() {
           )}
           {groups && groups.hiddenCount > 0 && tab !== 'saved' && (
             <button type="button" className="link-btn news-filtered small" onClick={() => setShowFiltered((v) => !v)}>
-              {showFiltered ? 'Hide' : 'Show'} {groups.hiddenCount} {groups.hiddenCount === 1 ? 'story' : 'stories'} left out by your topics and muted words
+              {showFiltered ? 'Hide' : 'Show'} {groups.hiddenCount} {groups.hiddenCount === 1 ? 'story' : 'stories'} left out by your topics and words
             </button>
           )}
         </div>
-        {(feed.weather || facebook.length > 0) && (
+        {(weather || facebook.length > 0) && (
           <aside className="news-aside">
-            {feed.weather && <WeatherCard weather={feed.weather} />}
+            {weather && <WeatherCard weather={weather} />}
             {facebook.length > 0 && <FacebookBox pages={facebook} />}
           </aside>
         )}
       </div>
 
-      {settings && (
-        <NewsSettings
+      {settings && local && <NewsSettings feed={feed} onChange={setFeed} onClose={() => setSettings(false)} />}
+      {settings && page && (
+        <PageSettings
           feed={feed}
+          page={page}
           onChange={setFeed}
-          onClose={() => {
+          onClose={() => setSettings(false)}
+          onDeleted={(f) => {
+            setFeed(f)
             setSettings(false)
+            showPage(LOCAL_NEWS_PAGE)
           }}
         />
       )}
+      {addPageDialog}
       {adding && (
         <AddToCalendar
           item={adding}
@@ -254,6 +314,203 @@ export function NewsView() {
           }}
         />
       )}
+    </div>
+  )
+}
+
+/** A new page from a starting point: Games, PC parts, or empty */
+function AddPageDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (f: NewsFeed) => void }) {
+  const [preset, setPreset] = useState<NewsPreset>('games')
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const add = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      onAdded(await api.news.addPage(preset, name.trim() || undefined))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <form
+        className="dialog news-add-dialog"
+        role="dialog"
+        aria-label="Add a news page"
+        onMouseDown={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault()
+          void add()
+        }}
+      >
+        <div className="dialog-head">
+          <h2>Add a news page</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <p className="small muted">A page of its own with its own sources and topics, beside your local news.</p>
+        <div className="news-presets" role="radiogroup" aria-label="Start with">
+          {NEWS_PRESETS.map((p) => (
+            <button key={p.id} type="button" role="radio" aria-checked={preset === p.id} className={`news-preset ${preset === p.id ? 'active' : ''}`} onClick={() => setPreset(p.id)}>
+              {p.id === 'games' ? <Gamepad2 /> : p.id === 'pc' ? <Cpu /> : <Newspaper />}
+              <b>{p.name}</b>
+              <span className="small muted">{p.text}</span>
+            </button>
+          ))}
+        </div>
+        <label className="mfield">
+          Name
+          <input value={name} placeholder={NEWS_PRESETS.find((p) => p.id === preset)?.name} aria-label="Page name" onChange={(e) => setName(e.target.value)} />
+        </label>
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn primary" disabled={busy}>
+            {busy ? 'Getting the news…' : 'Add page'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+/** One of your own pages: its name, sources, topics, words and Top picks */
+function PageSettings({ feed, page, onChange, onClose, onDeleted }: { feed: NewsFeed; page: NewsPage; onChange: (f: NewsFeed) => void; onClose: () => void; onDeleted: (f: NewsFeed) => void }) {
+  const [draft, setDraft] = useState<NewsPage>(page)
+  const [sources, setSources] = useState(feed.sources)
+  const [only, setOnly] = useState(listText(page.only))
+  const [muted, setMuted] = useState(listText(page.muted))
+  const [boost, setBoost] = useState(listText(page.boost))
+  const [link, setLink] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const mine = sources.filter((s) => s.page === page.id)
+  const setSource = (id: string, patch: Partial<NewsSource>): void => setSources((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+
+  const addLink = async (): Promise<void> => {
+    if (!link.trim()) return
+    setError('')
+    try {
+      const s = await api.news.detect(link)
+      setSources((l) => [...l, { ...s, page: page.id }])
+      setLink('')
+    } catch {
+      setError('Couldn’t read that link. Check it opens in your browser.')
+    }
+  }
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    try {
+      const next = { ...draft, only: textList(only), muted: textList(muted), boost: textList(boost) }
+      onChange(await api.news.configure({ pages: feed.pages.map((p) => (p.id === page.id ? next : p)), sources }))
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+  const remove = async (): Promise<void> => onDeleted(await api.news.configure({ pages: feed.pages.filter((p) => p.id !== page.id) }))
+  const toggleTopic = (t: NewsTopic): void => setDraft((d) => ({ ...d, hideTopics: d.hideTopics.includes(t) ? d.hideTopics.filter((x) => x !== t) : [...d.hideTopics, t] }))
+
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <div className="dialog news-settings" role="dialog" aria-label="Page settings" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2>Page settings</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        <label className="mfield">
+          Name
+          <input value={draft.name} aria-label="Page name" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+        </label>
+
+        <h3 className="news-settings-h">Sources</h3>
+        <ul className="news-source-list editable">
+          {mine.map((s) => (
+            <li key={s.id}>
+              <input type="checkbox" checked={s.enabled} aria-label={`Use ${s.name}`} onChange={(e) => setSource(s.id, { enabled: e.target.checked })} />
+              <input className="news-source-name" value={s.name} aria-label="Source name" onChange={(e) => setSource(s.id, { name: e.target.value })} />
+              <span className="muted small news-source-kind" title={s.url}>
+                {KIND_LABEL[s.kind]}
+              </span>
+              <button
+                type="button"
+                className={`icon-btn sm news-star ${s.important ? 'on' : ''}`}
+                aria-pressed={Boolean(s.important)}
+                title={s.important ? 'Its new stories are always Top picks (click to stop)' : 'Make all its new stories Top picks'}
+                aria-label={`Always a top pick: ${s.name}`}
+                onClick={() => setSource(s.id, { important: !s.important })}
+              >
+                <Star />
+              </button>
+              <button type="button" className="icon-btn sm" title="Remove" aria-label={`Remove ${s.name}`} onClick={() => setSources((l) => l.filter((x) => x.id !== s.id))}>
+                <Trash2 />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <AddLink link={link} setLink={setLink} onAdd={() => void addLink()} />
+        {error && <p className="small danger-text">{error}</p>}
+
+        <h3 className="news-settings-h">Topics in For you</h3>
+        <div className="news-topic-toggles">
+          {topicsFor(false).map((t) => (
+            <button key={t.id} type="button" className={`chip-btn ${draft.hideTopics.includes(t.id) ? '' : 'active'}`} aria-pressed={!draft.hideTopics.includes(t.id)} onClick={() => toggleTopic(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <label className="mfield">
+          Only stories that mention one of these (commas between; blank = everything)
+          <textarea rows={2} value={only} placeholder="e.g. GPU, SSD, monitor, Zelda, Steam Deck" aria-label="Only words" onChange={(e) => setOnly(e.target.value)} />
+        </label>
+        <label className="mfield">
+          Leave out stories with these words
+          <input value={muted} placeholder="e.g. mobile, crypto" aria-label="Muted words" onChange={(e) => setMuted(e.target.value)} />
+        </label>
+        <label className="mfield">
+          Always make stories with these words Top picks
+          <input value={boost} placeholder="e.g. RTX 5070, Hollow Knight" aria-label="Important words" onChange={(e) => setBoost(e.target.value)} />
+        </label>
+        <div className="news-add-row">
+          <label className="mfield">
+            Deals are Top picks when at least
+            <select value={draft.minDiscount} aria-label="Top pick discount" onChange={(e) => setDraft({ ...draft, minDiscount: Number(e.target.value) })}>
+              {[20, 25, 30, 40, 50, 60, 70, 80, 90].map((d) => (
+                <option key={d} value={d}>
+                  {d}% off
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="check-row">
+          <input type="checkbox" checked={draft.notify} onChange={(e) => setDraft({ ...draft, notify: e.target.checked })} />
+          Notify me about new Top picks
+        </label>
+
+        <div className="dialog-actions">
+          {confirmDelete ? (
+            <button type="button" className="btn danger news-delete-page" onClick={() => void remove()}>
+              Delete “{page.name}” and its sources
+            </button>
+          ) : (
+            <button type="button" className="btn news-delete-page" onClick={() => setConfirmDelete(true)}>
+              <Trash2 /> Delete page
+            </button>
+          )}
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={saving} onClick={() => void save()}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -284,6 +541,7 @@ function NewsCard({ item, actions, compact, photos = true }: { item: NewsItem; a
           <span className="muted">· {relativeTime(item.publishedAt)}</span>
           <span className={`news-topic t-${item.topic}`}>{topicLabel(item.topic)}</span>
           {item.when && <span className="news-when">{whenLabel(item.when)}</span>}
+          {item.discount !== null && <span className="news-discount">−{item.discount}%</span>}
         </div>
         <h3 className="news-title">
           {item.url ? (
@@ -520,7 +778,7 @@ function PlacePicker({ onPick }: { onPick: (p: NewsPlace) => void }) {
   )
 }
 
-function NewsSetup({ onDone }: { onDone: (f: NewsFeed) => void }) {
+function NewsSetup({ onDone, onAddPage }: { onDone: (f: NewsFeed) => void; onAddPage: () => void }) {
   const [place, setPlace] = useState<NewsPlace | null>(null)
   const [suggested, setSuggested] = useState<NewsSource[]>([])
   const [link, setLink] = useState('')
@@ -544,7 +802,8 @@ function NewsSetup({ onDone }: { onDone: (f: NewsFeed) => void }) {
   const start = async (): Promise<void> => {
     setBusy(true)
     try {
-      onDone(await api.news.configure({ prefs: { place }, sources: suggested }))
+      const current = await api.news.feed()
+      onDone(await api.news.configure({ prefs: { place }, sources: [...current.sources, ...suggested] }))
     } finally {
       setBusy(false)
     }
@@ -555,7 +814,16 @@ function NewsSetup({ onDone }: { onDone: (f: NewsFeed) => void }) {
       <h1>What’s happening around you</h1>
       <p className="muted">Local news, events, closures, elections and the weather in one place. Sad news and stock markets are left out (you can change that).</p>
       {!place ? (
-        <PlacePicker onPick={(p) => void pick(p)} />
+        <>
+          <PlacePicker onPick={(p) => void pick(p)} />
+          <p className="small muted news-setup-alt">
+            Or skip local news and{' '}
+            <button type="button" className="link-btn" onClick={onAddPage}>
+              add a page for games, PC parts or anything else
+            </button>
+            .
+          </p>
+        </>
       ) : (
         <>
           <p>
@@ -614,7 +882,8 @@ const textList = (s: string): string[] =>
     .filter(Boolean)
 
 function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (f: NewsFeed) => void; onClose: () => void }) {
-  const [sources, setSources] = useState(feed.sources)
+  const others = feed.sources.filter((s) => s.page && s.page !== LOCAL_NEWS_PAGE)
+  const [sources, setSources] = useState(feed.sources.filter((s) => !s.page || s.page === LOCAL_NEWS_PAGE))
   const [prefs, setPrefs] = useState<NewsPrefs>(feed.prefs)
   const [muted, setMuted] = useState(listText(feed.prefs.muted))
   const [boost, setBoost] = useState(listText(feed.prefs.boost))
@@ -643,8 +912,9 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
   const save = async (): Promise<void> => {
     setSaving(true)
     try {
-      const sourcesChanged = JSON.stringify(sources) !== JSON.stringify(feed.sources)
-      onChange(await api.news.configure({ prefs: { ...prefs, muted: textList(muted), boost: textList(boost) }, ...(sourcesChanged ? { sources } : {}) }))
+      const all = [...sources, ...others]
+      const sourcesChanged = JSON.stringify(all) !== JSON.stringify(feed.sources)
+      onChange(await api.news.configure({ prefs: { ...prefs, muted: textList(muted), boost: textList(boost) }, ...(sourcesChanged ? { sources: all } : {}) }))
       onClose()
     } finally {
       setSaving(false)
