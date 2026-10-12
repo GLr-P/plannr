@@ -116,6 +116,15 @@ test('Mail asks to connect Zoho; the assistant asks for a key', async () => {
   await page.getByLabel('Which AI').selectOption('ollama')
   await expect(page.getByLabel('API key')).toHaveCount(0) // runs on this PC: no key
   await expect(page.getByLabel('Ask the assistant')).toBeEnabled()
+  // Sending a message keeps the page working (it used to crash) and explains a problem in plain words
+  const crashes: string[] = []
+  page.on('pageerror', (e) => crashes.push(e.message))
+  await page.getByLabel('Ask the assistant').fill('What is coming up this week?')
+  await page.getByLabel('Ask the assistant').press('Enter')
+  await expect(page.locator('.chat-msg.user')).toContainText('What is coming up this week?')
+  await expect(page.locator('.assistant-page .danger-text')).toContainText('Ollama')
+  await expect(page.getByRole('heading', { name: 'Assistant' })).toBeVisible()
+  expect(crashes).toEqual([])
   await page.getByLabel('Which AI').selectOption('openai')
   await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gpt-5-mini')
   await page.getByLabel('Which AI').selectOption('gemini')

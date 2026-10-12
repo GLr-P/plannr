@@ -317,12 +317,12 @@ if (!app.requestSingleInstanceLock()) {
       }
       setTimeout(updateNews, 8_000)
       setInterval(updateNews, 10 * 60 * 1000)
-      // New videos and who's live; a notification when a streamer you follow goes live
+      // New videos and who's live; a notification when a streamer goes live only if turned on (Entertainment → Channels)
       const updateEnt = (): void => {
         if (!entStale(db, Date.now(), 5)) return
         void refreshEntertainment(db, fetchText)
           .then(({ wentLive }) => {
-            if (!background || !Notification.isSupported() || getSetting(db, 'ent.notifyLive') === false) return
+            if (!background || !Notification.isSupported() || getSetting(db, 'ent.notifyLive') !== true) return
             for (const l of wentLive.slice(0, 3)) {
               const n = new Notification({ title: `${l.name} is live`, body: l.title || 'Streaming now on Twitch', icon: resourcePath('icon.png') })
               n.on('click', () => void shell.openExternal(l.url))

@@ -25,7 +25,10 @@ export function AssistantView() {
       if (!s.configured) setSetup(true)
     })
   }, [])
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages, busy])
+  // A block, not an expression: scrollIntoView now returns a promise, and an effect must return nothing (or a cleanup)
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' })
+  }, [messages, busy])
 
   const send = async (q: string): Promise<void> => {
     if (!q.trim() || busy) return

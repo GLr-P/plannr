@@ -16,6 +16,10 @@ export function EntertainmentView() {
   const [manage, setManage] = useState(false)
   const showShorts = useUi((s) => s.prefs.entShorts === '1')
   const setPref = useUi((s) => s.setPref)
+  const [notifyLive, setNotifyLive] = useState(false)
+  useEffect(() => {
+    void api.settings.get('ent.notifyLive').then((v) => setNotifyLive(v === true))
+  }, [])
 
   const refresh = useCallback(async () => {
     setBusy(true)
@@ -129,6 +133,9 @@ export function EntertainmentView() {
           </ul>
           <label className="check-row">
             <input type="checkbox" checked={showShorts} onChange={(e) => setPref('entShorts', e.target.checked ? '1' : '')} /> Show YouTube Shorts
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={notifyLive} onChange={(e) => { setNotifyLive(e.target.checked); void api.settings.set('ent.notifyLive', e.target.checked) }} /> Notify me when a streamer goes live
           </label>
         </section>
       )}
