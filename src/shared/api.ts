@@ -933,9 +933,7 @@ export interface AssistantStatus {
   model: string
 }
 export const ASSISTANT_MODELS = [
-  { id: 'gemini-2.5-flash', provider: 'gemini', label: 'Gemini 2.5 Flash (free, recommended)' },
-  { id: 'gemini-2.5-flash-lite', provider: 'gemini', label: 'Gemini 2.5 Flash-Lite (free, quickest)' },
-  { id: 'gemini-2.5-pro', provider: 'gemini', label: 'Gemini 2.5 Pro (free with low limits)' },
+  { id: 'gemini-3.8-flash', provider: 'gemini', label: 'Gemini 3.8 Flash (free, recommended)' },
   { id: 'llama-3.3-70b-versatile', provider: 'groq', label: 'Llama 3.3 70B (free)' },
   { id: 'openai/gpt-oss-120b', provider: 'groq', label: 'GPT-OSS 120B (free)' },
   { id: 'llama-3.1-8b-instant', provider: 'groq', label: 'Llama 3.1 8B (free, quickest)' },
@@ -948,7 +946,7 @@ export const ASSISTANT_MODELS = [
   { id: 'claude-opus-5-5', provider: 'anthropic', label: 'Opus 5.5 (smartest, costs more)' },
   { id: 'claude-haiku-4-5-20251001', provider: 'anthropic', label: 'Haiku 4.5 (quickest, cheapest)' }
 ] as const
-export const DEFAULT_ASSISTANT_MODEL: Record<AssistantProvider, string> = { gemini: 'gemini-2.5-flash', groq: 'llama-3.3-70b-versatile', ollama: 'llama3.1', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' }
+export const DEFAULT_ASSISTANT_MODEL: Record<AssistantProvider, string> = { gemini: 'gemini-3.8-flash', groq: 'llama-3.3-70b-versatile', ollama: 'llama3.1', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' }
 
 // ---------- Vault ----------
 

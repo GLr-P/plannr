@@ -112,7 +112,7 @@ test('Mail asks to connect Zoho; the assistant asks for a key', async () => {
   await expect(page.getByLabel('Ask the assistant')).toBeDisabled() // no key yet
   await expect(page.getByLabel('Which AI')).toHaveValue('gemini') // free Gemini unless you choose another
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /Gemini/)
-  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gemini-2.5-flash')
+  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gemini-3.8-flash')
   await page.getByLabel('Which AI').selectOption('ollama')
   await expect(page.getByLabel('API key')).toHaveCount(0) // runs on this PC: no key
   await expect(page.getByLabel('Ask the assistant')).toBeEnabled()
