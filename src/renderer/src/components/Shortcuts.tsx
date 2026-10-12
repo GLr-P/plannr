@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { create } from 'zustand'
 import { X } from 'lucide-react'
 import { useUi } from '../store/ui'
-import { NAV_LABELS, visibleNav } from '../lib/navOrder'
+import { NAV_LABELS, navName, singular, visibleNav } from '../lib/navOrder'
+import { displayPrefs } from '../../../shared/api'
 
 export const useShortcutsOpen = create<{ open: boolean; set: (open: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }))
 
@@ -37,8 +38,8 @@ export function ShortcutsDialog() {
       rows: [
         ['Ctrl+K', 'Search everything'],
         ['Ctrl+N', 'New note'],
-        ['Ctrl+T', 'New ticket'],
-        ...order.map((id, i): [string, string] => [`Ctrl+${i + 1}`, `Go to ${NAV_LABELS[id]}`]),
+        ['Ctrl+T', `New ${singular(navName('tickets', displayPrefs().navNames, 'Tickets'))}`],
+        ...order.map((id, i): [string, string] => [`Ctrl+${i + 1}`, `Go to ${navName(id, displayPrefs().navNames, NAV_LABELS[id])}`]),
         ['Ctrl+,', 'Settings'],
         ['Alt+←', 'Back'],
         ['Alt+→', 'Forward'],

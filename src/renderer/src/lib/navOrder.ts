@@ -28,6 +28,16 @@ export const NAV_LABELS: Record<NavId, string> = {
   news: 'News'
 }
 
+/** A menu item's name: yours if you renamed it (Settings → Layout), else the standard one */
+export const navName = (id: string, names: Partial<Record<string, string>> | undefined, fallback: string): string => names?.[id]?.trim() || fallback
+
+/** One of them: "Orders" → "order", "Repairs" → "repair", "Tickets" → "ticket" */
+export function singular(plural: string): string {
+  const w = plural.trim()
+  const one = /ies$/i.test(w) ? w.slice(0, -3) + 'y' : /(ss|us)$/i.test(w) ? w : /s$/i.test(w) ? w.slice(0, -1) : w
+  return one.toLowerCase()
+}
+
 export function navOrder(pref: string | undefined): NavId[] {
   const saved = (pref ?? '').split(',').filter((id): id is NavId => (NAV_IDS as readonly string[]).includes(id))
   return [...new Set([...saved, ...NAV_IDS])]

@@ -96,6 +96,48 @@ test('save a story, hide one (with undo), and put one on the calendar', async ()
   await expect(page.locator('.fc-event', { hasText: 'Fire hall open house' }).first()).toBeVisible()
 })
 
+test('make a task from a story; mark a source as always need-to-know', async () => {
+  await nav('News').click()
+  const card = page.locator('.news-card', { hasText: 'community groups could receive' }).first()
+  await card.getByRole('button', { name: 'Make a task' }).click()
+  await expect(page.locator('.toast', { hasText: 'Added to your tasks' })).toBeVisible()
+  const tasks = await page.evaluate(() => window.plannr.tasks.list())
+  expect(tasks.some((t) => t.title === 'Osoyoos community groups could receive $11,200 in grant funding')).toBe(true)
+
+  await page.getByRole('button', { name: 'Sources & topics' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Sources and topics' })
+  await dialog.getByRole('button', { name: 'Always need to know: Castanet – Oliver / Osoyoos' }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  const feed = await page.evaluate(() => window.plannr.news.feed())
+  expect(feed.sources.find((x) => x.name === 'Castanet – Oliver / Osoyoos')?.important).toBe(true)
+})
+
+test('the calendar shows dates from the news; click one to add it', async () => {
+  const feed = await page.evaluate(() => window.plannr.news.feed())
+  const dated = feed.items.find((i) => i.when && !i.filtered && !i.eventId)
+  test.skip(!dated, 'no story with an upcoming date in the saved sources any more')
+  await nav('Calendar').click()
+  await expect(page.getByRole('button', { name: 'Local events' })).toHaveAttribute('aria-pressed', 'true')
+  // Go to the story's month
+  const target = new Date(dated!.when!.date + 'T12:00')
+  for (let i = 0; i < 6; i++) {
+    const shown = new Date((await page.locator('.cal-title').textContent()) + ' 1')
+    if (shown.getMonth() === target.getMonth() && shown.getFullYear() === target.getFullYear()) break
+    await page.getByRole('button', { name: shown < target ? 'Next' : 'Previous' }).click()
+  }
+  const chip = page.locator('.fc-event.ev-news', { hasText: dated!.title.slice(0, 20) }).first()
+  await expect(chip).toBeVisible()
+  await shot(page, 'news6-calendar')
+  await chip.click()
+  const dialog = page.getByRole('dialog', { name: 'Add to calendar' })
+  await expect(dialog.getByLabel('Event date')).toHaveValue(dated!.when!.date)
+  await dialog.getByRole('button', { name: 'Add to calendar' }).click()
+  await expect(page.locator('.fc-event:not(.ev-news)', { hasText: dated!.title.slice(0, 20) }).first()).toBeVisible()
+  // Turn the layer off
+  await page.getByRole('button', { name: 'Local events' }).click()
+  await expect(page.locator('.fc-event.ev-news')).toHaveCount(0)
+})
+
 test('Home shows the local news', async () => {
   await nav('Home').click()
   const section = page.locator('section', { has: page.locator('.section-title', { hasText: 'Around Osoyoos' }) })

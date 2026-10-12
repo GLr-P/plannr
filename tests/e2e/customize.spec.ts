@@ -57,6 +57,25 @@ test('layout: hide a menu item; reorder and hide Home sections', async () => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inventory')
 })
 
+test('menu names: call Tickets "Orders" and Customers "Clients"', async () => {
+  await settings('Layout')
+  await page.getByLabel('Name for Tickets').fill('Orders')
+  await page.getByLabel('Name for Customers').fill('Clients')
+  await page.getByLabel('Name for Customers').press('Enter') // leaving a field saves it
+  await expect(nav('Orders')).toBeVisible()
+  await expect(nav('Clients')).toBeVisible()
+  await shot(page, 'z2b-menu-names')
+  await nav('Orders').click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Orders')
+  await expect(page.locator('.list-header').getByRole('button', { name: 'New order' })).toBeVisible()
+  // Back to the standard names (blank) for the tests that follow
+  await settings('Layout')
+  await page.getByLabel('Name for Tickets').fill('')
+  await page.getByLabel('Name for Customers').fill('')
+  await page.getByLabel('Name for Customers').press('Enter')
+  await expect(nav('Tickets')).toBeVisible()
+})
+
 test('tickets: your own number prefix and status names', async () => {
   await settings('Tickets')
   await page.getByLabel('Ticket number prefix').fill('AB-')

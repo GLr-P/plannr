@@ -3,15 +3,17 @@ import { create } from 'zustand'
 import { CalendarDays, CheckSquare, Home, Menu, Wrench } from 'lucide-react'
 import { useNav, type Route } from '../store/nav'
 import { useData } from '../store/data'
+import { useDisplay } from '../store/display'
+import { navName } from '../lib/navOrder'
 
 /** On a phone the sidebar slides in from the left (☰ in the title bar, or More in the tab bar). */
 export const useDrawer = create<{ open: boolean; set: (open: boolean) => void }>((set) => ({ open: false, set: (open) => set({ open }) }))
 
-const TABS: { label: string; icon: React.ReactNode; route: Route; match: Route['view'][] }[] = [
-  { label: 'Home', icon: <Home />, route: { view: 'home' }, match: ['home'] },
-  { label: 'Tasks', icon: <CheckSquare />, route: { view: 'tasks' }, match: ['tasks'] },
-  { label: 'Tickets', icon: <Wrench />, route: { view: 'tickets' }, match: ['tickets', 'ticket'] },
-  { label: 'Calendar', icon: <CalendarDays />, route: { view: 'calendar' }, match: ['calendar'] }
+const TABS: { id: string; label: string; icon: React.ReactNode; route: Route; match: Route['view'][] }[] = [
+  { id: 'home', label: 'Home', icon: <Home />, route: { view: 'home' }, match: ['home'] },
+  { id: 'tasks', label: 'Tasks', icon: <CheckSquare />, route: { view: 'tasks' }, match: ['tasks'] },
+  { id: 'tickets', label: 'Tickets', icon: <Wrench />, route: { view: 'tickets' }, match: ['tickets', 'ticket'] },
+  { id: 'calendar', label: 'Calendar', icon: <CalendarDays />, route: { view: 'calendar' }, match: ['calendar'] }
 ]
 
 /** Phone only (hidden on wider screens by CSS): the tab bar at the bottom, and closing the drawer after navigating. */
@@ -21,6 +23,7 @@ export function MobileNav() {
   const open = useDrawer((s) => s.open)
   const setOpen = useDrawer((s) => s.set)
   const dueTasks = useData((s) => s.counts.dueTasks)
+  const navNames = useDisplay((s) => s.prefs.navNames)
   useEffect(() => setOpen(false), [route, setOpen])
   return (
     <>
@@ -28,14 +31,14 @@ export function MobileNav() {
       <nav className="mobile-tabs" aria-label="Tabs">
         {TABS.map((t) => (
           <button
-            key={t.label}
+            key={navName(t.id, navNames, t.label)}
             type="button"
             className={t.match.includes(view) && !open ? 'active' : ''}
             aria-current={t.match.includes(view) ? 'page' : undefined}
             onClick={() => useNav.getState().go(t.route)}
           >
             {t.icon}
-            <span>{t.label}</span>
+            <span>{navName(t.id, navNames, t.label)}</span>
             {t.label === 'Tasks' && dueTasks > 0 && <span className="tab-badge">{dueTasks}</span>}
           </button>
         ))}

@@ -56,6 +56,7 @@ export function decodeEntities(s: string): string {
 export function htmlToText(html: string): string {
   return decodeEntities(
     html
+      .replace(/<!--[\s\S]*?-->/g, '')
       .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
       .replace(/<br\s*\/?>|<\/p>|<\/li>|<\/div>/gi, '\n')
       .replace(/<[^>]+>/g, ' ')
@@ -158,7 +159,7 @@ const resolve = (href: string, base: string): string => {
 export function parsePage(html: string, pageUrl: string, now = Date.now()): RawItem[] {
   const base = new URL(pageUrl)
   const prefix = base.pathname.replace(/\/+$/, '') + '/'
-  const body = html.replace(/<(script|style|nav|header|footer)[\s\S]*?<\/\1>/gi, '')
+  const body = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style|nav|header|footer)[\s\S]*?<\/\1>/gi, '')
   const anchors = [...body.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)]
     .map((m) => ({ url: resolve(m[1], pageUrl), text: htmlToText(m[2]), at: m.index ?? 0, end: (m.index ?? 0) + m[0].length }))
     .filter((a) => {
@@ -180,7 +181,7 @@ export function parsePage(html: string, pageUrl: string, now = Date.now()): RawI
     seen.add(a.url)
     // What follows the link until the next story: its date and the first lines of text
     const next = anchors.slice(i + 1).find((b) => b.url !== a.url)
-    const after = body.slice(a.end, Math.min(next ? next.at : a.end + 1500, a.end + 1500))
+    const after = body.slice(a.end, Math.min(next ? next.at : a.end + 1500, a.end + 1500)).replace(/<[^>]*$/, '') // not half a tag
     const datetime = /datetime=["']([^"']+)["']/i.exec(after)?.[1]
     const text = htmlToText(after)
     const textDate = Date.parse(/([A-Z][a-z]{2,8}\.? \d{1,2},? \d{4})/.exec(text)?.[1] ?? '')
@@ -315,7 +316,7 @@ const TOPIC_RULES: [NewsTopic, RegExp][] = [
   ['civic', words('election|elector|vote\\b|voting|voters?|ballot|candidate|council|mayor|bylaw|budget|property tax|public hearing|referendum|school board|trustee|mla\\b|mp\\b|town hall|regional district|rdos|municipal|grant')],
   ['events', words('festival|concert|market\\b|farmers.? market|fair\\b|parade|open house|event|celebrat|workshop|fundraiser|gala|exhibit|craft|light.?up|halloween|christmas|santa|theatre|theater|movie night|show\\b|performance|tickets|registration|tour\\b|class(?:es)?\\b|run\\b|walk\\b|ceremony')],
   ['crime', words('police|rcmp|arrest|charged|charges|sentenc|court\\b|trial|theft|stolen|assault|robbery|impaired|crash|collision|fraud|suspect|investigat')],
-  ['sports', words('hockey|coyotes|vees|canucks|playoff|tournament|league|soccer|baseball|football|golf|curling|athlete|championship|game\\b|season\\b')],
+  ['sports', words('hockey|coyotes|vees|canucks|playoff|tournament|league|soccer|baseball|football|golf|curling|athlete|championship|game\\b|vs\\.?\\s|replay:|flohockey|elite prospects|pickleball')],
   ['business', words('business|opens|opening|restaurant|store|winery|wineries|jobs\\b|hiring|economy|tourism|real estate|housing|development')]
 ]
 
@@ -361,7 +362,7 @@ export function configureNews(db: Db, patch: { sources?: NewsSource[]; prefs?: P
   if (patch.sources) {
     const clean = patch.sources
       .filter((s) => s && typeof s.url === 'string' && s.url.trim())
-      .map((s) => ({ id: s.id || newId(), kind: s.kind, name: (s.name || s.url).trim().slice(0, 80), url: s.url.trim(), enabled: s.enabled !== false }))
+      .map((s) => ({ id: s.id || newId(), kind: s.kind, name: (s.name || s.url).trim().slice(0, 80), url: s.url.trim(), enabled: s.enabled !== false, ...(s.important ? { important: true } : {}) }))
     setSetting(db, 'news.sources', clean)
     // Stories of removed sources go too
     const ids = clean.map((s) => s.id)
@@ -438,6 +439,7 @@ export function newsFeed(db: Db, now = Date.now()): NewsFeed {
       boosted ||
       r.severe === 1 ||
       (source.kind === 'weather' && ageDays < 3) ||
+      (source.important === true && ageDays < 3 && !over) ||
       (topic === 'alerts' && source.kind !== 'roads' && !over && ageDays < 4 && URGENT.test(text)) ||
       (topic === 'civic' && !over && ELECTION.test(text) && (when !== null || ageDays < 2))
     items.push({

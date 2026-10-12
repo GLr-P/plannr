@@ -13,6 +13,7 @@ import { openMenu } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { noteMenu } from '../menus'
 import { useUi } from '../store/ui'
+import { useNavName } from '../store/display'
 import { hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
 import { dueLabel } from './TasksView'
 import { formatDay, formatMoney, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
@@ -42,6 +43,7 @@ export function HomeView() {
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [dueTasks, setDueTasks] = useState<Task[]>([])
   const [news, setNews] = useState<NewsFeed | null>(null)
+  const ticketsName = useNavName('tickets', 'Tickets')
   const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void upcomingBills(7).then(setBills)
@@ -182,7 +184,7 @@ export function HomeView() {
     tickets: tickets.length > 0 && (
       <section>
         <h2 className="section-title">
-          Open tickets <span className="muted">{tickets.length}</span>
+          Open {ticketsName.toLowerCase()} <span className="muted">{tickets.length}</span>
         </h2>
         <ul className="ticket-history">
           {tickets.slice(0, 8).map((t) => (

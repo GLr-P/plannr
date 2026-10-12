@@ -181,6 +181,8 @@ export interface DisplayPrefs {
   paymentMethods: string[]
   /** 0 = Sunday, 1 = Monday */
   weekStart: 0 | 1
+  /** Your names for menu items, e.g. { tickets: 'Orders' } (blank = standard name) */
+  navNames: Partial<Record<string, string>>
 }
 
 export const DEFAULT_DISPLAY: DisplayPrefs = {
@@ -188,7 +190,8 @@ export const DEFAULT_DISPLAY: DisplayPrefs = {
   currency: 'CAD',
   statusLabels: {},
   paymentMethods: ['Cash', 'Card', 'Debit', 'e-Transfer', 'PayPal', 'Cheque', 'Bank transfer', 'Other'],
-  weekStart: 0
+  weekStart: 0,
+  navNames: {}
 }
 
 const display: DisplayPrefs = { ...DEFAULT_DISPLAY }
@@ -657,6 +660,8 @@ export interface NewsSource {
   name: string
   url: string
   enabled: boolean
+  /** Its new stories always go under Need to know (e.g. your town's notices) */
+  important?: boolean
 }
 
 export const NEWS_TOPICS = [

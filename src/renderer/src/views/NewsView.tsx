@@ -8,18 +8,22 @@ import {
   CloudSun,
   ExternalLink,
   EyeOff,
+  ListPlus,
   MapPin,
   Newspaper,
   Plus,
   RefreshCw,
   Search,
   Settings2,
+  Star,
   Trash2,
   X
 } from 'lucide-react'
 import { NEWS_TOPICS, type NewsFeed, type NewsItem, type NewsPlace, type NewsPrefs, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
+import { useData } from '../store/data'
+import { useUi } from '../store/ui'
 import { relativeTime, todayISO } from '../lib/format'
 import { formatTime } from '../lib/time'
 import { showToast, undoToast } from '../lib/toast'
@@ -44,6 +48,8 @@ export function NewsView() {
   const [more, setMore] = useState(30)
   const [settings, setSettings] = useState(false)
   const [adding, setAdding] = useState<NewsItem | null>(null)
+  const prefs = useUi((s) => s.prefs)
+  const look = { photos: prefs.newsPhotos !== '0', compact: prefs.newsCompact === '1', urgent: prefs.newsUrgent !== '0', coming: prefs.newsComing !== '0' }
 
   const refresh = useCallback(async () => {
     setBusy(true)
@@ -94,6 +100,11 @@ export function NewsView() {
     calendar: (item) => {
       if (item.eventId) go({ view: 'calendar', eventId: item.eventId, date: item.when?.date })
       else setAdding(item)
+    },
+    task: async (item) => {
+      await api.tasks.create({ title: item.title.replace(/\s+[-–|]\s+[^-–|]{2,40}$/, ''), notes: [item.summary, item.url].filter(Boolean).join('\n\n'), dueDate: item.when?.date ?? null })
+      void useData.getState().refreshCounts()
+      showToast('Added to your tasks', { label: 'Open', run: () => go({ view: 'tasks' }) })
     }
   }
 
@@ -109,14 +120,14 @@ export function NewsView() {
     const hiddenCount = feed.items.filter((i) => i.filtered && matches(i)).length
     if (tab === 'saved') return { list: visible.filter((i) => i.saved), hiddenCount }
     if (tab !== 'foryou') return { list: feed.items.filter((i) => matches(i) && i.topic === tab), hiddenCount: 0 }
-    const urgent = visible.filter((i) => i.important).slice(0, 8)
+    const urgent = prefs.newsUrgent === '0' ? [] : visible.filter((i) => i.important).slice(0, 8)
     const coming = visible
       .filter((i) => i.when && i.when.date >= today && !urgent.includes(i))
       .sort((a, b) => (a.when!.date + (a.when!.startTime ?? '')).localeCompare(b.when!.date + (b.when!.startTime ?? '')))
       .slice(0, 10)
     const shown = new Set([...urgent, ...coming].map((i) => i.id))
     return { urgent, coming, latest: visible.filter((i) => !shown.has(i.id)), hiddenCount }
-  }, [feed, tab, query, showFiltered])
+  }, [feed, tab, query, showFiltered, prefs.newsUrgent])
 
   if (!feed) return <div className="page news-page" />
   if (needsSetup)
@@ -169,7 +180,7 @@ export function NewsView() {
           )}
           {groups && 'urgent' in groups ? (
             <>
-              {groups.urgent!.length > 0 && (
+              {look.urgent && groups.urgent!.length > 0 && (
                 <section className="news-section news-urgent">
                   <h2 className="section-title">
                     <AlertTriangle /> Need to know
@@ -179,7 +190,7 @@ export function NewsView() {
                   ))}
                 </section>
               )}
-              {groups.coming!.length > 0 && (
+              {look.coming && groups.coming!.length > 0 && (
                 <section className="news-section news-coming">
                   <h2 className="section-title">Coming up</h2>
                   <div className="news-coming-list">
@@ -193,7 +204,7 @@ export function NewsView() {
                 <h2 className="section-title">Latest</h2>
                 {groups.latest!.length === 0 && <div className="empty-state">No stories yet{busy ? ' – checking now…' : '.'}</div>}
                 {groups.latest!.slice(0, more).map((i) => (
-                  <NewsCard key={i.id} item={i} actions={actions} />
+                  <NewsCard key={i.id} item={i} actions={actions} compact={look.compact} photos={look.photos} />
                 ))}
                 {groups.latest!.length > more && (
                   <button type="button" className="btn news-more" onClick={() => setMore((m) => m + 30)}>
@@ -206,7 +217,7 @@ export function NewsView() {
             <section className="news-section">
               {groups?.list?.length === 0 && <div className="empty-state">{tab === 'saved' ? 'Stories you save (the bookmark) show here.' : 'Nothing here right now.'}</div>}
               {groups?.list?.map((i) => (
-                <NewsCard key={i.id} item={i} actions={actions} />
+                <NewsCard key={i.id} item={i} actions={actions} compact={look.compact} photos={look.photos} />
               ))}
             </section>
           )}
@@ -260,9 +271,10 @@ interface CardActions {
   save: (item: NewsItem) => void
   hide: (item: NewsItem) => void
   calendar: (item: NewsItem) => void
+  task: (item: NewsItem) => void
 }
 
-function NewsCard({ item, actions, compact }: { item: NewsItem; actions: CardActions; compact?: boolean }) {
+function NewsCard({ item, actions, compact, photos = true }: { item: NewsItem; actions: CardActions; compact?: boolean; photos?: boolean }) {
   const [imageOk, setImageOk] = useState(true)
   return (
     <article className={`news-card ${item.read ? 'read' : ''} ${item.important ? 'important' : ''} ${compact ? 'compact' : ''}`} data-topic={item.topic}>
@@ -288,6 +300,9 @@ function NewsCard({ item, actions, compact }: { item: NewsItem; actions: CardAct
           <button type="button" className={`btn sm ${item.eventId ? 'on' : ''}`} onClick={() => actions.calendar(item)}>
             {item.eventId ? <CalendarCheck /> : <CalendarPlus />} {item.eventId ? 'On your calendar' : 'Add to calendar'}
           </button>
+          <button type="button" className="icon-btn sm" title="Make a task" aria-label="Make a task" onClick={() => actions.task(item)}>
+            <ListPlus />
+          </button>
           <button type="button" className={`icon-btn sm ${item.saved ? 'on' : ''}`} title={item.saved ? 'Saved (click to unsave)' : 'Save for later'} aria-label={item.saved ? 'Unsave' : 'Save for later'} onClick={() => actions.save(item)}>
             {item.saved ? <BookmarkCheck /> : <Bookmark />}
           </button>
@@ -301,7 +316,7 @@ function NewsCard({ item, actions, compact }: { item: NewsItem; actions: CardAct
           )}
         </div>
       </div>
-      {item.image && imageOk && !compact && <img className="news-thumb" src={item.image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setImageOk(false)} />}
+      {item.image && imageOk && photos && !compact && <img className="news-thumb" src={item.image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setImageOk(false)} />}
     </article>
   )
 }
@@ -395,7 +410,7 @@ function FacebookBox({ pages }: { pages: NewsSource[] }) {
   )
 }
 
-function AddToCalendar({ item, onClose, onAdded }: { item: NewsItem; onClose: () => void; onAdded: (eventId: string) => void }) {
+export function AddToCalendar({ item, onClose, onAdded }: { item: NewsItem; onClose: () => void; onAdded: (eventId: string) => void }) {
   const [title, setTitle] = useState(item.title.replace(/\s+[-–|]\s+[^-–|]{2,40}$/, ''))
   const [date, setDate] = useState(item.when?.date ?? todayISO())
   const [start, setStart] = useState(item.when?.startTime ?? '')
@@ -673,6 +688,18 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
               <span className="muted small news-source-kind" title={s.url}>
                 {KIND_LABEL[s.kind]}
               </span>
+              {s.kind !== 'facebook' && s.kind !== 'weather' && (
+                <button
+                  type="button"
+                  className={`icon-btn sm news-star ${s.important ? 'on' : ''}`}
+                  aria-pressed={Boolean(s.important)}
+                  title={s.important ? 'Its new stories always go under Need to know (click to stop)' : 'Always put its new stories under Need to know'}
+                  aria-label={`Always need to know: ${s.name}`}
+                  onClick={() => setSources((l) => l.map((x) => (x.id === s.id ? { ...x, important: !x.important } : x)))}
+                >
+                  <Star />
+                </button>
+              )}
               <button type="button" className="icon-btn sm" title="Remove" aria-label={`Remove ${s.name}`} onClick={() => setSources((l) => l.filter((x) => x.id !== s.id))}>
                 <Trash2 />
               </button>
@@ -724,6 +751,7 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
           <input type="checkbox" checked={prefs.notifyUrgent} onChange={(e) => setPrefs((p) => ({ ...p, notifyUrgent: e.target.checked }))} />
           Notify me about urgent alerts (weather warnings, closures, advisories)
         </label>
+        <NewsLook />
 
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={onClose}>
@@ -735,5 +763,32 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
         </div>
       </div>
     </div>
+  )
+}
+
+/** How the page looks on this device */
+function NewsLook() {
+  const prefs = useUi((s) => s.prefs)
+  const setPref = useUi((s) => s.setPref)
+  const toggle = (key: string, on: boolean, defaultOn: boolean): void => setPref(key, on === defaultOn ? '' : on ? '1' : '0')
+  const rows: { key: string; label: string; defaultOn: boolean }[] = [
+    { key: 'newsUrgent', label: 'Show Need to know at the top', defaultOn: true },
+    { key: 'newsComing', label: 'Show Coming up (stories with a date)', defaultOn: true },
+    { key: 'newsPhotos', label: 'Show photos', defaultOn: true },
+    { key: 'newsCompact', label: 'Compact list (headlines only)', defaultOn: false }
+  ]
+  return (
+    <>
+      <h3 className="news-settings-h">Look (this device)</h3>
+      {rows.map((r) => {
+        const on = prefs[r.key] ? prefs[r.key] === '1' : r.defaultOn
+        return (
+          <label key={r.key} className="check-row">
+            <input type="checkbox" checked={on} onChange={(e) => toggle(r.key, e.target.checked, r.defaultOn)} />
+            {r.label}
+          </label>
+        )
+      })}
+    </>
   )
 }

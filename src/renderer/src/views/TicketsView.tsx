@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavName } from '../store/display'
+import { singular } from '../lib/navOrder'
 import { create } from 'zustand'
 import { ChevronDown, Plus, Search, X } from 'lucide-react'
 import {
@@ -35,6 +37,7 @@ const statusChips = (): { id: StatusFilter; label: string }[] => [
 ]
 
 export function TicketsView() {
+  const ticketsName = useNavName('tickets', 'Tickets')
   const { status, query, from, to } = useFilters()
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null)
 
@@ -62,7 +65,7 @@ export function TicketsView() {
   return (
     <div className="page list-page wide">
       <div className="list-header">
-        <h1>Tickets</h1>
+        <h1>{ticketsName}</h1>
         <NewTicketButton />
       </div>
 
@@ -171,6 +174,7 @@ export function TicketsView() {
 
 /** "New ticket" uses the default template; the arrow picks another template or a blank ticket. */
 export function NewTicketButton({ customerId }: { customerId?: string }) {
+  const ticketsName = useNavName('tickets', 'Tickets')
   const [open, setOpen] = useState(false)
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const ref = useRef<HTMLDivElement>(null)
@@ -188,7 +192,7 @@ export function NewTicketButton({ customerId }: { customerId?: string }) {
   return (
     <div className="split-btn" ref={ref}>
       <button type="button" className="btn primary" onClick={() => void newTicket({ customerId })}>
-        <Plus /> New ticket
+        <Plus /> New {singular(ticketsName)}
       </button>
       <button type="button" className="btn primary split-arrow" aria-label="Choose template" onClick={() => setOpen((o) => !o)}>
         <ChevronDown />

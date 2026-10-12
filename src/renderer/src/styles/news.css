@@ -534,3 +534,16 @@
 .news-urgent-icon {
   color: var(--danger);
 }
+
+.news-star.on {
+  color: #f59e0b;
+}
+.news-star.on svg {
+  fill: currentColor;
+}
+.news-settings .check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}

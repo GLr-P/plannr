@@ -17,3 +17,9 @@ export async function saveDisplay(patch: Partial<DisplayPrefs>): Promise<void> {
   setDisplayPrefs(await api.display.set(patch))
   useDisplay.setState((s) => ({ version: s.version + 1, prefs: { ...displayPrefs() } }))
 }
+
+/** Your name for a menu item (e.g. Tickets → Orders), updating when it's changed */
+export function useNavName(id: string, fallback: string): string {
+  const names = useDisplay((s) => s.prefs.navNames)
+  return names?.[id]?.trim() || fallback
+}

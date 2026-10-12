@@ -112,6 +112,9 @@ describe('topics', () => {
     expect(news.topicOf('TSX closes higher as oil prices rise', 'rss')).toBe('markets')
     expect(news.topicOf('Local photographer captures aurora', 'rss')).toBe('community')
     expect(news.topicOf('anything', 'roads')).toBe('alerts')
+    expect(news.topicOf('Replay: Home - 2026 Osoyoos vs Williams Lake | Oct 10 @ 6 PM - FloHockey', 'rss')).toBe('sports')
+    expect(news.topicOf('Seasonal Off-Leash Dog Park Re-opening', 'page')).not.toBe('sports')
+    expect(news.htmlToText('a <!-- <b>hidden</b> --> b')).toBe('a b')
   })
 })
 

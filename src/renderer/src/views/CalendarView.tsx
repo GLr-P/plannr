@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type TicketSummary } from '../../../shared/api'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
+import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -14,6 +14,7 @@ import { DRAG_MIME, openEntity, readDrag } from '../actions'
 import { formatDay, todayISO } from '../lib/format'
 import { EntityIcon } from '../components/EntityIcon'
 import { EventPopover, NewEventPopover, type PopoverAnchor } from '../components/EventPopover'
+import { AddToCalendar } from './NewsView'
 
 type ViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
 const VIEWS: { id: ViewName; label: string }[] = [
@@ -53,6 +54,11 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [bills, setBills] = useState<MoneyOccurrence[]>([])
   const [googleEvents, setGoogleEvents] = useState<GoogleEvent[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
+  // Dates found in local news (when News is set up): shown faintly until you add one
+  const showNews = useUi((s) => s.prefs.calendarNews) !== '0'
+  const [newsSetUp, setNewsSetUp] = useState(false)
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([])
+  const [addNews, setAddNews] = useState<NewsItem | null>(null)
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
@@ -71,6 +77,9 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
     setHolidays(hols)
     setBills(due)
     setGoogleEvents(gev)
+    const news = await api.news.feed()
+    setNewsSetUp(news.sources.length > 0)
+    setNewsItems(news.items.filter((i) => i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
     setVersion((v) => v + 1)
   }, [range])
   useEffect(() => {
@@ -136,6 +145,18 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-task', t.done ? 'ev-done' : ''],
         extendedProps: { task: t }
       })),
+      // Local news with a date (read-only; click to put it on your calendar)
+      ...(showNews ? newsItems : []).map((n) => ({
+        id: `news:${n.id}`,
+        title: n.title,
+        start: n.when!.startTime ? `${n.when!.date}T${n.when!.startTime}` : n.when!.date,
+        end: n.when!.startTime && n.when!.endTime ? `${n.when!.date}T${n.when!.endTime}` : undefined,
+        allDay: !n.when!.startTime,
+        editable: false,
+        order: 3,
+        classNames: ['ev-news'],
+        extendedProps: { news: n }
+      })),
       ...events.map((e) => ({
         order: 1,
         id: e.repeat ? `${e.id}::${e.date}` : e.id,
@@ -148,7 +169,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -208,6 +229,15 @@ ${google.calendarName} (Google)`}>
           <span className="ev-title">{arg.event.title}</span>
         </div>
       )
+    const news = arg.event.extendedProps.news as NewsItem | undefined
+    if (news)
+      return (
+        <div className="ev-chip" title={`${news.title}\n${news.sourceName} (local news: click to add it to your calendar)`}>
+          <Newspaper className="ev-icon" />
+          {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
+          <span className="ev-title">{news.title}</span>
+        </div>
+      )
     const bill = arg.event.extendedProps.bill as MoneyOccurrence | undefined
     if (bill)
       return (
@@ -265,6 +295,17 @@ ${google.calendarName} (Google)`}>
         >
           <PanelLeft /> Tickets
         </button>
+        {newsSetUp && (
+          <button
+            type="button"
+            className={`btn sm ${showNews ? 'active-btn' : ''}`}
+            aria-pressed={showNews}
+            onClick={() => setPref('calendarNews', showNews ? '0' : '1')}
+            title="Show dates from local news (click one to add it to your calendar)"
+          >
+            <Newspaper /> Local events
+          </button>
+        )}
         <button
           type="button"
           className="btn sm primary"
@@ -274,6 +315,16 @@ ${google.calendarName} (Google)`}>
         </button>
       </div>
 
+      {addNews && (
+        <AddToCalendar
+          item={addNews}
+          onClose={() => setAddNews(null)}
+          onAdded={() => {
+            setAddNews(null)
+            void reload()
+          }}
+        />
+      )}
       <div className="cal-body">
         {trayOpen && <TicketTray refreshKey={version} />}
         <div
@@ -323,6 +374,8 @@ ${google.calendarName} (Google)`}>
               const bill = info.event.extendedProps.bill as MoneyOccurrence | undefined
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
               if (info.event.extendedProps.task) return go({ view: 'tasks' })
+              const news = info.event.extendedProps.news as NewsItem | undefined
+              if (news) return setAddNews(news)
               const r = info.el.getBoundingClientRect()
               setPopover({ kind: 'edit', event: info.event.extendedProps.ev as CalendarEvent, anchor: { x: r.right, y: r.top } })
             }}

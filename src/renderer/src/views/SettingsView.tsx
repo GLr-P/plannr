@@ -17,6 +17,7 @@ import {
   HomeLayoutSettings,
   LookSettings,
   MenuSettings,
+  MenuNameSettings,
   MoneyDisplaySettings,
   TicketSettings,
   WeekStartSetting
@@ -184,6 +185,7 @@ export function SettingsView() {
       {tab === 'layout' && (
         <>
           <MenuSettings />
+          <MenuNameSettings />
           <HomeLayoutSettings />
           <section className="setting">
             <div>

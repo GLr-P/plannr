@@ -5,7 +5,7 @@ import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
 import { ACCENTS, TEXT_SIZES } from '../lib/appearance'
-import { HIDEABLE, navHidden } from '../lib/navOrder'
+import { HIDEABLE, NAV_IDS, NAV_LABELS, navHidden } from '../lib/navOrder'
 import { HOME_SECTIONS, hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
 import { MessageTemplatesSettings } from './MessageTemplatesSettings'
 
@@ -107,6 +107,37 @@ export function MenuSettings() {
           <label key={item.id} className="check-row">
             <input type="checkbox" checked={!hidden.includes(item.id)} onChange={(e) => toggle(item.id, e.target.checked)} />
             {item.label}
+          </label>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** Your own names for menu items (synced, per profile): e.g. Tickets → Orders, Customers → Clients */
+export function MenuNameSettings() {
+  const names = useDisplay((s) => s.prefs.navNames) ?? {}
+  const [draft, setDraft] = useState<Record<string, string>>({ ...names } as Record<string, string>)
+  const items = [...NAV_IDS.map((id) => ({ id: id as string, label: NAV_LABELS[id] })), { id: 'vault', label: 'Vault' }, { id: 'templates', label: 'Templates' }]
+  return (
+    <section className="setting setting-stack">
+      <div>
+        <h3>Menu names</h3>
+        <p className="muted">Call things what you call them, e.g. Tickets → Orders or Jobs, Customers → Clients. Leave blank for the standard name.</p>
+      </div>
+      <div className="status-names">
+        {items.map((it) => (
+          <label key={it.id} className="mfield">
+            <span>{it.label}</span>
+            <input
+              value={draft[it.id] ?? ''}
+              placeholder={it.label}
+              maxLength={24}
+              aria-label={`Name for ${it.label}`}
+              onChange={(e) => setDraft({ ...draft, [it.id]: e.target.value })}
+              onBlur={() => void saveDisplay({ navNames: Object.fromEntries(Object.entries(draft).filter(([, v]) => v.trim())) })}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            />
           </label>
         ))}
       </div>

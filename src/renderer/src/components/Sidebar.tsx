@@ -30,7 +30,8 @@ import { noteTitle } from '../lib/format'
 import { ItemIcon } from '../lib/icons'
 import { childrenOf, isWithin, placeItem, placeNextTo, useAddingFolder, useSidebarDrag, type Dragging, type Entry } from '../lib/sidebarTree'
 import { openMenu } from './ContextMenu'
-import { navHidden, navOrder, type NavId } from '../lib/navOrder'
+import { NAV_LABELS, navHidden, navName, navOrder, singular, type NavId } from '../lib/navOrder'
+import { useDisplay } from '../store/display'
 import { folderMenu, newSection, noteMenu, renameFolder, renameNote, sectionMenu, sidebarMenu, useRenaming } from '../menus'
 
 /** Section of a detail page, so e.g. "Tickets" stays highlighted while a ticket is open. */
@@ -393,6 +394,8 @@ async function newNoteIn(dest: SidebarDest): Promise<void> {
 // ---------- Main menu (drag to reorder; order remembered) ----------
 
 export function Sidebar() {
+  const navNames = useDisplay((s) => s.prefs.navNames)
+  const name = (id: string): string => navName(id, navNames, NAV_LABELS[id as NavId] ?? id.charAt(0).toUpperCase() + id.slice(1))
   const notes = useData((s) => s.notes)
   const folders = useData((s) => s.folders)
   const sections = useData((s) => s.sections)
@@ -420,33 +423,33 @@ export function Sidebar() {
   })
 
   const nav: Record<NavId, ReactNode> = {
-    home: <NavItem key="home" icon={<Home />} label="Home" target={{ view: 'home' }} {...navDrop('home')} />,
+    home: <NavItem key="home" icon={<Home />} label={name('home')} target={{ view: 'home' }} {...navDrop('home')} />,
     tickets: (
       <NavItem
         key="tickets"
         icon={<Wrench />}
-        label="Tickets"
+        label={name('tickets')}
         target={{ view: 'tickets' }}
         count={openTickets || undefined}
         {...navDrop('tickets')}
         actions={
-          <button type="button" className="icon-btn sm" title="New ticket" aria-label="New ticket" onClick={() => void newTicket()}>
+          <button type="button" className="icon-btn sm" title={`New ${singular(name('tickets'))}`} aria-label="New ticket" onClick={() => void newTicket()}>
             <Plus />
           </button>
         }
       />
     ),
-    customers: <NavItem key="customers" icon={<Users />} label="Customers" target={{ view: 'customers' }} {...navDrop('customers')} />,
-    calendar: <NavItem key="calendar" icon={<CalendarDays />} label="Calendar" target={{ view: 'calendar' }} {...navDrop('calendar')} />,
-    money: <NavItem key="money" icon={<Wallet />} label="Money" target={{ view: 'money' }} {...navDrop('money')} />,
-    tasks: <NavItem key="tasks" icon={<CheckSquare />} label="Tasks" target={{ view: 'tasks' }} count={dueTasks || undefined} {...navDrop('tasks')} />,
-    news: <NavItem key="news" icon={<Newspaper />} label="News" target={{ view: 'news' }} {...navDrop('news')} />,
-    inventory: <NavItem key="inventory" icon={<Package />} label="Inventory" target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
+    customers: <NavItem key="customers" icon={<Users />} label={name('customers')} target={{ view: 'customers' }} {...navDrop('customers')} />,
+    calendar: <NavItem key="calendar" icon={<CalendarDays />} label={name('calendar')} target={{ view: 'calendar' }} {...navDrop('calendar')} />,
+    money: <NavItem key="money" icon={<Wallet />} label={name('money')} target={{ view: 'money' }} {...navDrop('money')} />,
+    tasks: <NavItem key="tasks" icon={<CheckSquare />} label={name('tasks')} target={{ view: 'tasks' }} count={dueTasks || undefined} {...navDrop('tasks')} />,
+    news: <NavItem key="news" icon={<Newspaper />} label={name('news')} target={{ view: 'news' }} {...navDrop('news')} />,
+    inventory: <NavItem key="inventory" icon={<Package />} label={name('inventory')} target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
     notes: (
       <NavItem
         key="notes"
         icon={<FileText />}
-        label="Notes"
+        label={name('notes')}
         target={{ view: 'notes', filter: { kind: 'all' } }}
         count={notes.length || undefined}
         drag={{ kind: 'nav', id: 'notes' }}
@@ -508,8 +511,8 @@ export function Sidebar() {
 
       <div className="sidebar-spacer" />
       <div className="sidebar-divider" />
-      {!hidden.includes('vault') && <NavItem icon={<Lock />} label="Vault" target={{ view: 'vault' }} />}
-      {!hidden.includes('templates') && <NavItem icon={<LayoutTemplate />} label="Templates" target={{ view: 'templates' }} />}
+      {!hidden.includes('vault') && <NavItem icon={<Lock />} label={name('vault')} target={{ view: 'vault' }} />}
+      {!hidden.includes('templates') && <NavItem icon={<LayoutTemplate />} label={name('templates')} target={{ view: 'templates' }} />}
       <NavItem icon={<Trash2 />} label="Trash" target={{ view: 'notes', filter: { kind: 'trash' } }} />
       <NavItem icon={<Settings />} label="Settings" target={{ view: 'settings' }} />
     </nav>

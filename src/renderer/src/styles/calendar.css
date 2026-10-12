@@ -496,3 +496,17 @@
   display: flex;
   gap: 6px;
 }
+
+/* Local news with a date (not on your calendar until you add it) */
+.fc .ev-news,
+.fc .ev-news.fc-daygrid-block-event,
+.fc .ev-news.fc-daygrid-dot-event,
+.fc .ev-news.fc-timegrid-event {
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  cursor: pointer;
+}
+.fc .ev-news .ev-chip {
+  color: var(--text-muted);
+  font-weight: 400;
+}
