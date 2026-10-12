@@ -97,6 +97,10 @@ test('Warranty on a ticket, and a free trial with a price increase', async () =>
 
 test('Home as tiles: weather, habits, lists, packages', async () => {
   await nav('Home').click()
+  // Quick add: the date is read from the words
+  await page.getByLabel('Quick add a task').fill('Call the supplier tomorrow at 3pm')
+  await page.getByLabel('Quick add a task').press('Enter')
+  await expect.poll(() => page.evaluate(() => window.plannr.tasks.list().then((l) => l.find((t) => t.title === 'Call the supplier tomorrow at 3pm')?.dueTime ?? null))).toBe('15:00')
   await expect(page.locator('.home-grid')).toBeVisible()
   await expect(page.locator('.home-forecast .home-day')).toHaveCount(7)
   await expect(page.locator('.home-grid')).toContainText('Drink water')

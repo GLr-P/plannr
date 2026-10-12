@@ -191,6 +191,26 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   )
 
   const api_ = () => calRef.current?.getApi()
+  // ← / → previous and next, T today, M / W / D month, week, day (when not typing)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const t = e.target as HTMLElement
+      if (e.ctrlKey || e.metaKey || e.altKey || t.closest('input, textarea, select, [contenteditable="true"], .event-popover, .dialog')) return
+      const cal = calRef.current?.getApi()
+      if (!cal) return
+      const views: Record<string, ViewName> = { m: 'dayGridMonth', w: 'timeGridWeek', d: 'timeGridDay' }
+      if (e.key === 'ArrowLeft') cal.prev()
+      else if (e.key === 'ArrowRight') cal.next()
+      else if (e.key.toLowerCase() === 't') cal.today()
+      else if (views[e.key.toLowerCase()]) {
+        setPref('calendarView', views[e.key.toLowerCase()])
+        cal.changeView(views[e.key.toLowerCase()])
+      } else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setPref])
 
   /** Date (and time, in week/day view) of the calendar cell under the pointer. */
   const cellAt = (x: number, y: number): { el: HTMLElement; date: string; time: string | null } | null => {
@@ -317,7 +337,7 @@ ${google.calendarName} (Google)`}>
           type="button"
           className={`btn sm ${trayOpen ? 'active-btn' : ''}`}
           onClick={() => setCollapsed('calendar:tray', trayOpen)}
-          title="Show open tickets to drag onto the calendar"
+          title="Show open tickets to drag onto the calendar (tip: ← → move, T today, M W D change the view)"
         >
           <PanelLeft /> Tickets
         </button>

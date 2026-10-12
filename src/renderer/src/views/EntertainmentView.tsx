@@ -15,6 +15,7 @@ export function EntertainmentView() {
   const [channel, setChannel] = useState<string>('all')
   const [manage, setManage] = useState(false)
   const showShorts = useUi((s) => s.prefs.entShorts === '1')
+  const hideWatched = useUi((s) => s.prefs.entHideWatched === '1')
   const setPref = useUi((s) => s.setPref)
   const [notifyLive, setNotifyLive] = useState(false)
   useEffect(() => {
@@ -68,7 +69,7 @@ export function EntertainmentView() {
   const live = feed.live.filter((l) => l.live)
   const offline = feed.live.filter((l) => !l.live)
   const youtube = feed.channels.filter((c) => c.kind === 'youtube')
-  const videos = feed.videos.filter((v) => (showShorts || !v.short) && (channel === 'all' || v.channelId === channel))
+  const videos = feed.videos.filter((v) => (showShorts || !v.short) && (channel === 'all' || v.channelId === channel) && (!hideWatched || !v.watched))
 
   return (
     <div className="page ent-page">
@@ -176,6 +177,22 @@ export function EntertainmentView() {
         <section className="ent-section">
           <h2 className="section-title">
             <Youtube /> New videos
+            <span className="ent-video-actions">
+              <button type="button" className={`btn sm ${hideWatched ? 'active-btn' : ''}`} aria-pressed={hideWatched} onClick={() => setPref('entHideWatched', hideWatched ? '' : '1')}>
+                {hideWatched ? 'Showing unwatched' : 'Hide watched'}
+              </button>
+              <button
+                type="button"
+                className="btn sm"
+                onClick={() => {
+                  const unwatched = videos.filter((v) => !v.watched)
+                  setFeed((f) => (f ? { ...f, videos: f.videos.map((v) => (unwatched.includes(v) ? { ...v, watched: true } : v)) } : f))
+                  for (const v of unwatched) void api.entertainment.markWatched(v.id, true)
+                }}
+              >
+                Mark all watched
+              </button>
+            </span>
           </h2>
           {youtube.length > 1 && (
             <div className="news-tabs">

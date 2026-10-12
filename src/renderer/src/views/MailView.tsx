@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckSquare, Mail, Paperclip, RefreshCw, Wrench } from 'lucide-react'
+import { CheckSquare, Mail, Paperclip, RefreshCw, Wrench, Search } from 'lucide-react'
 import type { ZohoMessage, ZohoStatus } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
@@ -17,6 +17,7 @@ export function MailView() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [reading, setReading] = useState<ZohoMessage | null>(null)
+  const [query, setQuery] = useState('')
 
   const load = useCallback(async () => {
     setBusy(true)
@@ -73,9 +74,15 @@ export function MailView() {
         </div>
       )}
       {error && <p className="small danger-text">{error}</p>}
+      {messages && messages.length > 0 && (
+        <label className="news-search mail-search">
+          <Search />
+          <input value={query} placeholder="Search your inbox" aria-label="Search mail" onChange={(e) => setQuery(e.target.value)} />
+        </label>
+      )}
       {messages && messages.length === 0 && <div className="empty-state">Your inbox is empty.</div>}
       <ul className="mail-list">
-        {messages?.map((m) => (
+        {messages?.filter((m) => !query.trim() || `${m.from} ${m.subject} ${m.summary}`.toLowerCase().includes(query.trim().toLowerCase())).map((m) => (
           <li key={m.id} className="mail-row">
             <button type="button" className="mail-main" onClick={() => setReading(m)}>
               <span className="mail-from">{m.from.replace(/<[^>]+>/, '').replace(/"/g, '').trim() || m.from}</span>

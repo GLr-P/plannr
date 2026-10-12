@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Plus, Search, X } from 'lucide-react'
+import { go } from '../store/nav'
+import { AlertTriangle, Plus, Search, X, ListPlus } from 'lucide-react'
 import type { Part, PartInput } from '../../../shared/api'
 import { api } from '../api'
 import { formatMoney, parseMoney } from '../lib/format'
 import { ConfirmButton } from '../components/common'
-import { undoToast } from '../lib/toast'
+import { showToast, undoToast } from '../lib/toast'
 import { useData } from '../store/data'
 import { useSyncedFields } from '../lib/useSyncedFields'
 
@@ -31,6 +32,21 @@ export function InventoryView() {
     <div className="page list-page wide-page">
       <div className="list-header">
         <h1>Inventory</h1>
+        {low > 0 && (
+          <button
+            type="button"
+            className="btn"
+            title="Adds every part at or below its reorder level to the Parts to order list (in Lists)"
+            onClick={async () => {
+              const have = new Set((await api.lists.items()).filter((i) => i.list === 'Parts to order' && !i.done).map((i) => i.title))
+              const due = parts.filter((p) => p.reorderAt > 0 && p.qty <= p.reorderAt).map((p) => `${p.name || 'Part'}${p.supplier ? ` (${p.supplier})` : ''}`)
+              for (const t of due.filter((t) => !have.has(t))) await api.lists.add('Parts to order', t)
+              showToast(`${due.length} low-stock ${due.length === 1 ? 'part' : 'parts'} on the Parts to order list`, { label: 'Open', run: () => go({ view: 'lists' }) })
+            }}
+          >
+            <ListPlus /> Add low stock to a list
+          </button>
+        )}
         <button
           type="button"
           className="btn primary"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bell, BellOff, CalendarDays, Check, ChevronDown, ChevronRight, FileText, Plus, Wrench, X } from 'lucide-react'
+import { Bell, BellOff, CalendarDays, Check, ChevronDown, ChevronRight, FileText, Plus, Wrench, X, AlarmClock } from 'lucide-react'
 import type { ChecklistItem, Task } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
@@ -220,6 +220,11 @@ function TaskRow({ task, today, onChanged }: { task: Task; today: string; onChan
         <button type="button" className={`task-due ${overdue ? 'overdue' : ''} ${task.dueDate ? '' : 'empty'}`} onClick={() => setEditingDate(true)} title="Change the due date">
           <CalendarDays /> {task.dueDate ? dueLabel(task.dueDate, today) : 'Add date'}
           {task.dueTime ? ` ${task.dueTime}` : ''}
+        </button>
+      )}
+      {!task.done && (
+        <button type="button" className="icon-btn sm task-snooze" title="Snooze to tomorrow" aria-label={`Snooze ${task.title} to tomorrow`} onClick={() => void save({ dueDate: addDays(today, 1) })}>
+          <AlarmClock />
         </button>
       )}
       {task.dueDate && !task.done && (

@@ -804,6 +804,10 @@ export interface Habit {
   doneToday: boolean
   /** Scheduled days in a row done, up to today (today counts once ticked) */
   streak: number
+  /** Longest run ever */
+  best: number
+  /** Share of scheduled days done in the last 30 days, 0–100 */
+  rate30: number
   /** The last 7 days, oldest first */
   week: { date: string; scheduled: boolean; done: boolean }[]
 }

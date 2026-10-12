@@ -48,10 +48,11 @@ export function HabitsPanel({ compact = false }: { compact?: boolean }) {
               </button>
               <span className="habit-name">{h.name}</span>
               {h.streak > 0 && (
-                <span className="habit-streak" title={`${h.streak} in a row`}>
+                <span className="habit-streak" title={`${h.streak} in a row · best ${h.best} · done ${h.rate30}% of the last 30 days`}>
                   <Flame /> {h.streak}
                 </span>
               )}
+              {!compact && <span className="habit-rate small muted" title="Done on this share of its days in the last 30 days">{h.rate30}%</span>}
               {!compact && (
                 <span className="habit-week" aria-hidden>
                   {h.week.map((d) => (

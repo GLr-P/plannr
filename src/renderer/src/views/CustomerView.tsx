@@ -119,6 +119,28 @@ function CustomerPage({ customer }: { customer: Customer }) {
           aria-label="Customer notes"
         />
 
+        {tickets.length > 0 && (
+          <div className="customer-stats">
+            <div>
+              <span className="small muted">Tickets</span>
+              <b>{tickets.length}</b>
+            </div>
+            <div>
+              <span className="small muted">Paid in total</span>
+              <b>{formatMoney(tickets.reduce((s, t) => s + t.paidCents, 0))}</b>
+            </div>
+            <div>
+              <span className="small muted">Last visit</span>
+              <b>{formatDay(tickets.map((t) => t.receivedOn ?? '').sort().pop() || null)}</b>
+            </div>
+            {tickets.some((t) => t.priceCents !== null && t.priceCents > t.paidCents && t.status !== 'picked_up') && (
+              <div>
+                <span className="small muted">Still owing</span>
+                <b className="owing">{formatMoney(tickets.reduce((s, t) => s + Math.max(0, (t.priceCents ?? 0) - t.paidCents), 0))}</b>
+              </div>
+            )}
+          </div>
+        )}
         <div className="list-header section-gap">
           <h2 className="section-title flush">Repair history</h2>
           <NewTicketButton customerId={customer.id} />

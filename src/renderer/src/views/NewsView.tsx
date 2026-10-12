@@ -1,27 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  AlertTriangle,
-  Bookmark,
-  BookmarkCheck,
-  CalendarCheck,
-  CalendarPlus,
-  CloudSun,
-  Cpu,
-  ExternalLink,
-  EyeOff,
-  Flame,
-  Gamepad2,
-  ListPlus,
-  MapPin,
-  Newspaper,
-  Plus,
-  RefreshCw,
-  Search,
-  Settings2,
-  Star,
-  Trash2,
-  X
-} from 'lucide-react'
+import { AlertTriangle, Bookmark, BookmarkCheck, CalendarCheck, CalendarPlus, CloudSun, Cpu, ExternalLink, EyeOff, Flame, Gamepad2, ListPlus, MapPin, Newspaper, Plus, RefreshCw, Search, Settings2, Star, Trash2, X, CheckCheck } from 'lucide-react'
 import { LOCAL_NEWS_PAGE, NEWS_PRESETS, NEWS_TOPICS, topicsFor, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
@@ -54,6 +32,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
   const [addingPage, setAddingPage] = useState(false)
   const [adding, setAdding] = useState<NewsItem | null>(null)
   const prefs = useUi((s) => s.prefs)
+  const hideRead = prefs.newsHideRead === '1'
   const look = { photos: prefs.newsPhotos !== '0', compact: prefs.newsCompact === '1', urgent: prefs.newsUrgent !== '0', coming: prefs.newsComing !== '0' }
 
   const refresh = useCallback(async () => {
@@ -134,7 +113,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
     const today = todayISO()
     const q = query.trim().toLowerCase()
     const matches = (i: NewsItem): boolean => !q || `${i.title} ${i.summary} ${i.sourceName}`.toLowerCase().includes(q)
-    const visible = pageItems.filter((i) => matches(i) && (showFiltered || !i.filtered))
+    const visible = pageItems.filter((i) => matches(i) && (showFiltered || !i.filtered) && (!hideRead || !i.read || i.saved))
     const hiddenCount = pageItems.filter((i) => i.filtered && matches(i)).length
     if (tab === 'saved') return { list: visible.filter((i) => i.saved), hiddenCount }
     if (tab !== 'foryou') return { list: pageItems.filter((i) => matches(i) && i.topic === tab), hiddenCount: 0 }
@@ -145,7 +124,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
       .slice(0, 10)
     const shown = new Set([...urgent, ...coming].map((i) => i.id))
     return { urgent, coming, latest: visible.filter((i) => !shown.has(i.id)), hiddenCount }
-  }, [feed, pageItems, tab, query, showFiltered, prefs.newsUrgent, local])
+  }, [feed, pageItems, tab, query, showFiltered, prefs.newsUrgent, local, hideRead])
 
   if (!feed) return <div className="page news-page" />
   const pageTabs = (
@@ -194,6 +173,22 @@ export function NewsView({ page: startPage }: { page?: string }) {
         <div className="news-header-actions">
           <button type="button" className="icon-btn" title="Check for news now" aria-label="Check for news now" disabled={busy} onClick={() => void refresh()}>
             <RefreshCw className={busy ? 'spin' : ''} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            title="Mark everything on this page as read"
+            aria-label="Mark all as read"
+            onClick={() => {
+              const unread = pageItems.filter((i) => !i.read)
+              setFeed((f) => (f ? { ...f, items: f.items.map((i) => (unread.includes(i) ? { ...i, read: true } : i)) } : f))
+              for (const i of unread) void api.news.mark(i.id, { read: true })
+            }}
+          >
+            <CheckCheck />
+          </button>
+          <button type="button" className={`btn sm ${hideRead ? 'active-btn' : ''}`} aria-pressed={hideRead} onClick={() => useUi.getState().setPref('newsHideRead', hideRead ? '' : '1')}>
+            {hideRead ? 'Showing unread' : 'Hide read'}
           </button>
           <button type="button" className="btn sm" onClick={() => setSettings(true)}>
             <Settings2 /> {local ? 'Sources & topics' : 'Page settings'}

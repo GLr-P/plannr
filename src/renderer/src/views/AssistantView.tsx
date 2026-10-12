@@ -5,7 +5,26 @@ import { ASSISTANT_MODELS, ASSISTANT_PROVIDERS, type AssistantMessage, type Assi
 import { api } from '../api'
 
 /** The conversation stays while you move around Plannr (until you clear it or close Plannr) */
-const useChat = create<{ messages: (AssistantMessage & { actions?: string[] })[]; set: (m: (AssistantMessage & { actions?: string[] })[]) => void }>((set) => ({ messages: [], set: (messages) => set({ messages }) }))
+type ChatMessage = AssistantMessage & { actions?: string[] }
+const saved = (): ChatMessage[] => {
+  try {
+    return JSON.parse(localStorage.getItem('plannr.assistant.chat') ?? '[]') as ChatMessage[]
+  } catch {
+    return []
+  }
+}
+/** Kept on this device, so the conversation is still there after closing Plannr (until you start over) */
+const useChat = create<{ messages: ChatMessage[]; set: (m: ChatMessage[]) => void }>((set) => ({
+  messages: saved(),
+  set: (messages) => {
+    set({ messages })
+    try {
+      localStorage.setItem('plannr.assistant.chat', JSON.stringify(messages.slice(-60)))
+    } catch {
+      /* private storage unavailable: it just won't be remembered */
+    }
+  }
+}))
 
 const SUGGESTIONS = ['What’s coming up this week?', 'Which tickets are waiting on me?', 'Summarize today’s local news', 'How did money look this month?', 'Add milk, eggs and bread to my shopping list', 'Any good game deals right now?']
 
@@ -157,6 +176,11 @@ export function AssistantView() {
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             <div className="chat-bubble">{m.text}</div>
+            {m.role === 'assistant' && (
+              <button type="button" className="link-btn small chat-copy" onClick={() => void navigator.clipboard.writeText(m.text)}>
+                Copy
+              </button>
+            )}
             {m.actions?.map((a) => (
               <div key={a} className="chat-action small">
                 <CheckCircle2 /> {a}

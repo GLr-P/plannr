@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2, ExternalLink, Package, Plus, RefreshCw, Trash2, Truck } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Package, Plus, RefreshCw, Trash2, Truck, Copy } from 'lucide-react'
 import type { PackageInfo } from '../../../shared/api'
 import { api } from '../api'
 import { formatDay, relativeTime, todayISO } from '../lib/format'
@@ -130,6 +130,9 @@ export function PackagesView() {
               <span className="pkg-when small">
                 {p.status === 'delivered' ? (p.deliveredAt ? relativeTime(p.deliveredAt) : '') : p.expected ? (p.expected === todayISO() ? 'Today' : formatDay(p.expected)) : ''}
               </span>
+              <button type="button" className="icon-btn sm" title="Copy the tracking number" aria-label={`Copy ${p.number}`} onClick={() => void navigator.clipboard.writeText(p.number)}>
+                <Copy />
+              </button>
               <a className="icon-btn sm" href={p.trackUrl} target="_blank" rel="noreferrer" aria-label={`Track ${p.number}`} title="Open the carrier’s tracking page">
                 <ExternalLink />
               </a>

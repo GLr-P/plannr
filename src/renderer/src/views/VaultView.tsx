@@ -444,6 +444,17 @@ function VaultMain({ status, onStatus }: { status: VaultStatus; onStatus: () => 
 }
 
 /** Strong random password (no look-alike characters), always with upper, lower, digit and symbol. */
+/** A rough strength: length and kinds of characters, and the usual weak patterns */
+export function passwordStrength(pw: string): { score: 0 | 1 | 2 | 3; label: string; tip: string } {
+  const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((r) => r.test(pw)).length
+  const common = /^(password|qwerty|letmein|welcome|admin|iloveyou|monkey|dragon|123456|111111|abc123)/i.test(pw) || /(.)\1{3,}/.test(pw) || /^\d+$/.test(pw)
+  let score: 0 | 1 | 2 | 3 = pw.length >= 16 && kinds >= 3 ? 3 : pw.length >= 12 && kinds >= 2 ? 2 : pw.length >= 8 ? 1 : 0
+  if (common) score = 0
+  const label = ['Weak', 'Okay', 'Good', 'Strong'][score]
+  const tip = score === 3 ? 'Long and varied: hard to guess' : common ? 'A very common password or pattern: easy to guess' : 'Longer is stronger: aim for 16+ characters with letters, numbers and symbols (the wand makes one)'
+  return { score, label, tip }
+}
+
 export function generatePassword(length = 20): string {
   const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%^&*-_=+?']
   const all = sets.join('')
@@ -578,6 +589,11 @@ function ItemEditor({
                   >
                     {show ? <EyeOff /> : <Eye />}
                   </button>
+                )}
+                {f.key === 'password' && value && (
+                  <span className={`pw-strength s${passwordStrength(value).score}`} title={passwordStrength(value).tip}>
+                    {passwordStrength(value).label}
+                  </span>
                 )}
                 {f.key === 'password' && (
                   <button

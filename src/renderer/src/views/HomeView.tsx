@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
-import { AlertTriangle, CalendarDays, DollarSign, FileText, Flag, Newspaper, Pin, Wrench } from 'lucide-react'
+import { findWhen } from '../../../shared/news-dates'
+import { showToast } from '../lib/toast'
+import { AlertTriangle, CalendarDays, DollarSign, FileText, Flag, Newspaper, Pin, Wrench, Plus } from 'lucide-react'
 import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type NewsFeed, type NewsItem, type WeatherForecast, type ListItem, type PackageInfo, type MoneySummary, type EntFeed, type TicketSummary } from '../../../shared/api'
 import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
@@ -51,6 +53,9 @@ export function HomeView() {
   const [parcels, setParcels] = useState<PackageInfo[]>([])
   const [moneyMonth, setMoneyMonth] = useState<MoneySummary | null>(null)
   const [ent, setEnt] = useState<EntFeed | null>(null)
+  const [quick, setQuick] = useState('')
+  const [spent, setSpent] = useState<{ category: string; cents: number }[]>([])
+  const [lastMonth, setLastMonth] = useState<MoneySummary | null>(null)
   const tiles = useUi((s) => s.prefs.homeTiles) !== '0'
   const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
@@ -64,6 +69,17 @@ export function HomeView() {
     void api.lists.items().then(setListItems)
     void api.packages.list().then((l) => setParcels(l.filter((p) => p.status !== 'delivered')))
     void api.money.summary(todayISO().slice(0, 7)).then(setMoneyMonth)
+    {
+      const d = new Date()
+      d.setDate(1)
+      d.setMonth(d.getMonth() - 1)
+      void api.money.summary(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`).then(setLastMonth)
+    }
+    void api.money.transactions({ from: `${todayISO().slice(0, 7)}-01`, to: todayISO(), type: 'expense' }).then((list) => {
+      const by = new Map<string, number>()
+      for (const t of list) by.set(t.category || 'Other', (by.get(t.category || 'Other') ?? 0) + t.amountCents)
+      setSpent([...by].map(([category, cents]) => ({ category, cents })).sort((a, b) => b.cents - a.cents).slice(0, 4))
+    })
     void api.entertainment.feed().then(setEnt)
   }, [remote])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
@@ -148,6 +164,11 @@ export function HomeView() {
           <div>
             <span className="small muted">In</span>
             <b className="money-in">{formatMoney(moneyMonth.incomeCents)}</b>
+            {lastMonth && lastMonth.incomeCents > 0 && (
+              <span className={`small ${moneyMonth.incomeCents >= lastMonth.incomeCents ? 'money-up' : 'money-down'}`} title="Compared with all of last month">
+                {moneyMonth.incomeCents >= lastMonth.incomeCents ? '▲' : '▼'} {Math.abs(Math.round(((moneyMonth.incomeCents - lastMonth.incomeCents) / lastMonth.incomeCents) * 100))}% vs last month
+              </span>
+            )}
           </div>
           <div>
             <span className="small muted">Out</span>
@@ -158,6 +179,19 @@ export function HomeView() {
             <b>{formatMoney(moneyMonth.incomeCents - moneyMonth.expenseCents)}</b>
           </div>
         </div>
+        {spent.length > 0 && (
+          <ul className="home-spent">
+            {spent.map((s) => (
+              <li key={s.category}>
+                <span>{s.category}</span>
+                <span className="home-spent-bar">
+                  <span style={{ width: `${Math.round((s.cents / spent[0].cents) * 100)}%` }} />
+                </span>
+                <span className="small">{formatMoney(s.cents)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     ),
     deals: deals.length > 0 && (
@@ -310,7 +344,15 @@ export function HomeView() {
             <li key={e.id}>
               <button type="button" className="history-row" onClick={() => go({ view: 'calendar', date: e.date, eventId: e.id })}>
                 {e.kind === 'pickup' ? <Wrench className="row-lead" /> : <CalendarDays className="row-lead" />}
-                <span className="upcoming-day">{dayLabel(e.date)}</span>
+                <span className="upcoming-day">
+                  {dayLabel(e.date)}
+                  {(forecast?.days.find((d) => d.date === e.date)?.rain ?? 0) >= 60 && (
+                    <span className="rain-note" title={`${forecast?.days.find((d) => d.date === e.date)?.rain}% chance of rain or snow`}>
+                      {' '}
+                      ☔
+                    </span>
+                  )}
+                </span>
                 <span className="history-main">
                   {e.title || '(untitled)'}
                   {e.linkTitle && e.linkTitle !== e.title && <span className="muted"> · {e.linkTitle}</span>}
@@ -406,6 +448,25 @@ export function HomeView() {
           <NewTicketButton />
         </div>
       </header>
+
+      <form
+        className="home-quick-add"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          const text = quick.trim()
+          if (!text) return
+          // "Call Rosa tomorrow at 3pm" → a task due tomorrow at 15:00 (the date words stay in the title)
+          const when = findWhen(text, new Date())
+          await api.tasks.create({ title: text, dueDate: when?.date ?? null, dueTime: when?.startTime ?? null })
+          setQuick('')
+          void useData.getState().refreshCounts()
+          void api.tasks.list().then((list) => setDueTasks(list.filter((t) => t.dueDate && t.dueDate <= addDays(todayISO(), 1)).slice(0, 8)))
+          showToast(when ? `Task added for ${dayLabel(when.date)}${when.startTime ? ` at ${formatTime(when.startTime)}` : ''}` : 'Task added', { label: 'Open', run: () => go({ view: 'tasks' }) })
+        }}
+      >
+        <Plus />
+        <input value={quick} onChange={(e) => setQuick(e.target.value)} placeholder="Quick add a task… e.g. “Call Rosa tomorrow at 3pm”" aria-label="Quick add a task" />
+      </form>
 
       <div className={tiles ? 'home-grid' : ''}>
         {shown.map((id) => (

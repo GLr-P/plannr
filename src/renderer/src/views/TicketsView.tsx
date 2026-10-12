@@ -36,6 +36,9 @@ const statusChips = (): { id: StatusFilter; label: string }[] => [
   { id: 'trash', label: 'Trash' }
 ]
 
+/** Whole days since a date (YYYY-MM-DD) */
+const daysSince = (date: string): number => Math.floor((Date.now() - new Date(`${date}T00:00`).getTime()) / 86_400_000)
+
 export function TicketsView() {
   const ticketsName = useNavName('tickets', 'Tickets')
   const { status, query, from, to } = useFilters()
@@ -156,7 +159,14 @@ export function TicketsView() {
                   <td>
                     <StatusPill status={t.status} />
                   </td>
-                  <td className="nowrap">{formatDay(t.receivedOn)}</td>
+                  <td className="nowrap">
+                    {formatDay(t.receivedOn)}
+                    {t.status !== 'picked_up' && t.receivedOn && daysSince(t.receivedOn) >= 7 && (
+                      <div className={`cell-sub ticket-age ${daysSince(t.receivedOn) >= 14 ? 'old' : ''}`} title="Open this long">
+                        {daysSince(t.receivedOn)} days
+                      </div>
+                    )}
+                  </td>
                   <td className="nowrap">{formatDay(t.pickupOn)}</td>
                   <td className="num">
                     <div>{formatMoney(t.priceCents)}</div>

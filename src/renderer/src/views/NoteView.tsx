@@ -81,7 +81,14 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
     queue({ tags: next })
   }
 
-  const onChange = useCallback((doc: DocJSON) => queue({ content: doc }), [queue])
+  const [words, setWords] = useState(() => countWords(note.content))
+  const onChange = useCallback(
+    (doc: DocJSON) => {
+      queue({ content: doc })
+      setWords(countWords(doc))
+    },
+    [queue]
+  )
   // Free-form pages: Arrange moves and resizes things; Fill in types into the fields. A page with fields opens to fill in.
   const canvas = isCanvas(note.content)
   const [canvasDoc, setCanvasDoc] = useState<DocJSON | null>(canvas ? note.content : null)
@@ -255,9 +262,26 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
           <NoteEditor docId={note.id} content={note.content} editable={!trashed} onChange={onChange} onReady={onReady} />
         )}
 
+        {words > 0 && (
+          <div className="note-words small muted">
+            {words.toLocaleString()} {words === 1 ? 'word' : 'words'} · {Math.max(1, Math.round(words / 230))} min read
+          </div>
+        )}
         <LinkedEvents id={note.id} />
         <Backlinks id={note.id} />
       </div>
     </div>
   )
+}
+
+/** Words in a note (text, fields and canvas text) */
+function countWords(doc: DocJSON | null | undefined): number {
+  let n = 0
+  const walk = (node: DocJSON): void => {
+    const text = node.type === 'text' ? node.text : node.type === 'canvasText' ? String(node.attrs?.text ?? '') : ''
+    if (text) n += text.split(/\s+/).filter(Boolean).length
+    node.content?.forEach(walk)
+  }
+  if (doc) walk(doc)
+  return n
 }

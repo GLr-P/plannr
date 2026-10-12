@@ -47,7 +47,24 @@ export function listHabits(db: Db, today = localDate()): Habit[] {
       }
       date = addDays(date, -1)
     }
+    // Best run ever, and how often it was done over the last 30 scheduled days
+    let best = 0
+    let run = 0
+    let scheduled30 = 0
+    let done30 = 0
+    for (let i = 400; i >= 0; i--) {
+      const d = addDays(today, -i)
+      if (!on(d)) continue
+      if (ticked(d)) best = Math.max(best, ++run)
+      else if (d !== today) run = 0
+      if (i < 30) {
+        scheduled30++
+        if (ticked(d)) done30++
+      }
+    }
     return {
+      best: Math.max(best, streak),
+      rate30: scheduled30 ? Math.round((done30 / scheduled30) * 100) : 0,
       id: r.id,
       name: r.name,
       icon: r.icon,

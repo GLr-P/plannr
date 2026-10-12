@@ -46,6 +46,7 @@ describe('habits', () => {
     expect(list.find((h) => h.id === gym.id)).toMatchObject({ doneToday: true, streak: 4 })
     expect(list.find((h) => h.id === water.id)).toMatchObject({ doneToday: false, streak: 1 })
     expect(list.find((h) => h.id === gym.id)!.week.map((d) => d.scheduled)).toEqual([false, true, false, true, false, false, true]) // Tue … Mon
+    expect(list.find((h) => h.id === gym.id)).toMatchObject({ best: 4, rate30: expect.any(Number) })
     habits.toggleHabit(db, gym.id, '2026-10-12', false)
     expect(habits.listHabits(db, '2026-10-12').find((h) => h.id === gym.id)!.doneToday).toBe(false)
   })

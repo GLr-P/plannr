@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { showToast } from '../lib/toast'
 import { Check, Plus, Trash2, X } from 'lucide-react'
 import type { ListItem } from '../../../shared/api'
 import { api } from '../api'
@@ -84,14 +85,32 @@ export function ListsView() {
           <ListRow key={i.id} item={i} onToggle={() => void toggle(i)} onRemove={() => void api.lists.remove(i.id).then(load)} />
         ))}
       </ul>
-      {open.length === 0 && <p className="muted small">Nothing on this list.</p>}
+      {open.length === 0 ? (
+        <p className="muted small">Nothing on this list.</p>
+      ) : (
+        <button
+          type="button"
+          className="link-btn small list-copy"
+          onClick={() => {
+            void navigator.clipboard.writeText(`${current}:\n${open.map((i) => `- ${i.title}`).join('\n')}`)
+            showToast('List copied: paste it into a text or email')
+          }}
+        >
+          Copy the list (to text or email it)
+        </button>
+      )}
       {done.length > 0 && (
         <>
           <div className="task-section-head">
             <h2 className="section-title">Ticked {done.length}</h2>
-            <button type="button" className="btn sm" onClick={() => void api.lists.clearDone(current).then(load)}>
-              Clear ticked
-            </button>
+            <span className="order-actions">
+              <button type="button" className="btn sm" title="Untick everything (for lists you use again, like packing)" onClick={() => void Promise.all(done.map((i) => api.lists.update(i.id, { done: false }))).then(load)}>
+                Untick all
+              </button>
+              <button type="button" className="btn sm" onClick={() => void api.lists.clearDone(current).then(load)}>
+                Clear ticked
+              </button>
+            </span>
           </div>
           <ul className="list-items done">
             {done.map((i) => (
