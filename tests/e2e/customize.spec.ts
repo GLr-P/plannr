@@ -39,7 +39,7 @@ test('look: accent colour, compact spacing and text size', async () => {
 
 test('layout: hide a menu item; reorder and hide Home sections', async () => {
   await settings('Layout')
-  await page.getByRole('checkbox', { name: 'Money', exact: true }).uncheck()
+  await page.getByRole('checkbox', { name: 'Show Money', exact: true }).uncheck()
   await expect(nav('Money')).toHaveCount(0)
   await page.getByRole('button', { name: 'Move recent up' }).click()
   await page.getByRole('button', { name: 'Move recent up' }).click()
@@ -55,6 +55,18 @@ test('layout: hide a menu item; reorder and hide Home sections', async () => {
   expect(titles).not.toContain('Coming up')
   await page.keyboard.press('Control+6') // Money is hidden, so the 6th item is Inventory (Home, Tasks, Tickets, Customers, Calendar, Inventory)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inventory')
+})
+
+test('menu order: arrows, A–Z and back to the standard order', async () => {
+  await settings('Layout')
+  await page.getByRole('button', { name: 'Move Tasks down', exact: true }).click()
+  const menu = () => page.locator('.sidebar nav .nav-item, .sidebar .nav-item').allTextContents()
+  expect((await menu()).slice(0, 3).map((t) => t.replace(/\d+$/, '').trim())).toEqual(['Home', 'Tickets', 'Tasks'])
+  await page.getByRole('button', { name: 'A–Z' }).first().click()
+  const az = (await menu()).map((t) => t.replace(/\d+$/, '').trim())
+  expect(az.slice(0, 3)).toEqual(['Home', 'Assistant', 'Calendar'])
+  await page.getByRole('button', { name: 'Standard order' }).first().click()
+  expect((await menu()).slice(0, 2).map((t) => t.replace(/\d+$/, '').trim())).toEqual(['Home', 'Tasks'])
 })
 
 test('menu names: call Tickets "Orders" and Customers "Clients"', async () => {

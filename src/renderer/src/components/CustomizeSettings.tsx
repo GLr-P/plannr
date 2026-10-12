@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw } from 'lucide-react'
 import { TICKET_STATUSES, formatTicketNumber } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
 import { ACCENTS, TEXT_SIZES } from '../lib/appearance'
-import { HIDEABLE, NAV_IDS, NAV_LABELS, navHidden } from '../lib/navOrder'
+import { HIDEABLE, NAV_IDS, NAV_LABELS, navHidden, navName, navOrder, type NavId } from '../lib/navOrder'
 import { HOME_SECTIONS, hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
 import { MessageTemplatesSettings } from './MessageTemplatesSettings'
 
@@ -89,24 +89,62 @@ export function LookSettings() {
   )
 }
 
-/** Which menu items show in the sidebar. */
+/** The menu: its order (arrows, A–Z, back to the standard order) and what shows. */
 export function MenuSettings() {
   const hiddenPref = useUi((s) => s.prefs.navHidden)
+  const orderPref = useUi((s) => s.prefs.navOrder)
+  const names = useDisplay((s) => s.prefs.navNames)
   const setPref = useUi((s) => s.setPref)
   const hidden = navHidden(hiddenPref)
-  const toggle = (id: string, show: boolean): void =>
-    setPref('navHidden', (show ? hidden.filter((h) => h !== id) : [...hidden, id]).join(','))
+  const order = navOrder(orderPref)
+  const label = (id: string, fallback: string): string => navName(id, names, fallback)
+  const toggle = (id: string, show: boolean): void => setPref('navHidden', (show ? hidden.filter((h) => h !== id) : [...hidden, id]).join(','))
+  const move = (id: NavId, by: number): void => {
+    const next = [...order]
+    const at = next.indexOf(id)
+    next.splice(at, 1)
+    next.splice(Math.max(0, Math.min(next.length, at + by)), 0, id)
+    setPref('navOrder', next.join(','))
+  }
+  const alphabetical = (): void =>
+    setPref('navOrder', ['home', ...order.filter((id) => id !== 'home').sort((a, b) => label(a, NAV_LABELS[a]).localeCompare(label(b, NAV_LABELS[b])))].join(','))
   return (
     <section className="setting setting-stack">
       <div>
         <h3>Menu</h3>
-        <p className="muted">Untick what you don’t use. Drag items in the sidebar to reorder them.</p>
+        <p className="muted">The order of the menu, and what shows. You can also drag items in the sidebar.</p>
+        <div className="order-actions">
+          <button type="button" className="btn sm" onClick={alphabetical}>
+            <ArrowDownAZ /> A–Z
+          </button>
+          <button type="button" className="btn sm" onClick={() => setPref('navOrder', '')}>
+            <RotateCcw /> Standard order
+          </button>
+        </div>
       </div>
+      <ul className="order-list">
+        {order.map((id, i) => (
+          <li key={id}>
+            <label className="check-row">
+              <input type="checkbox" checked={id === 'home' || !hidden.includes(id)} disabled={id === 'home'} aria-label={`Show ${label(id, NAV_LABELS[id])}`} onChange={(e) => toggle(id, e.target.checked)} />
+              {label(id, NAV_LABELS[id])}
+            </label>
+            <span className="order-buttons">
+              <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} up`} disabled={i === 0} onClick={() => move(id, -1)}>
+                <ArrowUp />
+              </button>
+              <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} down`} disabled={i === order.length - 1} onClick={() => move(id, 1)}>
+                <ArrowDown />
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
       <div className="check-grid">
-        {HIDEABLE.map((item) => (
+        {HIDEABLE.filter((item) => item.id === 'vault' || item.id === 'templates').map((item) => (
           <label key={item.id} className="check-row">
             <input type="checkbox" checked={!hidden.includes(item.id)} onChange={(e) => toggle(item.id, e.target.checked)} />
-            {item.label}
+            {label(item.id, item.label)} <span className="muted small">(at the bottom)</span>
           </label>
         ))}
       </div>
@@ -168,6 +206,14 @@ export function HomeLayoutSettings() {
         <label className="check-row">
           <input type="checkbox" checked={tiles} onChange={(e) => setPref('homeTiles', e.target.checked ? '' : '0')} /> Show Home as tiles side by side (on wide windows)
         </label>
+        <div className="order-actions">
+          <button type="button" className="btn sm" onClick={() => setPref('homeOrder', [...order].sort((a, b) => (HOME_SECTIONS.find((x) => x.id === a)?.label ?? a).localeCompare(HOME_SECTIONS.find((x) => x.id === b)?.label ?? b)).join(','))}>
+            <ArrowDownAZ /> A–Z
+          </button>
+          <button type="button" className="btn sm" onClick={() => setPref('homeOrder', '')}>
+            <RotateCcw /> Standard order
+          </button>
+        </div>
       </div>
       <ul className="order-list">
         {order.map((id, i) => (

@@ -170,6 +170,37 @@ export function systemPrompt(db: Db, businessName: string): string {
     .join('\n')
 }
 
+export type PostOpenAI = (body: unknown) => Promise<{
+  choices?: { finish_reason?: string; message?: { content?: string | null; tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[] } }[]
+  error?: { message?: string }
+}>
+
+/** Asks ChatGPT (OpenAI Chat Completions with function calling), with the same tools and rounds as Claude */
+export async function askOpenAI(db: Db, model: string, messages: AssistantMessage[], post: PostOpenAI, businessName = ''): Promise<{ reply: string; actions: string[] }> {
+  const tools = TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
+  const convo: unknown[] = [{ role: 'system', content: systemPrompt(db, businessName) }, ...messages.slice(-20).map((m) => ({ role: m.role, content: m.text }))]
+  const actions: string[] = []
+  for (let round = 0; round < 8; round++) {
+    const res = await post({ model, messages: convo, tools, max_completion_tokens: 4096 })
+    if (res.error) throw new Error(res.error.message ?? 'The assistant couldn’t answer')
+    const message = res.choices?.[0]?.message
+    const calls = message?.tool_calls ?? []
+    if (!calls.length) return { reply: (message?.content ?? '').trim(), actions }
+    convo.push({ role: 'assistant', content: message?.content ?? null, tool_calls: calls })
+    for (const c of calls) {
+      let out: { result: string; action?: string }
+      try {
+        out = runTool(db, c.function.name, JSON.parse(c.function.arguments || '{}') as Record<string, unknown>)
+      } catch (e) {
+        out = { result: `Error: ${e instanceof Error ? e.message : String(e)}` }
+      }
+      if (out.action) actions.push(out.action)
+      convo.push({ role: 'tool', tool_call_id: c.id, content: out.result.slice(0, 20000) })
+    }
+  }
+  return { reply: 'That took too many steps. Try asking in a simpler way.', actions }
+}
+
 /** Asks Claude, letting it use the tools (up to 8 rounds), and returns its answer plus what it changed */
 export async function ask(db: Db, model: string, messages: AssistantMessage[], post: PostMessages, businessName = ''): Promise<{ reply: string; actions: string[] }> {
   const convo: { role: 'user' | 'assistant'; content: unknown }[] = messages.slice(-20).map((m) => ({ role: m.role, content: m.text }))

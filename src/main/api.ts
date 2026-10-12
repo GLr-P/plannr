@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, Notification, shell } from 'e
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
-import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
+import { API_SHAPE, ASSISTANT_MODELS, DEFAULT_ASSISTANT_MODEL, type AssistantProvider, type AssistantStatus, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
 import { exportAll, importContacts } from './services/portability'
 import * as money from './services/money'
 import { getBusiness } from './services/print'
@@ -46,7 +46,15 @@ export interface ApiHooks {
   profiles: PlannrApi['profiles']
 }
 
+const ASSISTANT_KEY: Record<AssistantProvider, string> = { anthropic: 'assistant.key', openai: 'assistant.openaiKey' }
+
 export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
+  const assistantStatus = (): AssistantStatus => {
+    const provider: AssistantProvider = getSetting(db, 'assistant.provider') === 'anthropic' ? 'anthropic' : getSetting(db, 'assistant.provider') === 'openai' || !getSecret<string>(db, 'assistant.key') ? 'openai' : 'anthropic'
+    const saved = getSetting(db, 'assistant.model') as string | null
+    const model = saved && ASSISTANT_MODELS.some((m) => m.id === saved && m.provider === provider) ? saved : saved && !ASSISTANT_MODELS.some((m) => m.id === saved) ? saved : DEFAULT_ASSISTANT_MODEL[provider]
+    return { provider, configured: Boolean(getSecret<string>(db, ASSISTANT_KEY[provider])), model }
+  }
   const googleStatus = (): GoogleStatus => {
     const calendars = (getSetting(db, 'google.calendarList') as GoogleCalendarInfo[] | null) ?? []
     return {
@@ -200,16 +208,39 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       }
     },
     assistant: {
-      status: async () => ({ configured: Boolean(getSecret<string>(db, 'assistant.key')), model: (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5' }),
+      status: async () => assistantStatus(),
       setup: async (input) => {
-        if (input.key !== undefined) putSecret(db, 'assistant.key', input.key?.trim() || null)
+        if (input.provider) {
+          setSetting(db, 'assistant.provider', input.provider)
+          // A model of the other provider doesn't carry over
+          if (!ASSISTANT_MODELS.some((m) => m.id === getSetting(db, 'assistant.model') && m.provider === input.provider)) setSetting(db, 'assistant.model', DEFAULT_ASSISTANT_MODEL[input.provider])
+        }
+        const provider = assistantStatus().provider
+        if (input.key !== undefined) putSecret(db, ASSISTANT_KEY[provider], input.key?.trim() || null)
         if (input.model) setSetting(db, 'assistant.model', input.model)
-        return { configured: Boolean(getSecret<string>(db, 'assistant.key')), model: (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5' }
+        return assistantStatus()
       },
       ask: async (messages) => {
-        const key = getSecret<string>(db, 'assistant.key')
-        if (!key) throw new Error('Add your Anthropic API key first (in the assistant’s settings).')
-        const model = (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5'
+        const { provider, model } = assistantStatus()
+        const key = getSecret<string>(db, ASSISTANT_KEY[provider])
+        if (!key) throw new Error(`Add your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key first (Setup).`)
+        if (provider === 'openai')
+          return assistantService.askOpenAI(
+            db,
+            model,
+            messages,
+            async (body) => {
+              const res = await net.fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+                body: JSON.stringify(body)
+              })
+              const json = (await res.json().catch(() => ({}))) as Awaited<ReturnType<assistantService.PostOpenAI>>
+              if (!res.ok) throw new Error(json.error?.message ?? `ChatGPT answered ${res.status}`)
+              return json
+            },
+            getBusiness(db).name
+          )
         return assistantService.ask(
           db,
           model,

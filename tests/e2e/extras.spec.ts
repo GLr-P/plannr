@@ -109,7 +109,11 @@ test('Mail asks to connect Zoho; the assistant asks for a key', async () => {
   await nav('Mail').click()
   await expect(page.locator('.mail-page')).toContainText('Connect your Zoho Mail')
   await nav('Assistant').click()
-  await expect(page.getByLabel('Anthropic API key')).toBeVisible()
+  await expect(page.getByRole('radio', { name: 'ChatGPT (OpenAI)' })).toHaveAttribute('aria-checked', 'true') // ChatGPT unless you choose Claude
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /OpenAI/)
+  await page.getByRole('radio', { name: 'Claude (Anthropic)' }).click()
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /Anthropic/)
+  await page.getByRole('radio', { name: 'ChatGPT (OpenAI)' }).click()
   await expect(page.getByLabel('Ask the assistant')).toBeDisabled()
   await shot(page, 'x6-assistant')
 })

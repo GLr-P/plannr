@@ -180,6 +180,22 @@ describe('warranty, free trials and the assistant', () => {
     expect(JSON.parse(assistant.runTool(db, 'personal', {}).result).lists).toEqual(['Shopping: Milk', 'Shopping: Eggs'])
   })
 
+  it('ChatGPT uses the same tools (OpenAI function calling)', async () => {
+    const replies = [
+      { choices: [{ finish_reason: 'tool_calls', message: { content: null, tool_calls: [{ id: 'c1', type: 'function' as const, function: { name: 'add_to_list', arguments: '{"list":"Shopping","items":["Coffee"]}' } }] } }] },
+      { choices: [{ finish_reason: 'stop', message: { content: 'Added coffee to your shopping list.' } }] }
+    ]
+    const posts: { messages: { role: string }[]; tools: unknown[] }[] = []
+    const out = await assistant.askOpenAI(db, 'gpt-5-mini', [{ role: 'user', text: 'add coffee to shopping' }], async (body) => {
+      posts.push(body as never)
+      return replies.shift() as never
+    })
+    expect(out).toEqual({ reply: 'Added coffee to your shopping list.', actions: ['Added Coffee to Shopping'] })
+    expect(posts[0].messages[0].role).toBe('system')
+    expect(posts[1].messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'tool'])
+    expect(posts[0].tools.length).toBeGreaterThan(5)
+  })
+
   it('reads the mail inbox', () => {
     const inbox = parseInbox(
       [

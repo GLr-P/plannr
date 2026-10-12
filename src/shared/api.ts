@@ -905,15 +905,23 @@ export interface AssistantMessage {
   role: 'user' | 'assistant'
   text: string
 }
+/** Which AI answers: ChatGPT (OpenAI) or Claude (Anthropic), each with your own API key */
+export type AssistantProvider = 'openai' | 'anthropic'
 export interface AssistantStatus {
+  provider: AssistantProvider
+  /** A key is saved for the chosen provider */
   configured: boolean
   model: string
 }
 export const ASSISTANT_MODELS = [
-  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5 (fast, good value)' },
-  { id: 'claude-opus-5-5', label: 'Opus 5.5 (smartest, costs more)' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (quickest, cheapest)' }
+  { id: 'gpt-5-mini', provider: 'openai', label: 'GPT-5 mini (fast, good value)' },
+  { id: 'gpt-5', provider: 'openai', label: 'GPT-5 (smartest, costs more)' },
+  { id: 'gpt-5-nano', provider: 'openai', label: 'GPT-5 nano (quickest, cheapest)' },
+  { id: 'claude-sonnet-5-5', provider: 'anthropic', label: 'Sonnet 5.5 (fast, good value)' },
+  { id: 'claude-opus-5-5', provider: 'anthropic', label: 'Opus 5.5 (smartest, costs more)' },
+  { id: 'claude-haiku-4-5-20251001', provider: 'anthropic', label: 'Haiku 4.5 (quickest, cheapest)' }
 ] as const
+export const DEFAULT_ASSISTANT_MODEL: Record<AssistantProvider, string> = { openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' }
 
 // ---------- Vault ----------
 
@@ -1548,7 +1556,7 @@ export interface PlannrApi {
   }
   assistant: {
     status(): Promise<AssistantStatus>
-    setup(input: { key?: string | null; model?: string }): Promise<AssistantStatus>
+    setup(input: { provider?: AssistantProvider; key?: string | null; model?: string }): Promise<AssistantStatus>
     ask(messages: AssistantMessage[]): Promise<{ reply: string; actions: string[] }>
   }
   holidays: {

@@ -427,6 +427,29 @@ function PageSettings({ feed, page, onChange, onClose, onDeleted }: { feed: News
           Name
           <input value={draft.name} aria-label="Page name" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </label>
+        <div className="order-actions">
+          <span className="small muted">Place among the tabs:</span>
+          {[-1, 1].map((by) => {
+            const at = feed.pages.findIndex((p) => p.id === page.id)
+            const to = at + by
+            return (
+              <button
+                key={by}
+                type="button"
+                className="btn sm"
+                disabled={to < 0 || to >= feed.pages.length}
+                onClick={async () => {
+                  const pages = [...feed.pages]
+                  pages.splice(at, 1)
+                  pages.splice(to, 0, feed.pages[at])
+                  onChange(await api.news.configure({ pages }))
+                }}
+              >
+                {by < 0 ? '← Earlier' : 'Later →'}
+              </button>
+            )
+          })}
+        </div>
 
         <h3 className="news-settings-h">Sources</h3>
         <ul className="news-source-list editable">

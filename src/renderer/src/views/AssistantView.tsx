@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { CheckCircle2, Send, Settings2, Sparkles, Trash2 } from 'lucide-react'
-import { ASSISTANT_MODELS, type AssistantMessage, type AssistantStatus } from '../../../shared/api'
+import { ASSISTANT_MODELS, type AssistantMessage, type AssistantProvider, type AssistantStatus } from '../../../shared/api'
 import { api } from '../api'
 
 /** The conversation stays while you move around Plannr (until you clear it or close Plannr) */
@@ -63,13 +63,30 @@ export function AssistantView() {
 
       {setup && (
         <section className="card assistant-setup">
-          <p className="small">
-            The assistant is Claude (by Anthropic). It uses <b>your own API key</b>: create one at{' '}
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-              console.anthropic.com
-            </a>{' '}
-            (add a little credit; a question usually costs well under a cent). Your key is stored encrypted on this PC. Only what you ask, and the Plannr details it looks up to answer, are sent.
-          </p>
+          <div className="segmented assistant-provider" role="radiogroup" aria-label="Which AI">
+            {(['openai', 'anthropic'] as AssistantProvider[]).map((p) => (
+              <button key={p} type="button" role="radio" aria-checked={status.provider === p} className={status.provider === p ? 'active' : ''} onClick={() => void api.assistant.setup({ provider: p }).then(setStatus)}>
+                {p === 'openai' ? 'ChatGPT (OpenAI)' : 'Claude (Anthropic)'}
+              </button>
+            ))}
+          </div>
+          {status.provider === 'openai' ? (
+            <p className="small">
+              ChatGPT needs an <b>OpenAI API key</b> (separate from a ChatGPT Plus subscription): create one at{' '}
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
+                platform.openai.com/api-keys
+              </a>{' '}
+              and add a little credit under Billing. A question usually costs well under a cent. Your key is stored encrypted on this PC. Only what you ask, and the Plannr details it looks up to answer, are sent.
+            </p>
+          ) : (
+            <p className="small">
+              Claude needs an <b>Anthropic API key</b>: create one at{' '}
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+                console.anthropic.com
+              </a>{' '}
+              and add a little credit. A question usually costs well under a cent. Your key is stored encrypted on this PC. Only what you ask, and the Plannr details it looks up to answer, are sent.
+            </p>
+          )}
           <form
             className="news-add-link"
             onSubmit={async (e) => {
@@ -80,7 +97,13 @@ export function AssistantView() {
               if (s.configured) setSetup(false)
             }}
           >
-            <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder={status.configured ? 'A key is saved (paste a new one to replace it)' : 'Paste your Anthropic API key (sk-ant-…)'} aria-label="Anthropic API key" />
+            <input
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={status.configured ? 'A key is saved (paste a new one to replace it)' : status.provider === 'openai' ? 'Paste your OpenAI API key (sk-…)' : 'Paste your Anthropic API key (sk-ant-…)'}
+              aria-label="API key"
+            />
             <button type="submit" className="btn">
               Save
             </button>
@@ -88,7 +111,7 @@ export function AssistantView() {
           <label className="mfield">
             Model
             <select value={status.model} aria-label="Model" onChange={(e) => void api.assistant.setup({ model: e.target.value }).then(setStatus)}>
-              {ASSISTANT_MODELS.map((m) => (
+              {ASSISTANT_MODELS.filter((m) => m.provider === status.provider).map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>

@@ -611,3 +611,15 @@ a.history-row {
 .ent-offline a {
   color: var(--text-muted);
 }
+.assistant-provider {
+  margin-bottom: 10px;
+}
+.order-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.order-actions .btn svg {
+  width: 14px;
+  height: 14px;
+}
