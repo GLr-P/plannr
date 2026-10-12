@@ -406,10 +406,11 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       openDataFolder: async () => {
         await shell.openPath(dataDir)
       },
-      setTheme: async (theme) => {
+      setTheme: async (theme, colors) => {
         const win = getWindow()
         if (!win) return
-        const c = themeColors[theme]
+        const hex = /^#[0-9a-f]{3,8}$/i
+        const c = colors && hex.test(colors.bg) && hex.test(colors.titlebar) && hex.test(colors.symbol) ? colors : themeColors[theme]
         win.setBackgroundColor(c.bg)
         win.setTitleBarOverlay({ color: c.titlebar, symbolColor: c.symbol, height: Math.round(TITLEBAR_HEIGHT * win.webContents.getZoomFactor()) })
       },

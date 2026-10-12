@@ -18,9 +18,12 @@ Plannr started as the one app a small business owner wanted instead of five: som
 | **Tickets** | Track jobs, repairs, orders or requests from start to finish: status, dates, price, photos and a form you design, either as a document or on a free-form canvas where you put fields, text and pictures anywhere. Print a slip, a receipt or a label. Rename the statuses to fit your work. |
 | **Money** | Income (tax included, tax on top, or no tax), expenses, bills and subscriptions with auto-pay, who still owes you, and monthly totals. CSV export. |
 | **Vault** | Passwords, cards and documents, encrypted with your own passcode (AES-256). Locks itself when you step away. |
+| **Entertainment** | New videos from the YouTube channels you like and which Twitch streamers are live, with a notification when one goes live (reruns left out). No accounts needed. |
+| **Lists, habits & packages** | Shopping and other check-off lists, daily habits with streaks, and tracking numbers with the delivery day on your calendar. |
+| **Assistant** | Ask about your tickets, calendar, money, notes and news, or have it add tasks, events and list items. Free with a Google Gemini key; ChatGPT, Claude, Groq or a model on your own PC (Ollama) also work. |
 | **News** | What's happening where you live: local news, events, closures, elections and the weather, from the sources you choose (news sites, your town's news page, Facebook pages). Sad news and stock markets are left out unless you want them. Put any story on your calendar in one click. |
 
-Don't need some of it? Untick it during the welcome tour (or later in Settings) and it leaves the menu.
+Don't need some of it? Untick it during the welcome tour (or later in Settings) and it leaves the menu. Group the menu under your own headings, rename things, pick a colour theme (Paper, Solarized, Dim, Nord, Forest, Rosé, Midnight, High contrast, each light and dark), and lay out Home as tiles.
 
 Optional connections, if you use them:
 
@@ -61,6 +64,10 @@ It makes these automatic connections, none of which sends any of your data, and 
 
 - **Update check:** it asks GitHub whether a newer version of Plannr has been released (Settings → General → Updates).
 - **Public holidays:** it downloads your country's public holiday calendar from Google (Settings → General → Holidays → Off).
+- **Weather:** a two-week forecast for the place you chose, from Open-Meteo.
+- **Entertainment** (only if you add channels): it reads the public YouTube and Twitch pages of the channels you added.
+- **Assistant** (only when you ask it something): your question and the Plannr details it looks up go to the AI service you chose, with your own key.
+- **Package tracking** (only with a 17TRACK key): your tracking numbers go to 17TRACK.
 - **News** (only if you set it up): it downloads the news sources you chose, and looks up your town's location with Open-Meteo when you pick it. Nothing about you is sent.
 
 If you connect **Google Calendar**, **Zoho Mail** or **QuickBooks Online**, Plannr exchanges data with that service only, and only what Settings describes. Keys and sign-ins are encrypted with Windows' own protection (DPAPI), and the vault is encrypted with your passcode.

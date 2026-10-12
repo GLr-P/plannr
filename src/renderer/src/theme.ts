@@ -8,7 +8,16 @@ const resolve = (pref: ThemePref): Theme => (pref === 'system' ? (darkQuery.matc
 
 function apply(theme: Theme): void {
   document.documentElement.dataset.theme = theme
-  void api.app.setTheme(theme)
+  syncTitleBar()
+}
+
+/** Tells the window the current colours (theme and colour theme), for its title bar and background */
+export function syncTitleBar(): void {
+  const root = document.documentElement
+  const css = getComputedStyle(root)
+  const v = (name: string): string => css.getPropertyValue(name).trim()
+  const theme = (root.dataset.theme === 'dark' ? 'dark' : 'light') as Theme
+  void api.app.setTheme(theme, v('--bg') ? { bg: v('--bg'), titlebar: v('--bg-sidebar'), symbol: v('--text') } : undefined)
 }
 
 interface ThemeState {

@@ -260,7 +260,7 @@ test('everything is still there after restarting', async () => {
 
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
   await page.getByRole('tab', { name: 'General' }).click()
-  await page.getByRole('radio', { name: 'Dark' }).click()
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click()
   await page.getByRole('button', { name: 'Back', exact: true }).click()
   await page.locator('.photos-header').click()
   await shot(page, 'b8-ticket-dark')

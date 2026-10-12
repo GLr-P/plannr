@@ -53,6 +53,44 @@ export function navOrder(pref: string | undefined): NavId[] {
   return [...new Set([...saved, ...NAV_IDS])]
 }
 
+/** The menu in groups, each with an optional heading and a divider above it */
+export interface NavGroup {
+  id: string
+  name: string
+  items: NavId[]
+  collapsed?: boolean
+}
+
+export const DEFAULT_GROUPS: NavGroup[] = [
+  { id: 'main', name: '', items: ['home', 'tasks', 'calendar'] },
+  { id: 'work', name: 'Work', items: ['tickets', 'customers', 'money', 'inventory', 'mail'] },
+  { id: 'organize', name: 'Organize', items: ['notes', 'lists', 'packages'] },
+  { id: 'discover', name: 'Discover', items: ['news', 'entertainment', 'assistant'] }
+]
+
+/** Your groups (the `navGroups` pref), with every menu item in exactly one; new items go in the last group */
+export function navGroups(pref: string | undefined): NavGroup[] {
+  let raw: unknown = null
+  try {
+    raw = pref ? JSON.parse(pref) : null
+  } catch {
+    raw = null
+  }
+  const source = Array.isArray(raw) && raw.length ? (raw as Partial<NavGroup>[]) : DEFAULT_GROUPS
+  const seen = new Set<string>()
+  const groups: NavGroup[] = source.map((g, i) => ({
+    id: String(g.id ?? `g${i}`),
+    name: String(g.name ?? ''),
+    collapsed: g.collapsed === true,
+    items: (Array.isArray(g.items) ? g.items : []).filter((id): id is NavId => (NAV_IDS as readonly string[]).includes(id) && !seen.has(id) && Boolean(seen.add(id)))
+  }))
+  const missing = NAV_IDS.filter((id) => !seen.has(id))
+  if (missing.length) groups[groups.length - 1].items.push(...missing)
+  return groups
+}
+
+export const flatNav = (groups: NavGroup[]): NavId[] => groups.flatMap((g) => g.items)
+
 /** Every item that can be hidden from the sidebar (Settings → General → Menu). */
 export const HIDEABLE: { id: string; label: string }[] = [
   ...NAV_IDS.filter((id) => id !== 'home').map((id) => ({ id, label: NAV_LABELS[id] })),
@@ -61,6 +99,6 @@ export const HIDEABLE: { id: string; label: string }[] = [
 ]
 export const navHidden = (pref: string | undefined): string[] => (pref ?? '').split(',').filter(Boolean)
 
-/** The main menu as shown: your order, minus hidden items. */
-export const visibleNav = (orderPref: string | undefined, hiddenPref: string | undefined): NavId[] =>
-  navOrder(orderPref).filter((id) => !navHidden(hiddenPref).includes(id))
+/** The main menu as shown: your groups in order, minus hidden items (Ctrl+1–9 follow it). */
+export const visibleNav = (groupsPref: string | undefined, hiddenPref: string | undefined): NavId[] =>
+  flatNav(navGroups(groupsPref)).filter((id) => !navHidden(hiddenPref).includes(id))

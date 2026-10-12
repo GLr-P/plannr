@@ -136,6 +136,12 @@ describe('weather and entertainment', () => {
       ['xqc', false]
     ])
     expect(feed.live[0].title.length).toBeGreaterThan(0)
+    // A rerun isn't live
+    const rerun = fixture('twitch-live.html').replace(/"description":"[^"]*"/, '"description":"[RERUN] Yesterday’s stream"')
+    expect(ent.parseTwitchPage(rerun, feed.channels.find((c) => c.handle === 'shroud')!).live).toBe(false)
+    expect(ent.RERUN.test('Rebroadcast: finals')).toBe(true)
+    expect(ent.RERUN.test('Running the Rerun gauntlet live!')).toBe(true)
+    expect(ent.RERUN.test('Speedrunning Mario 64')).toBe(false)
     expect(wentLive.map((l) => l.name.toLowerCase())).toEqual(['shroud'])
     // Still live next time: no second notification
     expect((await ent.refreshEntertainment(db, fakeFetch)).wentLive).toEqual([])

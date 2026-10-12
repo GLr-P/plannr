@@ -26,7 +26,7 @@ test.afterAll(async () => {
 
 test('look: accent colour, compact spacing and text size', async () => {
   await settings('General')
-  await page.getByRole('radio', { name: 'Green' }).click()
+  await page.getByRole('radio', { name: 'Green', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'green')
   await page.getByRole('radio', { name: 'Compact' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-density', 'compact')
@@ -57,16 +57,39 @@ test('layout: hide a menu item; reorder and hide Home sections', async () => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inventory')
 })
 
-test('menu order: arrows, A–Z and back to the standard order', async () => {
+test('menu groups: headings with dividers, move items between groups, rename and fold', async () => {
+  const menu = async () => (await page.locator('.sidebar .nav-item').allTextContents()).map((t) => t.replace(/\d+$/, '').trim())
+  await expect(page.locator('.sidebar .nav-group-header')).toHaveText(['Work', 'Organize', 'Discover'])
+  await expect(page.locator('.sidebar .nav-divider')).toHaveCount(3)
   await settings('Layout')
-  await page.getByRole('button', { name: 'Move Tasks down', exact: true }).click()
-  const menu = () => page.locator('.sidebar nav .nav-item, .sidebar .nav-item').allTextContents()
-  expect((await menu()).slice(0, 3).map((t) => t.replace(/\d+$/, '').trim())).toEqual(['Home', 'Tickets', 'Tasks'])
-  await page.getByRole('button', { name: 'A–Z' }).first().click()
-  const az = (await menu()).map((t) => t.replace(/\d+$/, '').trim())
-  expect(az.slice(0, 3)).toEqual(['Home', 'Assistant', 'Calendar'])
-  await page.getByRole('button', { name: 'Standard order' }).first().click()
-  expect((await menu()).slice(0, 2).map((t) => t.replace(/\d+$/, '').trim())).toEqual(['Home', 'Tasks'])
+  await page.getByRole('button', { name: 'Move Calendar down', exact: true }).click() // past the end of its group: into Work
+  expect((await menu()).slice(0, 4)).toEqual(['Home', 'Tasks', 'Calendar', 'Tickets'])
+  await expect(page.locator('.sidebar .nav-group').nth(1)).toContainText('Calendar')
+  await page.getByLabel('Group 2 name').fill('Shop')
+  await expect(page.locator('.sidebar .nav-group-header').first()).toHaveText('Shop')
+  await shot(page, 'z2a-menu-groups')
+  await page.locator('.sidebar .nav-group-header', { hasText: 'Shop' }).click() // fold it
+  await expect(page.locator('.sidebar .nav-item', { hasText: 'Tickets' })).toHaveCount(0)
+  await page.locator('.sidebar .nav-group-header', { hasText: 'Shop' }).click()
+  await page.getByRole('button', { name: 'Standard groups' }).click()
+  expect((await menu()).slice(0, 3)).toEqual(['Home', 'Tasks', 'Calendar'])
+  await expect(page.locator('.sidebar .nav-group-header').first()).toHaveText('Work')
+})
+
+test('colour themes: Paper and Nord, light and dark', async () => {
+  await settings('General')
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Paper/ }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'paper')
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(249, 244, 232)')
+  await shot(page, 'z1b-theme-paper')
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click()
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(30, 27, 22)')
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Nord/ }).click()
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(46, 52, 64)')
+  await shot(page, 'z1c-theme-nord-dark')
+  await page.getByRole('radio', { name: 'Light', exact: true }).click()
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Plannr/ }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'default')
 })
 
 test('menu names: call Tickets "Orders" and Customers "Clients"', async () => {

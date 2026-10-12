@@ -78,7 +78,7 @@ function useGlobalShortcuts(): void {
         useShortcutsOpen.getState().set(!useShortcutsOpen.getState().open)
       } else if (plainCtrl && /^[1-9]$/.test(key)) {
         const { prefs } = useUi.getState()
-        const id = visibleNav(prefs.navOrder, prefs.navHidden)[Number(key) - 1]
+        const id = visibleNav(prefs.navGroups, prefs.navHidden)[Number(key) - 1]
         if (id) {
           e.preventDefault()
           useNav.getState().go(NAV_ROUTES[id])

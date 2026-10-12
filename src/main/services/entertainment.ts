@@ -49,8 +49,13 @@ export function resolveTwitch(input: string): EntChannel {
 }
 
 /** Live or not, from a Twitch channel page (its search-engine data says isLiveBroadcast when live) */
+/** Streams that are replays, not live: left out of Live now (and no notification) */
+export const RERUN = /\b(?:re-?runs?|re-?broadcasts?|re-?streams?|replay|vod|reupload)\b/i
+
 export function parseTwitchPage(html: string, channel: EntChannel, now = Date.now()): EntLive & { displayName: string } {
-  const live = /"isLiveBroadcast"\s*:\s*true/.test(html)
+  const broadcasting = /"isLiveBroadcast"\s*:\s*true/.test(html)
+  const streamTitle = broadcasting ? decodeEntities(/"description":"((?:[^"\\]|\\.)*)"/.exec(html)?.[1]?.replace(/\\(.)/g, '$1') ?? '') || metaContent(html, 'og:description') : ''
+  const live = broadcasting && !RERUN.test(streamTitle)
   const ogTitle = metaContent(html, 'og:title')
   const displayName = ogTitle.replace(/\s+-\s+(?:Live on )?Twitch\s*$/i, '').trim() || channel.name
   return {
@@ -58,8 +63,8 @@ export function parseTwitchPage(html: string, channel: EntChannel, now = Date.no
     name: displayName,
     displayName,
     live,
-    // While live, the page's search-engine data describes the stream with its title
-    title: live ? decodeEntities(/"description":"((?:[^"\\]|\\.)*)"/.exec(html)?.[1]?.replace(/\\(.)/g, '$1') ?? '') || metaContent(html, 'og:description') : '',
+    // While live, the page’s search-engine data describes the stream with its title
+    title: live ? streamTitle : '',
     url: channel.url,
     image: live ? `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channel.handle}-440x248.jpg?t=${Math.floor(now / 300_000)}` : '',
     checkedAt: now

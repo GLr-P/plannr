@@ -1,0 +1,289 @@
+/* Colour themes (Settings → General → Colour theme): light and dark colours per theme; the accent stays your choice. */
+:root[data-palette='paper']:not([data-theme='dark']) {
+  --bg: #f9f4e8;
+  --bg-sidebar: #f1e9d6;
+  --bg-elevated: #fffaf0;
+  --bg-subtle: #f2ead9;
+  --hover: rgba(90, 70, 30, 0.07);
+  --active: rgba(90, 70, 30, 0.12);
+  --border: #e6dcc6;
+  --border-strong: #d6c9ad;
+  --text: #3a3226;
+  --text-muted: #75695a;
+  --text-faint: #a89c88;
+}
+:root[data-palette='paper'][data-theme='dark'] {
+  --bg: #1e1b16;
+  --bg-sidebar: #191612;
+  --bg-elevated: #26221c;
+  --bg-subtle: #24201a;
+  --hover: rgba(255, 235, 200, 0.06);
+  --active: rgba(255, 235, 200, 0.1);
+  --border: #332d25;
+  --border-strong: #423a30;
+  --text: #e9dfcc;
+  --text-muted: #b0a48f;
+  --text-faint: #7a705f;
+}
+:root[data-palette='solarized']:not([data-theme='dark']) {
+  --bg: #fdf6e3;
+  --bg-sidebar: #eee8d5;
+  --bg-elevated: #fffbf0;
+  --bg-subtle: #f3ecd8;
+  --hover: rgba(88, 110, 117, 0.08);
+  --active: rgba(88, 110, 117, 0.13);
+  --border: #e4ddc8;
+  --border-strong: #d3cbb3;
+  --text: #3d4f55;
+  --text-muted: #657b83;
+  --text-faint: #93a1a1;
+}
+:root[data-palette='solarized'][data-theme='dark'] {
+  --bg: #002b36;
+  --bg-sidebar: #00232c;
+  --bg-elevated: #073642;
+  --bg-subtle: #06323d;
+  --hover: rgba(147, 161, 161, 0.08);
+  --active: rgba(147, 161, 161, 0.14);
+  --border: #0a3d4a;
+  --border-strong: #124a57;
+  --text: #cfd4cf;
+  --text-muted: #93a1a1;
+  --text-faint: #657b83;
+}
+:root[data-palette='dim']:not([data-theme='dark']) {
+  --bg: #f1f1ef;
+  --bg-sidebar: #e9e9e6;
+  --bg-elevated: #f7f7f5;
+  --bg-subtle: #e8e8e5;
+  --hover: rgba(30, 30, 25, 0.05);
+  --active: rgba(30, 30, 25, 0.09);
+  --border: #dcdcd8;
+  --border-strong: #cacac5;
+  --text: #333330;
+  --text-muted: #6b6b66;
+  --text-faint: #9c9c97;
+}
+:root[data-palette='dim'][data-theme='dark'] {
+  --bg: #262a30;
+  --bg-sidebar: #22252b;
+  --bg-elevated: #2d3138;
+  --bg-subtle: #2a2e35;
+  --hover: rgba(255, 255, 255, 0.05);
+  --active: rgba(255, 255, 255, 0.08);
+  --border: #343941;
+  --border-strong: #414750;
+  --text: #d4d7dc;
+  --text-muted: #9aa0a8;
+  --text-faint: #6b717a;
+}
+:root[data-palette='nord']:not([data-theme='dark']) {
+  --bg: #eceff4;
+  --bg-sidebar: #e5e9f0;
+  --bg-elevated: #f4f6f9;
+  --bg-subtle: #e5e9f0;
+  --hover: rgba(46, 52, 64, 0.06);
+  --active: rgba(46, 52, 64, 0.1);
+  --border: #d8dee9;
+  --border-strong: #c5cddb;
+  --text: #2e3440;
+  --text-muted: #4c566a;
+  --text-faint: #7b88a1;
+}
+:root[data-palette='nord'][data-theme='dark'] {
+  --bg: #2e3440;
+  --bg-sidebar: #2a2f3a;
+  --bg-elevated: #3b4252;
+  --bg-subtle: #353c4a;
+  --hover: rgba(236, 239, 244, 0.06);
+  --active: rgba(236, 239, 244, 0.1);
+  --border: #3b4252;
+  --border-strong: #4c566a;
+  --text: #eceff4;
+  --text-muted: #b8c0cf;
+  --text-faint: #7b88a1;
+}
+:root[data-palette='forest']:not([data-theme='dark']) {
+  --bg: #f4f7f2;
+  --bg-sidebar: #ebf0e7;
+  --bg-elevated: #fafcf8;
+  --bg-subtle: #ecf1e8;
+  --hover: rgba(40, 70, 40, 0.06);
+  --active: rgba(40, 70, 40, 0.1);
+  --border: #dbe3d5;
+  --border-strong: #c8d3c0;
+  --text: #253025;
+  --text-muted: #5d6b5a;
+  --text-faint: #93a08f;
+}
+:root[data-palette='forest'][data-theme='dark'] {
+  --bg: #171e19;
+  --bg-sidebar: #131915;
+  --bg-elevated: #1f2822;
+  --bg-subtle: #1c241e;
+  --hover: rgba(220, 240, 220, 0.05);
+  --active: rgba(220, 240, 220, 0.09);
+  --border: #2a352d;
+  --border-strong: #36443a;
+  --text: #dfe8dc;
+  --text-muted: #a3b19f;
+  --text-faint: #6e7c6b;
+}
+:root[data-palette='rose']:not([data-theme='dark']) {
+  --bg: #faf4ed;
+  --bg-sidebar: #f2e9e1;
+  --bg-elevated: #fffaf3;
+  --bg-subtle: #f4ede8;
+  --hover: rgba(87, 82, 121, 0.06);
+  --active: rgba(87, 82, 121, 0.1);
+  --border: #e8ddd5;
+  --border-strong: #dcd2cb;
+  --text: #575279;
+  --text-muted: #797593;
+  --text-faint: #9893a5;
+}
+:root[data-palette='rose'][data-theme='dark'] {
+  --bg: #191724;
+  --bg-sidebar: #15131f;
+  --bg-elevated: #1f1d2e;
+  --bg-subtle: #1f1d2e;
+  --hover: rgba(224, 222, 244, 0.06);
+  --active: rgba(224, 222, 244, 0.1);
+  --border: #26233a;
+  --border-strong: #393552;
+  --text: #e0def4;
+  --text-muted: #908caa;
+  --text-faint: #6e6a86;
+}
+:root[data-palette='midnight'][data-theme='dark'] {
+  --bg: #000000;
+  --bg-sidebar: #000000;
+  --bg-elevated: #0d0d0f;
+  --bg-subtle: #0b0b0c;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.1);
+  --border: #1d1d20;
+  --border-strong: #2a2a2e;
+  --text: #e6e6e6;
+  --text-muted: #9a9a9a;
+  --text-faint: #5f5f5f;
+}
+:root[data-palette='contrast']:not([data-theme='dark']) {
+  --bg: #ffffff;
+  --bg-sidebar: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f2f2f2;
+  --hover: rgba(0, 0, 0, 0.07);
+  --active: rgba(0, 0, 0, 0.13);
+  --border: #8a8a8a;
+  --border-strong: #4a4a4a;
+  --text: #000000;
+  --text-muted: #2b2b2b;
+  --text-faint: #555555;
+}
+:root[data-palette='contrast'][data-theme='dark'] {
+  --bg: #000000;
+  --bg-sidebar: #000000;
+  --bg-elevated: #0a0a0a;
+  --bg-subtle: #141414;
+  --hover: rgba(255, 255, 255, 0.09);
+  --active: rgba(255, 255, 255, 0.15);
+  --border: #8a8a8a;
+  --border-strong: #c8c8c8;
+  --text: #ffffff;
+  --text-muted: #e0e0e0;
+  --text-faint: #b0b0b0;
+}
+
+/* The picker */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.palette-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  text-align: left;
+}
+.palette-card.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.palette-preview {
+  display: flex;
+  width: 100%;
+  height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.palette-preview span {
+  flex: 1;
+}
+.palette-preview span:last-child {
+  flex: 0 0 18%;
+}
+
+/* Menu groups in the sidebar */
+.nav-divider {
+  height: 1px;
+  margin: 8px 10px;
+  background: var(--border);
+}
+.nav-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 12px 3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.nav-group-header:hover {
+  color: var(--text-muted);
+}
+.nav-group-chevron {
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.nav-group-header:hover .nav-group-chevron,
+.nav-group.collapsed .nav-group-chevron {
+  opacity: 1;
+}
+.nav-group.collapsed .nav-group-chevron {
+  transform: rotate(-90deg);
+}
+/* Settings: editing the groups */
+.menu-group {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.menu-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.menu-group-head input {
+  flex: 1;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  font-weight: 600;
+}

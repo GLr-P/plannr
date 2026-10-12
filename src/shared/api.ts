@@ -1754,7 +1754,8 @@ export interface PlannrApi {
   app: {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
-    setTheme(theme: Theme): Promise<void>
+    /** Recolours the window (title bar and background); the colours come from the colour theme when given */
+    setTheme(theme: Theme, colors?: { bg: string; titlebar: string; symbol: string }): Promise<void>
     /** Quick capture box */
     openCapture(): Promise<void>
     closeCapture(): Promise<void>

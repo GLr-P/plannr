@@ -128,6 +128,20 @@ test('website screenshots', async () => {
       await p.notes.update(s.id, { icon: 'Truck', color: 'orange' })
       const hours = await p.notes.create({ title: 'Shop hours & policies' })
       await p.notes.update(hours.id, { pinned: true, icon: '🕘' })
+      // Personal: a place for the weather, habits, a shopping list and a parcel on its way
+      await p.news.configure({ prefs: { place: { name: 'Springfield', region: '', country: 'Canada', countryCode: 'CA', lat: 49.03, lon: -119.45 } } })
+      for (const name of ['Drink water', 'Stretch', 'Read 20 minutes']) {
+        const h = await p.habits.create({ name })
+        for (let k = 1; k <= (name === 'Stretch' ? 2 : 6); k++) {
+          const x = new Date()
+          x.setDate(x.getDate() - k)
+          await p.habits.toggle(h.id, `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`, true)
+        }
+        if (name === 'Drink water') await p.habits.toggle(h.id, d[0], true)
+      }
+      for (const item of ['Milk', 'Coffee beans', 'Thermal paste', 'AA batteries']) await p.lists.add('Shopping', item)
+      await p.lists.add('Hardware store', 'Wood screws')
+      await p.packages.add({ number: '1Z999AA10123456784', label: 'Replacement screens', expected: d[2] })
     },
     { d: Array.from({ length: 8 }, (_, i) => day(i)) }
   )
@@ -162,16 +176,39 @@ test('website screenshots', async () => {
 
   await page.keyboard.press('Control+,')
   await page.getByRole('tab', { name: 'General', exact: true }).click()
-  await page.getByRole('radio', { name: 'Dark' }).click()
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click()
   await page.locator('.sidebar .nav-item', { hasText: 'Home' }).first().click()
   await shot('home-dark')
   await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
   await page.locator('.ticket-row', { hasText: 'iPhone 14 Pro' }).click()
   await shot('ticket-dark')
   await page.keyboard.press('Control+,')
-  await page.getByRole('radio', { name: 'Light' }).click()
+  await page.getByRole('radio', { name: 'Light', exact: true }).click()
   await page.getByRole('tab', { name: 'Layout', exact: true }).click()
   await shot('settings')
+
+  await page.locator('.sidebar .nav-item', { hasText: 'Lists' }).first().click()
+  await expect(page.locator('.list-item').first()).toBeVisible()
+  await shot('lists')
+
+  await page.locator('.sidebar .nav-item', { hasText: 'Assistant' }).first().click()
+  await page.getByRole('button', { name: 'Setup' }).click() // close the key panel for a clean picture
+  await shot('assistant')
+
+  // Colour themes: Paper (warm) and Nord dark
+  await page.keyboard.press('Control+,')
+  await page.getByRole('tab', { name: 'General', exact: true }).click()
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Paper/ }).click()
+  await page.locator('.sidebar .nav-item', { hasText: 'Home' }).first().click()
+  await shot('theme-paper')
+  await page.keyboard.press('Control+,')
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click()
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Nord/ }).click()
+  await page.locator('.sidebar .nav-item', { hasText: 'Calendar' }).first().click()
+  await shot('theme-nord')
+  await page.keyboard.press('Control+,')
+  await page.getByRole('radio', { name: 'Light', exact: true }).click()
+  await page.getByRole('radiogroup', { name: 'Colour theme' }).getByRole('radio', { name: /Plannr/ }).click()
 
   await app.close()
 })

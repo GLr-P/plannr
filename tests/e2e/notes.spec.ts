@@ -184,10 +184,11 @@ test('right-click: rename a folder, give it an icon and colour, move a note out 
 })
 
 test('organise the sidebar: reorder the menu, add a section, drag a folder into it', async () => {
-  const menu = () => page.locator('.sidebar > .nav-item .nav-label').allTextContents()
-  const tickets = page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first()
-  await page.locator('.sidebar .nav-item', { hasText: 'Calendar' }).first().dragTo(tickets, { targetPosition: { x: 40, y: 4 } })
-  await expect.poll(async () => (await menu()).slice(0, 4)).toEqual(['Home', 'Tasks', 'Calendar', 'Tickets'])
+  const menu = () => page.locator('.sidebar .nav-group .nav-item .nav-label').allTextContents()
+  const tasks = page.locator('.sidebar .nav-item', { hasText: 'Tasks' }).first()
+  // Tickets dragged above Tasks: out of its Work group, into the top one
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().dragTo(tasks, { targetPosition: { x: 40, y: 4 } })
+  await expect.poll(async () => (await menu()).slice(0, 4)).toEqual(['Home', 'Tickets', 'Tasks', 'Calendar'])
 
   await page.locator('.add-section').click()
   await page.getByLabel('New name').fill('Work')
@@ -219,12 +220,12 @@ test('moves a note to trash and restores it', async () => {
 test('keyboard shortcuts: Ctrl+/ lists them; Ctrl+number follows the menu order', async () => {
   await page.keyboard.press('Control+/')
   const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' })
-  await expect(dialog).toContainText('Go to Calendar') // the menu was reordered: Calendar is 3rd (after Home and Tasks)
-  await expect(dialog.locator('.shortcut-row', { hasText: 'Go to Calendar' })).toContainText('3')
+  await expect(dialog).toContainText('Go to Calendar') // the menu was reordered: Calendar is 4th (Home, Tickets, Tasks, Calendar)
+  await expect(dialog.locator('.shortcut-row', { hasText: 'Go to Calendar' })).toContainText('4')
   await shot(page, '09-shortcuts')
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
-  await page.keyboard.press('Control+3')
+  await page.keyboard.press('Control+4')
   await expect(page.locator('.cal-title')).toBeVisible()
   await page.keyboard.press('Control+1')
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good (morning|afternoon|evening)/)
@@ -232,7 +233,7 @@ test('keyboard shortcuts: Ctrl+/ lists them; Ctrl+number follows the menu order'
 
 test('switches to dark theme', async () => {
   await page.locator('.sidebar .nav-item', { hasText: 'Settings' }).click()
-  await page.getByRole('radio', { name: 'Dark' }).click()
+  await page.getByRole('radio', { name: 'Dark', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await shot(page, '07-settings-dark')
   await page.keyboard.press('Control+k')

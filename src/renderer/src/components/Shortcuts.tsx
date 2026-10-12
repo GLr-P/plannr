@@ -19,7 +19,7 @@ const Keys = ({ k }: { k: string }) => (
 export function ShortcutsDialog() {
   const { open, set } = useShortcutsOpen()
   const order = visibleNav(
-    useUi((s) => s.prefs.navOrder),
+    useUi((s) => s.prefs.navGroups),
     useUi((s) => s.prefs.navHidden)
   )
   useEffect(() => {

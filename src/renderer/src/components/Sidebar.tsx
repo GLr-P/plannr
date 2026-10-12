@@ -30,7 +30,7 @@ import { noteTitle } from '../lib/format'
 import { ItemIcon } from '../lib/icons'
 import { childrenOf, isWithin, placeItem, placeNextTo, useAddingFolder, useSidebarDrag, type Dragging, type Entry } from '../lib/sidebarTree'
 import { openMenu } from './ContextMenu'
-import { NAV_LABELS, navHidden, navName, navOrder, singular, type NavId } from '../lib/navOrder'
+import { NAV_LABELS, navGroups, navHidden, navName, singular, type NavId } from '../lib/navOrder'
 import { useDisplay } from '../store/display'
 import { folderMenu, newSection, noteMenu, renameFolder, renameNote, sectionMenu, sidebarMenu, useRenaming } from '../menus'
 
@@ -403,7 +403,7 @@ export function Sidebar() {
   const lowStock = useData((s) => s.counts.lowStock)
   const dueTasks = useData((s) => s.counts.dueTasks)
   const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
-  const order = navOrder(useUi((s) => s.prefs.navOrder))
+  const groups = navGroups(useUi((s) => s.prefs.navGroups))
   const hidden = navHidden(useUi((s) => s.prefs.navHidden))
   const setPref = useUi((s) => s.setPref)
   const adding = useAddingFolder((s) => s.dest)
@@ -416,9 +416,12 @@ export function Sidebar() {
     drag: { kind: 'nav' as const, id },
     accepts: (d: NonNullable<Dragging>): Zone[] => (d.kind === 'nav' && d.id !== id ? ['before', 'after'] : []),
     onDrop: (d: NonNullable<Dragging>, zone: Zone) => {
-      const ids = order.filter((x) => x !== d.id)
-      ids.splice(ids.indexOf(id) + (zone === 'after' ? 1 : 0), 0, d.id as NavId)
-      setPref('navOrder', ids.join(','))
+      // Into the group of the item it's dropped on, before or after it
+      const next = groups.map((g) => ({ ...g, items: g.items.filter((x) => x !== d.id) }))
+      const target = next.find((g) => g.items.includes(id))
+      if (!target) return
+      target.items.splice(target.items.indexOf(id) + (zone === 'after' ? 1 : 0), 0, d.id as NavId)
+      setPref('navGroups', JSON.stringify(next))
     }
   })
 
@@ -489,7 +492,28 @@ export function Sidebar() {
       <div className="drawer-profile">
         <ProfileSwitcher />
       </div>
-      {order.filter((id) => !hidden.includes(id)).map((id) => nav[id])}
+      {groups.map((g, i) => {
+        const items = g.items.filter((id) => !hidden.includes(id))
+        if (!items.length) return null
+        return (
+          <div key={g.id} className={`nav-group ${g.collapsed ? 'collapsed' : ''}`}>
+            {i > 0 && <div className="nav-divider" />}
+            {g.name && (
+              <button
+                type="button"
+                className="nav-group-header"
+                aria-expanded={!g.collapsed}
+                title={g.collapsed ? 'Show' : 'Hide'}
+                onClick={() => setPref('navGroups', JSON.stringify(groups.map((x) => (x.id === g.id ? { ...x, collapsed: !x.collapsed } : x))))}
+              >
+                <span>{g.name}</span>
+                <ChevronDown className="nav-group-chevron" />
+              </button>
+            )}
+            {!g.collapsed && items.map((id) => nav[id])}
+          </div>
+        )
+      })}
 
       {sections.map((s) => {
         const entries = childrenOf({ sectionId: s.id }, notes, folders)

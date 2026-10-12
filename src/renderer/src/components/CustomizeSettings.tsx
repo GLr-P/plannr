@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw, Plus, Trash2 } from 'lucide-react'
 import { TICKET_STATUSES, formatTicketNumber } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
-import { ACCENTS, TEXT_SIZES } from '../lib/appearance'
-import { HIDEABLE, NAV_IDS, NAV_LABELS, navHidden, navName, navOrder, type NavId } from '../lib/navOrder'
+import { ACCENTS, PALETTES, TEXT_SIZES } from '../lib/appearance'
+import { HIDEABLE, NAV_IDS, NAV_LABELS, navGroups, navHidden, navName, type NavGroup, type NavId } from '../lib/navOrder'
 import { HOME_SECTIONS, hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
 import { MessageTemplatesSettings } from './MessageTemplatesSettings'
 
@@ -25,6 +25,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
 
 /** Accent colour, spacing and text size (shown under the theme choice). */
 export function LookSettings() {
+  const palette = useUi((s) => s.prefs.palette) || 'default'
   const accent = useUi((s) => s.prefs.accent) ?? 'blue'
   const density = (useUi((s) => s.prefs.density) ?? 'comfortable') as 'comfortable' | 'compact'
   const setPref = useUi((s) => s.setPref)
@@ -34,6 +35,25 @@ export function LookSettings() {
   }, [])
   return (
     <>
+      <section className="setting setting-stack">
+        <div>
+          <h3>Colour theme</h3>
+          <p className="muted">Colours for the whole app, each with a light and a dark version (Light / Dark / System above). Paper, Solarized and Dim are easiest on the eyes for long sessions.</p>
+        </div>
+        <div className="palette-grid" role="radiogroup" aria-label="Colour theme">
+          {PALETTES.map((p) => (
+            <button key={p.id} type="button" role="radio" aria-checked={palette === p.id} className={`palette-card ${palette === p.id ? 'on' : ''}`} onClick={() => setPref('palette', p.id === 'default' ? '' : p.id)}>
+              <span className="palette-preview" aria-hidden>
+                {p.colors.map((c) => (
+                  <span key={c} style={{ background: c }} />
+                ))}
+              </span>
+              <b>{p.label}</b>
+              <span className="small muted">{p.text}</span>
+            </button>
+          ))}
+        </div>
+      </section>
       <section className="setting">
         <div>
           <h3>Accent colour</h3>
@@ -89,57 +109,102 @@ export function LookSettings() {
   )
 }
 
-/** The menu: its order (arrows, A–Z, back to the standard order) and what shows. */
+/** The menu: groups with headings (dividers between them), the order, and what shows. */
 export function MenuSettings() {
   const hiddenPref = useUi((s) => s.prefs.navHidden)
-  const orderPref = useUi((s) => s.prefs.navOrder)
+  const groupsPref = useUi((s) => s.prefs.navGroups)
   const names = useDisplay((s) => s.prefs.navNames)
   const setPref = useUi((s) => s.setPref)
   const hidden = navHidden(hiddenPref)
-  const order = navOrder(orderPref)
+  const groups = navGroups(groupsPref)
   const label = (id: string, fallback: string): string => navName(id, names, fallback)
+  const save = (next: NavGroup[]): void => setPref('navGroups', JSON.stringify(next))
   const toggle = (id: string, show: boolean): void => setPref('navHidden', (show ? hidden.filter((h) => h !== id) : [...hidden, id]).join(','))
-  const move = (id: NavId, by: number): void => {
-    const next = [...order]
-    const at = next.indexOf(id)
-    next.splice(at, 1)
-    next.splice(Math.max(0, Math.min(next.length, at + by)), 0, id)
-    setPref('navOrder', next.join(','))
+  /** Up/down within a group; past its first or last item it goes into the group before or after */
+  const move = (gi: number, id: NavId, by: number): void => {
+    const next = groups.map((g) => ({ ...g, items: [...g.items] }))
+    const items = next[gi].items
+    const at = items.indexOf(id)
+    if ((by < 0 && at === 0) || (by > 0 && at === items.length - 1)) {
+      const to = gi + by
+      if (to < 0 || to >= next.length) return
+      items.splice(at, 1)
+      if (by < 0) next[to].items.push(id)
+      else next[to].items.unshift(id)
+    } else {
+      items.splice(at, 1)
+      items.splice(at + by, 0, id)
+    }
+    save(next)
   }
-  const alphabetical = (): void =>
-    setPref('navOrder', ['home', ...order.filter((id) => id !== 'home').sort((a, b) => label(a, NAV_LABELS[a]).localeCompare(label(b, NAV_LABELS[b])))].join(','))
+  const moveGroup = (gi: number, by: number): void => {
+    const next = [...groups]
+    const [g] = next.splice(gi, 1)
+    next.splice(gi + by, 0, g)
+    save(next)
+  }
+  const removeGroup = (gi: number): void => {
+    const next = groups.map((g) => ({ ...g, items: [...g.items] }))
+    const into = gi > 0 ? gi - 1 : 1
+    next[into].items.push(...next[gi].items)
+    next.splice(gi, 1)
+    save(next)
+  }
+  const alphabetical = (): void => save(groups.map((g) => ({ ...g, items: [...g.items].sort((a, b) => (a === 'home' ? -1 : b === 'home' ? 1 : label(a, NAV_LABELS[a]).localeCompare(label(b, NAV_LABELS[b])))) })))
   return (
     <section className="setting setting-stack">
       <div>
         <h3>Menu</h3>
-        <p className="muted">The order of the menu, and what shows. You can also drag items in the sidebar.</p>
+        <p className="muted">Group the menu under headings, with a line between groups. Arrows move items (and between groups); untick what you don’t use. You can also drag items in the sidebar, and click a heading there to fold its group.</p>
         <div className="order-actions">
-          <button type="button" className="btn sm" onClick={alphabetical}>
-            <ArrowDownAZ /> A–Z
+          <button type="button" className="btn sm" onClick={() => save([...groups, { id: `g${Date.now()}`, name: 'New group', items: [] }])}>
+            <Plus /> Add a group
           </button>
-          <button type="button" className="btn sm" onClick={() => setPref('navOrder', '')}>
-            <RotateCcw /> Standard order
+          <button type="button" className="btn sm" onClick={alphabetical}>
+            <ArrowDownAZ /> A–Z in each group
+          </button>
+          <button type="button" className="btn sm" onClick={() => setPref('navGroups', '')}>
+            <RotateCcw /> Standard groups
           </button>
         </div>
       </div>
-      <ul className="order-list">
-        {order.map((id, i) => (
-          <li key={id}>
-            <label className="check-row">
-              <input type="checkbox" checked={id === 'home' || !hidden.includes(id)} disabled={id === 'home'} aria-label={`Show ${label(id, NAV_LABELS[id])}`} onChange={(e) => toggle(id, e.target.checked)} />
-              {label(id, NAV_LABELS[id])}
-            </label>
+      {groups.map((g, gi) => (
+        <div key={g.id} className="menu-group">
+          <div className="menu-group-head">
+            <input value={g.name} placeholder={gi === 0 ? 'No heading' : 'Heading'} aria-label={`Group ${gi + 1} name`} onChange={(e) => save(groups.map((x, i) => (i === gi ? { ...x, name: e.target.value } : x)))} />
             <span className="order-buttons">
-              <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} up`} disabled={i === 0} onClick={() => move(id, -1)}>
+              <button type="button" className="icon-btn sm" aria-label={`Move group ${gi + 1} up`} disabled={gi === 0} onClick={() => moveGroup(gi, -1)}>
                 <ArrowUp />
               </button>
-              <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} down`} disabled={i === order.length - 1} onClick={() => move(id, 1)}>
+              <button type="button" className="icon-btn sm" aria-label={`Move group ${gi + 1} down`} disabled={gi === groups.length - 1} onClick={() => moveGroup(gi, 1)}>
                 <ArrowDown />
               </button>
+              <button type="button" className="icon-btn sm" aria-label={`Remove group ${gi + 1}`} title="Remove the group (its items join the group above)" disabled={groups.length < 2} onClick={() => removeGroup(gi)}>
+                <Trash2 />
+              </button>
             </span>
-          </li>
-        ))}
-      </ul>
+          </div>
+          <ul className="order-list">
+            {g.items.length === 0 && <li className="muted small">Empty: move items here with the arrows.</li>}
+            {g.items.map((id, i) => (
+              <li key={id}>
+                <label className="check-row">
+                  <input type="checkbox" checked={id === 'home' || !hidden.includes(id)} disabled={id === 'home'} aria-label={`Show ${label(id, NAV_LABELS[id])}`} onChange={(e) => toggle(id, e.target.checked)} />
+                  {label(id, NAV_LABELS[id])}
+                </label>
+                <span className="order-buttons">
+                  <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} up`} disabled={gi === 0 && i === 0} onClick={() => move(gi, id, -1)}>
+                    <ArrowUp />
+                  </button>
+                  <button type="button" className="icon-btn sm" aria-label={`Move ${NAV_LABELS[id]} down`} disabled={gi === groups.length - 1 && i === g.items.length - 1} onClick={() => move(gi, id, 1)}>
+                    <ArrowDown />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       <div className="check-grid">
         {HIDEABLE.filter((item) => item.id === 'vault' || item.id === 'templates').map((item) => (
           <label key={item.id} className="check-row">
