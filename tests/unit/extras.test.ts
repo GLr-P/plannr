@@ -141,6 +141,20 @@ describe('weather and entertainment', () => {
     expect((await ent.refreshEntertainment(db, fakeFetch)).wentLive).toEqual([])
   })
 
+  it('reads a channel’s Videos page when its feed is broken', async () => {
+    const now = Date.parse('2026-10-11T19:00:00-07:00')
+    const videos = ent.parseChannelVideos(fixture('yt-videos-page.html'), now)
+    expect(videos.map((v) => v.title)).toEqual([
+      'NES Games, but if I die I go to the next game (VOD)',
+      'Can Frank drive across GTA 5 with Chaos Mod (VOD)',
+      'They’re on the Moon. Time to bring them “home”. (VOD)',
+      'holy crap Louis he’s playing mario maker again (VOD)'
+    ])
+    expect(videos[0]).toMatchObject({ guid: expect.stringMatching(/^yt:video:[\w-]{11}$/), url: expect.stringMatching(/^https:\/\/www\.youtube\.com\/watch\?v=/), image: expect.stringMatching(/hqdefault\.jpg$/), publishedAt: now - 3 * 86_400_000 })
+    const broken = async (url: string): Promise<string> => (url.includes('/feeds/') ? Promise.reject(new Error('HTTP 404')) : fixture('yt-videos-page.html'))
+    expect((await ent.youtubeVideos('UCzL0SBEypNk4slpzSbxo01g', broken, now, async () => undefined)).length).toBe(4)
+  })
+
   it('tries YouTube again when it answers 404', async () => {
     let n = 0
     const flaky = async (url: string): Promise<string> => (++n < 3 ? Promise.reject(new Error('HTTP 404')) : fakeFetch(url))

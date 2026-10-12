@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { CheckCircle2, Send, Settings2, Sparkles, Trash2 } from 'lucide-react'
-import { ASSISTANT_MODELS, type AssistantMessage, type AssistantProvider, type AssistantStatus } from '../../../shared/api'
+import { ASSISTANT_MODELS, ASSISTANT_PROVIDERS, type AssistantMessage, type AssistantProvider, type AssistantStatus } from '../../../shared/api'
 import { api } from '../api'
 
 /** The conversation stays while you move around Plannr (until you clear it or close Plannr) */
@@ -45,6 +45,8 @@ export function AssistantView() {
   }
 
   if (!status) return <div className="page assistant-page" />
+  const provider = ASSISTANT_PROVIDERS.find((p) => p.id === status.provider) ?? ASSISTANT_PROVIDERS[0]
+  const listed = ASSISTANT_MODELS.filter((m) => m.provider === status.provider)
   return (
     <div className="page assistant-page">
       <div className="list-header">
@@ -63,30 +65,24 @@ export function AssistantView() {
 
       {setup && (
         <section className="card assistant-setup">
-          <div className="segmented assistant-provider" role="radiogroup" aria-label="Which AI">
-            {(['openai', 'anthropic'] as AssistantProvider[]).map((p) => (
-              <button key={p} type="button" role="radio" aria-checked={status.provider === p} className={status.provider === p ? 'active' : ''} onClick={() => void api.assistant.setup({ provider: p }).then(setStatus)}>
-                {p === 'openai' ? 'ChatGPT (OpenAI)' : 'Claude (Anthropic)'}
-              </button>
-            ))}
-          </div>
-          {status.provider === 'openai' ? (
-            <p className="small">
-              ChatGPT needs an <b>OpenAI API key</b> (separate from a ChatGPT Plus subscription): create one at{' '}
-              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
-                platform.openai.com/api-keys
-              </a>{' '}
-              and add a little credit under Billing. A question usually costs well under a cent. Your key is stored encrypted on this PC. Only what you ask, and the Plannr details it looks up to answer, are sent.
-            </p>
-          ) : (
-            <p className="small">
-              Claude needs an <b>Anthropic API key</b>: create one at{' '}
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-                console.anthropic.com
-              </a>{' '}
-              and add a little credit. A question usually costs well under a cent. Your key is stored encrypted on this PC. Only what you ask, and the Plannr details it looks up to answer, are sent.
-            </p>
-          )}
+          <label className="mfield">
+            Which AI
+            <select value={status.provider} aria-label="Which AI" onChange={(e) => void api.assistant.setup({ provider: e.target.value as AssistantProvider }).then(setStatus)}>
+              {ASSISTANT_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="small">
+            {provider.keyHelp}{' '}
+            <a href={provider.keyUrl} target="_blank" rel="noreferrer">
+              Open {new URL(provider.keyUrl).hostname}
+            </a>
+            . Your key is stored encrypted on this PC; only what you ask, and the Plannr details it looks up to answer, are sent.
+          </p>
+          {status.provider !== 'ollama' && (
           <form
             className="news-add-link"
             onSubmit={async (e) => {
@@ -101,22 +97,37 @@ export function AssistantView() {
               type="password"
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder={status.configured ? 'A key is saved (paste a new one to replace it)' : status.provider === 'openai' ? 'Paste your OpenAI API key (sk-…)' : 'Paste your Anthropic API key (sk-ant-…)'}
+              placeholder={status.configured ? 'A key is saved (paste a new one to replace it)' : `Paste your ${provider.label.replace(/ –.*$/, '')} API key`}
               aria-label="API key"
             />
             <button type="submit" className="btn">
               Save
             </button>
           </form>
+          )}
           <label className="mfield">
             Model
-            <select value={status.model} aria-label="Model" onChange={(e) => void api.assistant.setup({ model: e.target.value }).then(setStatus)}>
-              {ASSISTANT_MODELS.filter((m) => m.provider === status.provider).map((m) => (
+            <select
+              value={listed.some((m) => m.id === status.model) ? status.model : '__other'}
+              aria-label="Model"
+              onChange={(e) => e.target.value !== '__other' && void api.assistant.setup({ model: e.target.value }).then(setStatus)}
+            >
+              {listed.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.label}
                 </option>
               ))}
+              <option value="__other">Another model (type its name)…</option>
             </select>
+          </label>
+          <label className="mfield">
+            Model name
+            <input
+              key={status.model}
+              defaultValue={status.model}
+              aria-label="Model name"
+              onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== status.model && void api.assistant.setup({ model: e.target.value }).then(setStatus)}
+            />
           </label>
           {status.configured && (
             <button type="button" className="link-btn small" onClick={() => void api.assistant.setup({ key: null }).then(setStatus)}>

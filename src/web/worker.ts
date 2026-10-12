@@ -139,7 +139,7 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       inbox: async () => []
     },
     assistant: {
-      status: async () => ({ provider: 'openai' as const, configured: false, model: '' }),
+      status: async () => ({ provider: 'gemini' as const, configured: false, model: '' }),
       setup: offline,
       ask: offline
     },

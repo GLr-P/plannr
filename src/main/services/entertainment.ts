@@ -1,7 +1,7 @@
 import type { Db } from '../db'
 import { newId } from '../db'
 import type { EntChannel, EntFeed, EntLive, EntVideo } from '../../shared/api'
-import { decodeEntities, parseFeed, storeItems, type FetchText } from './news'
+import { decodeEntities, parseFeed, storeItems, type FetchText, type RawItem } from './news'
 import { getSetting, setSetting } from './settings'
 
 /**
@@ -66,6 +66,64 @@ export function parseTwitchPage(html: string, channel: EntChannel, now = Date.no
   }
 }
 
+const AGO: Record<string, number> = { second: 1_000, minute: 60_000, hour: 3_600_000, day: 86_400_000, week: 604_800_000, month: 2_592_000_000, year: 31_536_000_000 }
+
+/**
+ * The newest videos from a channel's Videos page (used when its feed is broken, which YouTube does for some channels):
+ * id, title and "3 days ago" from each entry of the page's data.
+ */
+export function parseChannelVideos(html: string, now = Date.now()): RawItem[] {
+  const mark = '"richItemRenderer":{"content":{"lockupViewModel"'
+  const out: RawItem[] = []
+  let at = html.indexOf(mark)
+  while (at >= 0 && out.length < 15) {
+    const next = html.indexOf(mark, at + mark.length)
+    const part = html.slice(at, next < 0 ? at + 12000 : next)
+    at = next
+    const id = /\/vi\/([\w-]{11})\//.exec(part)?.[1]
+    const rawTitle = /"title":\{"content":"((?:[^"\\]|\\.)*)"/.exec(part)?.[1]
+    if (!id || !rawTitle) continue
+    let title = rawTitle
+    try {
+      title = JSON.parse(`"${rawTitle}"`) as string
+    } catch {
+      /* keep it as written */
+    }
+    const ago = /(\d+) (second|minute|hour|day|week|month|year)s? ago/.exec(part)
+    out.push({
+      guid: `yt:video:${id}`, // the same id the feed uses, so a video is never listed twice
+      title,
+      summary: '',
+      url: `https://www.youtube.com/watch?v=${id}`,
+      image: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      publishedAt: ago ? now - Number(ago[1]) * AGO[ago[2]] : now,
+      category: ''
+    })
+  }
+  return out
+}
+
+/** A channel's newest videos: its feed, or its Videos page when YouTube's feed for it is broken */
+export async function youtubeVideos(channelId: string, fetchText: FetchText, now = Date.now(), wait?: (ms: number) => Promise<unknown>): Promise<RawItem[]> {
+  try {
+    return parseFeed(await youtubeFeed(channelId, fetchText, 2, wait), now)
+  } catch {
+    const items = parseChannelVideos(await fetchText(`https://www.youtube.com/channel/${channelId}/videos`), now)
+    if (!items.length) throw new Error('YouTube didn’t list any videos')
+    return items
+  }
+}
+
+/** Runs jobs a few at a time (so 60 channels don't hit YouTube and Twitch all at once) */
+async function inBatches<T>(items: T[], size: number, job: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  await Promise.all(
+    Array.from({ length: Math.min(size, items.length) }, async () => {
+      while (next < items.length) await job(items[next++])
+    })
+  )
+}
+
 /** YouTube's feed answers 404 now and then for no reason: try a few times */
 export async function youtubeFeed(channelId: string, fetchText: FetchText, tries = 4, wait = (ms: number) => new Promise((r) => setTimeout(r, ms))): Promise<string> {
   let last: unknown
@@ -117,11 +175,10 @@ export async function refreshEntertainment(db: Db, fetchText: FetchText, now = D
   const errors: EntFeed['errors'] = []
   const before = (getSetting(db, 'ent.live') as Record<string, EntLive> | null) ?? {}
   const live: Record<string, EntLive> = {}
-  await Promise.all(
-    channels.map(async (c) => {
+  await inBatches(channels, 6, async (c) => {
       try {
         if (c.kind === 'youtube') {
-          storeItems(db, c.id, parseFeed(await youtubeFeed(c.handle, fetchText), now).slice(0, 15), now)
+          storeItems(db, c.id, (await youtubeVideos(c.handle, fetchText, now)).slice(0, 15), now)
         } else {
           const { displayName, ...status } = parseTwitchPage(await fetchText(c.url), c, now)
           live[c.id] = { ...status, name: displayName }
@@ -130,8 +187,7 @@ export async function refreshEntertainment(db: Db, fetchText: FetchText, now = D
         errors.push({ channelId: c.id, message: e instanceof Error ? e.message : String(e) })
         if (before[c.id]) live[c.id] = before[c.id]
       }
-    })
-  )
+  })
   setSetting(db, 'ent.live', live)
   setSetting(db, 'ent.errors', errors)
   setSetting(db, 'ent.refreshedAt', now)

@@ -109,11 +109,15 @@ test('Mail asks to connect Zoho; the assistant asks for a key', async () => {
   await nav('Mail').click()
   await expect(page.locator('.mail-page')).toContainText('Connect your Zoho Mail')
   await nav('Assistant').click()
-  await expect(page.getByRole('radio', { name: 'ChatGPT (OpenAI)' })).toHaveAttribute('aria-checked', 'true') // ChatGPT unless you choose Claude
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /OpenAI/)
-  await page.getByRole('radio', { name: 'Claude (Anthropic)' }).click()
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /Anthropic/)
-  await page.getByRole('radio', { name: 'ChatGPT (OpenAI)' }).click()
-  await expect(page.getByLabel('Ask the assistant')).toBeDisabled()
+  await expect(page.getByLabel('Ask the assistant')).toBeDisabled() // no key yet
+  await expect(page.getByLabel('Which AI')).toHaveValue('gemini') // free Gemini unless you choose another
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /Gemini/)
+  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gemini-2.5-flash')
+  await page.getByLabel('Which AI').selectOption('ollama')
+  await expect(page.getByLabel('API key')).toHaveCount(0) // runs on this PC: no key
+  await expect(page.getByLabel('Ask the assistant')).toBeEnabled()
+  await page.getByLabel('Which AI').selectOption('openai')
+  await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gpt-5-mini')
+  await page.getByLabel('Which AI').selectOption('gemini')
   await shot(page, 'x6-assistant')
 })

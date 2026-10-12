@@ -176,12 +176,12 @@ export type PostOpenAI = (body: unknown) => Promise<{
 }>
 
 /** Asks ChatGPT (OpenAI Chat Completions with function calling), with the same tools and rounds as Claude */
-export async function askOpenAI(db: Db, model: string, messages: AssistantMessage[], post: PostOpenAI, businessName = ''): Promise<{ reply: string; actions: string[] }> {
+export async function askOpenAI(db: Db, model: string, messages: AssistantMessage[], post: PostOpenAI, businessName = '', tokenParam: 'max_completion_tokens' | 'max_tokens' = 'max_completion_tokens'): Promise<{ reply: string; actions: string[] }> {
   const tools = TOOLS.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }))
   const convo: unknown[] = [{ role: 'system', content: systemPrompt(db, businessName) }, ...messages.slice(-20).map((m) => ({ role: m.role, content: m.text }))]
   const actions: string[] = []
   for (let round = 0; round < 8; round++) {
-    const res = await post({ model, messages: convo, tools, max_completion_tokens: 4096 })
+    const res = await post({ model, messages: convo, tools, [tokenParam]: 4096 })
     if (res.error) throw new Error(res.error.message ?? 'The assistant couldn’t answer')
     const message = res.choices?.[0]?.message
     const calls = message?.tool_calls ?? []

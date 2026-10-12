@@ -46,14 +46,23 @@ export interface ApiHooks {
   profiles: PlannrApi['profiles']
 }
 
-const ASSISTANT_KEY: Record<AssistantProvider, string> = { anthropic: 'assistant.key', openai: 'assistant.openaiKey' }
+const ASSISTANT_KEY: Record<AssistantProvider, string> = { anthropic: 'assistant.key', openai: 'assistant.openaiKey', gemini: 'assistant.geminiKey', groq: 'assistant.groqKey', ollama: 'assistant.ollamaKey' }
+/** Services that speak OpenAI's Chat Completions (with tools) */
+const OPENAI_STYLE: Partial<Record<AssistantProvider, { url: string; tokens: 'max_completion_tokens' | 'max_tokens'; name: string }>> = {
+  openai: { url: 'https://api.openai.com/v1/chat/completions', tokens: 'max_completion_tokens', name: 'ChatGPT' },
+  gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', tokens: 'max_tokens', name: 'Gemini' },
+  groq: { url: 'https://api.groq.com/openai/v1/chat/completions', tokens: 'max_completion_tokens', name: 'Groq' },
+  ollama: { url: 'http://localhost:11434/v1/chat/completions', tokens: 'max_tokens', name: 'Ollama' }
+}
 
 export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
   const assistantStatus = (): AssistantStatus => {
-    const provider: AssistantProvider = getSetting(db, 'assistant.provider') === 'anthropic' ? 'anthropic' : getSetting(db, 'assistant.provider') === 'openai' || !getSecret<string>(db, 'assistant.key') ? 'openai' : 'anthropic'
-    const saved = getSetting(db, 'assistant.model') as string | null
-    const model = saved && ASSISTANT_MODELS.some((m) => m.id === saved && m.provider === provider) ? saved : saved && !ASSISTANT_MODELS.some((m) => m.id === saved) ? saved : DEFAULT_ASSISTANT_MODEL[provider]
-    return { provider, configured: Boolean(getSecret<string>(db, ASSISTANT_KEY[provider])), model }
+    const saved = getSetting(db, 'assistant.provider') as AssistantProvider | null
+    // Chosen, else whichever paid key was set up first, else free Gemini
+    const provider: AssistantProvider = saved && saved in ASSISTANT_KEY ? saved : getSecret<string>(db, 'assistant.key') ? 'anthropic' : getSecret<string>(db, 'assistant.openaiKey') ? 'openai' : 'gemini'
+    const savedModel = getSetting(db, 'assistant.model') as string | null
+    const model = savedModel && ASSISTANT_MODELS.some((m) => m.id === savedModel && m.provider === provider) ? savedModel : savedModel && getSetting(db, 'assistant.customModel') === provider ? savedModel : DEFAULT_ASSISTANT_MODEL[provider]
+    return { provider, configured: provider === 'ollama' || Boolean(getSecret<string>(db, ASSISTANT_KEY[provider])), model }
   }
   const googleStatus = (): GoogleStatus => {
     const calendars = (getSetting(db, 'google.calendarList') as GoogleCalendarInfo[] | null) ?? []
@@ -217,29 +226,37 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         }
         const provider = assistantStatus().provider
         if (input.key !== undefined) putSecret(db, ASSISTANT_KEY[provider], input.key?.trim() || null)
-        if (input.model) setSetting(db, 'assistant.model', input.model)
+        if (input.model) {
+          setSetting(db, 'assistant.model', input.model.trim())
+          // a model name typed in (not one of the listed ones) belongs to this provider
+          setSetting(db, 'assistant.customModel', ASSISTANT_MODELS.some((m) => m.id === input.model) ? null : provider)
+        }
         return assistantStatus()
       },
       ask: async (messages) => {
         const { provider, model } = assistantStatus()
-        const key = getSecret<string>(db, ASSISTANT_KEY[provider])
-        if (!key) throw new Error(`Add your ${provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key first (Setup).`)
-        if (provider === 'openai')
+        const key = getSecret<string>(db, ASSISTANT_KEY[provider]) ?? (provider === 'ollama' ? 'ollama' : null)
+        if (!key) throw new Error('Add your API key first (Setup).')
+        const style = OPENAI_STYLE[provider]
+        if (style)
           return assistantService.askOpenAI(
             db,
             model,
             messages,
             async (body) => {
-              const res = await net.fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-                body: JSON.stringify(body)
-              })
-              const json = (await res.json().catch(() => ({}))) as Awaited<ReturnType<assistantService.PostOpenAI>>
-              if (!res.ok) throw new Error(json.error?.message ?? `ChatGPT answered ${res.status}`)
-              return json
+              let res: Response
+              try {
+                res = await net.fetch(style.url, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' }, body: JSON.stringify(body) })
+              } catch {
+                throw new Error(provider === 'ollama' ? 'Ollama isn’t running on this PC. Open the Ollama app (from ollama.com) and try again.' : `Couldn’t reach ${style.name}. Check the internet connection.`)
+              }
+              const json = (await res.json().catch(() => ({}))) as Awaited<ReturnType<assistantService.PostOpenAI>> | Awaited<ReturnType<assistantService.PostOpenAI>>[]
+              const one = Array.isArray(json) ? json[0] : json // Gemini wraps errors in a list
+              if (!res.ok) throw new Error(one?.error?.message ?? `${style.name} answered ${res.status}`)
+              return one
             },
-            getBusiness(db).name
+            getBusiness(db).name,
+            style.tokens
           )
         return assistantService.ask(
           db,

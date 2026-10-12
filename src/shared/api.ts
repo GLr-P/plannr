@@ -905,8 +905,27 @@ export interface AssistantMessage {
   role: 'user' | 'assistant'
   text: string
 }
-/** Which AI answers: ChatGPT (OpenAI) or Claude (Anthropic), each with your own API key */
-export type AssistantProvider = 'openai' | 'anthropic'
+/** Which AI answers. Gemini and Groq have free API keys; Ollama runs on this PC; ChatGPT and Claude are paid. */
+export type AssistantProvider = 'gemini' | 'groq' | 'ollama' | 'openai' | 'anthropic'
+export const ASSISTANT_PROVIDERS: { id: AssistantProvider; label: string; free: boolean; keyUrl: string; keyHelp: string }[] = [
+  {
+    id: 'gemini',
+    label: 'Gemini (Google) – free',
+    free: true,
+    keyUrl: 'https://aistudio.google.com/apikey',
+    keyHelp: 'Free: sign in with a Google account at aistudio.google.com/apikey and click “Create API key”. No card needed. (On the free plan Google may use what you send to improve its models.)'
+  },
+  { id: 'groq', label: 'Groq – free', free: true, keyUrl: 'https://console.groq.com/keys', keyHelp: 'Free: make an account at console.groq.com/keys and create an API key. No card needed; the free plan has a daily limit.' },
+  {
+    id: 'ollama',
+    label: 'Ollama – free, on this PC',
+    free: true,
+    keyUrl: 'https://ollama.com/download',
+    keyHelp: 'Free and private: everything stays on this PC. Install Ollama from ollama.com, open it and download a model (e.g. llama3.1). Needs a fairly fast PC; no key.'
+  },
+  { id: 'openai', label: 'ChatGPT (OpenAI)', free: false, keyUrl: 'https://platform.openai.com/api-keys', keyHelp: 'Paid: an OpenAI API key from platform.openai.com/api-keys with a little credit (separate from ChatGPT Plus).' },
+  { id: 'anthropic', label: 'Claude (Anthropic)', free: false, keyUrl: 'https://console.anthropic.com/settings/keys', keyHelp: 'Paid: an Anthropic API key from console.anthropic.com with a little credit.' }
+]
 export interface AssistantStatus {
   provider: AssistantProvider
   /** A key is saved for the chosen provider */
@@ -914,6 +933,14 @@ export interface AssistantStatus {
   model: string
 }
 export const ASSISTANT_MODELS = [
+  { id: 'gemini-2.5-flash', provider: 'gemini', label: 'Gemini 2.5 Flash (free, recommended)' },
+  { id: 'gemini-2.5-flash-lite', provider: 'gemini', label: 'Gemini 2.5 Flash-Lite (free, quickest)' },
+  { id: 'gemini-2.5-pro', provider: 'gemini', label: 'Gemini 2.5 Pro (free with low limits)' },
+  { id: 'llama-3.3-70b-versatile', provider: 'groq', label: 'Llama 3.3 70B (free)' },
+  { id: 'openai/gpt-oss-120b', provider: 'groq', label: 'GPT-OSS 120B (free)' },
+  { id: 'llama-3.1-8b-instant', provider: 'groq', label: 'Llama 3.1 8B (free, quickest)' },
+  { id: 'llama3.1', provider: 'ollama', label: 'Llama 3.1' },
+  { id: 'qwen2.5', provider: 'ollama', label: 'Qwen 2.5' },
   { id: 'gpt-5-mini', provider: 'openai', label: 'GPT-5 mini (fast, good value)' },
   { id: 'gpt-5', provider: 'openai', label: 'GPT-5 (smartest, costs more)' },
   { id: 'gpt-5-nano', provider: 'openai', label: 'GPT-5 nano (quickest, cheapest)' },
@@ -921,7 +948,7 @@ export const ASSISTANT_MODELS = [
   { id: 'claude-opus-5-5', provider: 'anthropic', label: 'Opus 5.5 (smartest, costs more)' },
   { id: 'claude-haiku-4-5-20251001', provider: 'anthropic', label: 'Haiku 4.5 (quickest, cheapest)' }
 ] as const
-export const DEFAULT_ASSISTANT_MODEL: Record<AssistantProvider, string> = { openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' }
+export const DEFAULT_ASSISTANT_MODEL: Record<AssistantProvider, string> = { gemini: 'gemini-2.5-flash', groq: 'llama-3.3-70b-versatile', ollama: 'llama3.1', openai: 'gpt-5-mini', anthropic: 'claude-sonnet-5-5' }
 
 // ---------- Vault ----------
 
