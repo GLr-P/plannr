@@ -76,7 +76,7 @@ export function CustomerEmails({ email, name }: { email: string; name?: string }
   )
 }
 
-function EmailViewer({ message, onClose }: { message: ZohoMessage; onClose: () => void }) {
+export function EmailViewer({ message, onClose }: { message: ZohoMessage; onClose: () => void }) {
   const [content, setContent] = useState<ZohoMessageContent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)

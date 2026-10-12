@@ -89,6 +89,55 @@ export function markReminderFired(db: Db, eventId: string, key: string): void {
   db.prepare('INSERT OR IGNORE INTO reminder_log (event_id, reminder_key, fired_at) VALUES (?, ?, ?)').run(eventId, key, Date.now())
 }
 
+// ---------- Warranties, free trials and deliveries ----------
+
+export interface OtherReminder {
+  id: string
+  key: string
+  title: string
+  body: string
+  target: { type: 'ticket'; id: string } | { money: string } | { packages: true }
+}
+
+/**
+ * A warranty ending (8 AM that day), a free trial about to charge (9 AM three days before, and 8 AM on the day),
+ * a package arriving today (8 AM).
+ */
+export function dueOtherReminders(db: Db, now = new Date(), lookbackMs = LOOKBACK_MS): OtherReminder[] {
+  const logged = db.prepare('SELECT 1 FROM reminder_log WHERE event_id = ? AND reminder_key = ?')
+  const out: OtherReminder[] = []
+  const at = (date: string, daysBefore: number, hour: number): Date => {
+    const [y, m, d] = date.split('-').map(Number)
+    return new Date(y, m - 1, d - daysBefore, hour, 0)
+  }
+  const push = (r: OtherReminder, when: Date): void => {
+    const age = now.getTime() - when.getTime()
+    if (age < 0 || age > lookbackMs || logged.get(r.id, r.key)) return
+    out.push(r)
+  }
+  const tickets = db
+    .prepare("SELECT t.id, t.number, t.device, t.warranty_until, c.name AS customer FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id WHERE t.deleted_at IS NULL AND t.warranty_until IS NOT NULL")
+    .all() as { id: string; number: number; device: string; warranty_until: string; customer: string | null }[]
+  for (const t of tickets)
+    push(
+      { id: t.id, key: `warranty@${t.warranty_until}`, title: 'Warranty ends today', body: [t.customer, t.device].filter(Boolean).join(' · ') || `Ticket ${t.number}`, target: { type: 'ticket', id: t.id } },
+      at(t.warranty_until, 0, 8)
+    )
+  const trials = db
+    .prepare('SELECT id, name, amount_cents, trial_ends FROM recurring WHERE deleted_at IS NULL AND active = 1 AND trial_ends IS NOT NULL')
+    .all() as { id: string; name: string; amount_cents: number; trial_ends: string }[]
+  for (const r of trials) {
+    const money = `${(r.amount_cents / 100).toFixed(2)}`
+    push({ id: r.id, key: `trial-before@${r.trial_ends}`, title: `${r.name || 'Free trial'}: trial ends in 3 days`, body: `Cancel before ${r.trial_ends} or ${money} will be charged`, target: { money: r.id } }, at(r.trial_ends, 3, 9))
+    push({ id: r.id, key: `trial-dayof@${r.trial_ends}`, title: `${r.name || 'Free trial'}: trial ends today`, body: `${money} will be charged after today`, target: { money: r.id } }, at(r.trial_ends, 0, 8))
+  }
+  const parcels = db
+    .prepare("SELECT id, label, number, expected FROM packages WHERE deleted_at IS NULL AND delivered_at IS NULL AND expected IS NOT NULL AND status != 'delivered'")
+    .all() as { id: string; label: string; number: string; expected: string }[]
+  for (const p of parcels) push({ id: p.id, key: `package@${p.expected}`, title: 'Package arriving today', body: p.label || p.number, target: { packages: true } }, at(p.expected, 0, 8))
+  return out
+}
+
 // ---------- Bills & subscriptions ----------
 
 export interface MoneyReminder {

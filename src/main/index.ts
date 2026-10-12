@@ -9,6 +9,7 @@ import { openDb, type Db } from './db'
 import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { holidaysStale, refreshHolidays } from './services/holidays'
 import { newsStale, refreshNews } from './services/news'
+import { entStale, refreshEntertainment } from './services/entertainment'
 import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
@@ -316,6 +317,22 @@ if (!app.requestSingleInstanceLock()) {
       }
       setTimeout(updateNews, 8_000)
       setInterval(updateNews, 10 * 60 * 1000)
+      // New videos and who's live; a notification when a streamer you follow goes live
+      const updateEnt = (): void => {
+        if (!entStale(db, Date.now(), 5)) return
+        void refreshEntertainment(db, fetchText)
+          .then(({ wentLive }) => {
+            if (!background || !Notification.isSupported() || getSetting(db, 'ent.notifyLive') === false) return
+            for (const l of wentLive.slice(0, 3)) {
+              const n = new Notification({ title: `${l.name} is live`, body: l.title || 'Streaming now on Twitch', icon: resourcePath('icon.png') })
+              n.on('click', () => void shell.openExternal(l.url))
+              n.show()
+            }
+          })
+          .catch(() => undefined)
+      }
+      setTimeout(updateEnt, 12_000)
+      setInterval(updateEnt, 60 * 1000)
     }
     if (background) {
       refreshTray = createTray(getWindow, quit, effectiveTheme, {

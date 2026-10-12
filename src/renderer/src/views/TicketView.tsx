@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CalendarCheck, CalendarDays, DollarSign, ExternalLink, Mail, Phone, RotateCcw, User } from 'lucide-react'
+import { addDays } from '../lib/time'
+import { todayISO } from '../lib/format'
+import { CalendarCheck, CalendarDays, DollarSign, ExternalLink, Mail, Phone, RotateCcw, User, ShieldCheck } from 'lucide-react'
 import {
   formatCurrency,
   formatTicketNumber,
@@ -73,7 +75,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     issue: ticket.issue,
     priceCents: ticket.priceCents,
     receivedOn: ticket.receivedOn,
-    pickupOn: ticket.pickupOn
+    pickupOn: ticket.pickupOn,
+    warrantyUntil: ticket.warrantyUntil
   })
   const [priceText, setPriceText] = useState(formatMoney(ticket.priceCents))
   const [fromLines, setFromLines] = useState(false) // the price comes from the line items
@@ -432,6 +435,37 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
                   aria-label="Pickup date"
                 />
+              </div>
+            )}
+            {layout.showPickup && (
+              <div className="prop">
+                <span className="prop-label">
+                  <ShieldCheck /> Warranty
+                </span>
+                <span className="prop-warranty">
+                  <select
+                    className="prop-input"
+                    value=""
+                    disabled={trashed}
+                    aria-label="Warranty length"
+                    onChange={(e) => {
+                      const days = Number(e.target.value)
+                      if (!e.target.value) return
+                      const from = fields.pickupOn ?? todayISO()
+                      set({ warrantyUntil: days ? addDays(from, days) : null }, true)
+                    }}
+                  >
+                    <option value="">{fields.warrantyUntil ? (fields.warrantyUntil >= todayISO() ? 'Covered until' : 'Ended') : 'None'}</option>
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">6 months</option>
+                    <option value="365">1 year</option>
+                    <option value="0">No warranty</option>
+                  </select>
+                  {fields.warrantyUntil && (
+                    <input type="date" className="prop-input" value={fields.warrantyUntil} readOnly={trashed} aria-label="Warranty until" onChange={(e) => set({ warrantyUntil: e.target.value || null }, true)} />
+                  )}
+                </span>
               </div>
             )}
             {layout.showCustomer && layout.showCustomerEmail && (

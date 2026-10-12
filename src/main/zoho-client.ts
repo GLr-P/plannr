@@ -8,6 +8,7 @@ import {
   accountsServerFor,
   emailDocument,
   mailBaseFor,
+  parseInbox,
   parseMessages,
   searchKeyFor,
   ZOHO_PORT,
@@ -203,6 +204,13 @@ export async function search(db: Db, email: string): Promise<ZohoMessage[]> {
   const qs = new URLSearchParams({ searchKey: searchKeyFor(email), limit: '50', includeto: 'true' })
   const r = await mailGet<{ data?: Parameters<typeof parseMessages>[0] }>(db, `/messages/search?${qs}`)
   return parseMessages(r.data ?? [], email, s.mailBase).slice(0, 25)
+}
+
+/** The newest 50 messages in the inbox */
+export async function inbox(db: Db): Promise<ZohoMessage[]> {
+  const s = await session(db)
+  const r = await mailGet<{ data?: Parameters<typeof parseInbox>[0] }>(db, '/messages/view?limit=50&sortorder=false')
+  return parseInbox(r.data ?? [], s.mailBase)
 }
 
 export async function message(db: Db, folderId: string, messageId: string): Promise<ZohoMessageContent> {

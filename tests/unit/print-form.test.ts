@@ -16,6 +16,7 @@ const ticket = (content: DocJSON): Ticket => ({
   priceCents: 10864,
   receivedOn: '2026-10-10',
   pickupOn: '2026-10-24',
+  warrantyUntil: null,
   closedAt: null,
   paidCents: 5000,
   taxExempt: false,

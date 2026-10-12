@@ -135,7 +135,13 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       connect: offline,
       disconnect: offline,
       search: async () => [],
-      message: offline
+      message: offline,
+      inbox: async () => []
+    },
+    assistant: {
+      status: async () => ({ configured: false, model: '' }),
+      setup: offline,
+      ask: offline
     },
     quickbooks: {
       status: async () => ({ configured: false, connected: false, companyName: null, config: null, lastSyncAt: null, error: null, problems: [] }),

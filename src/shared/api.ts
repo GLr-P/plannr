@@ -94,7 +94,7 @@ export interface StoredFile {
 }
 
 /** Asks the window to show something (notifications, switching profile) */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true; page?: string }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true; page?: string } | { packages: true }
 
 /** One profile on this PC (e.g. work and personal): its own data folder, so everything in it is separate from the others */
 export interface Profile {
@@ -224,6 +224,8 @@ export interface TicketSummary {
   priceCents: number | null
   receivedOn: string | null
   pickupOn: string | null
+  /** Covered by a warranty until (YYYY-MM-DD) */
+  warrantyUntil: string | null
   closedAt: number | null
   /** Sum of payments recorded for this ticket */
   paidCents: number
@@ -355,6 +357,7 @@ export interface TicketUpdate {
   priceCents?: number | null
   receivedOn?: string | null
   pickupOn?: string | null
+  warrantyUntil?: string | null
   content?: DocJSON
   taxExempt?: boolean
 }
@@ -789,6 +792,129 @@ export interface NewsFeed {
   errors: { sourceId: string; message: string }[]
 }
 
+
+// ---------- Habits (a daily routine that resets each morning) ----------
+
+export interface Habit {
+  id: string
+  name: string
+  icon: string
+  /** Weekdays it's on: 0 = Sunday … 6 = Saturday */
+  days: number[]
+  doneToday: boolean
+  /** Scheduled days in a row done, up to today (today counts once ticked) */
+  streak: number
+  /** The last 7 days, oldest first */
+  week: { date: string; scheduled: boolean; done: boolean }[]
+}
+export interface HabitInput {
+  name?: string
+  icon?: string
+  days?: number[]
+}
+
+// ---------- Lists (shopping and other check-off lists) ----------
+
+export interface ListItem {
+  id: string
+  list: string
+  title: string
+  done: boolean
+  sort: number
+}
+
+// ---------- Packages ----------
+
+export type PackageStatus = 'pending' | 'transit' | 'out' | 'delivered' | 'problem' | 'unknown'
+export interface PackageInfo {
+  id: string
+  number: string
+  /** e.g. canadapost, ups, fedex, usps, dhl, purolator, amazon, other */
+  carrier: string
+  carrierName: string
+  label: string
+  status: PackageStatus
+  statusText: string
+  /** YYYY-MM-DD, entered or from tracking */
+  expected: string | null
+  deliveredAt: number | null
+  trackUrl: string
+  events: { time: number; text: string; place: string }[]
+  lastChecked: number | null
+  createdAt: number
+}
+
+// ---------- Weather (daily forecast for your place) ----------
+
+export interface DayForecast {
+  date: string
+  code: number
+  text: string
+  max: number
+  min: number
+  /** Chance of rain or snow, % */
+  rain: number
+}
+export interface WeatherForecast {
+  place: string
+  days: DayForecast[]
+  fetchedAt: number
+}
+
+// ---------- Entertainment (new videos and who's live) ----------
+
+export interface EntChannel {
+  id: string
+  kind: 'youtube' | 'twitch'
+  name: string
+  /** YouTube channel id (UC…) or Twitch login */
+  handle: string
+  url: string
+}
+export interface EntVideo {
+  id: string
+  channelId: string
+  channelName: string
+  title: string
+  url: string
+  image: string
+  publishedAt: number
+  short: boolean
+  watched: boolean
+}
+export interface EntLive {
+  channelId: string
+  name: string
+  live: boolean
+  title: string
+  url: string
+  image: string
+  checkedAt: number
+}
+export interface EntFeed {
+  channels: EntChannel[]
+  videos: EntVideo[]
+  live: EntLive[]
+  refreshedAt: number | null
+  errors: { channelId: string; message: string }[]
+}
+
+// ---------- Assistant ----------
+
+export interface AssistantMessage {
+  role: 'user' | 'assistant'
+  text: string
+}
+export interface AssistantStatus {
+  configured: boolean
+  model: string
+}
+export const ASSISTANT_MODELS = [
+  { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5 (fast, good value)' },
+  { id: 'claude-opus-5-5', label: 'Opus 5.5 (smartest, costs more)' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (quickest, cheapest)' }
+] as const
+
 // ---------- Vault ----------
 
 export type VaultItemKind = 'login' | 'card' | 'note'
@@ -900,10 +1026,15 @@ export interface RecurringItem {
   notes: string
   active: boolean
   cancelledOn: string | null
+  /** A free trial: charging starts after this day (reminders before it ends) */
+  trialEnds: string | null
+  /** Earlier prices, newest last: when the amount changed and what it was before */
+  priceHistory: { date: string; cents: number }[]
   updatedAt: number
 }
 
 export interface RecurringPatch {
+  trialEnds?: string | null
   name?: string
   amountCents?: number
   frequency?: Frequency
@@ -1375,6 +1506,51 @@ export interface PlannrApi {
     detect(url: string): Promise<NewsSource>
     mark(id: string, patch: { read?: boolean; saved?: boolean; hidden?: boolean; eventId?: string | null }): Promise<void>
   }
+  habits: {
+    list(date?: string): Promise<Habit[]>
+    create(input: HabitInput): Promise<Habit>
+    update(id: string, input: HabitInput): Promise<void>
+    remove(id: string): Promise<void>
+    toggle(id: string, date: string, done: boolean): Promise<void>
+    reorder(ids: string[]): Promise<void>
+  }
+  lists: {
+    items(): Promise<ListItem[]>
+    add(list: string, title: string): Promise<ListItem>
+    update(id: string, patch: { title?: string; done?: boolean; list?: string }): Promise<void>
+    remove(id: string): Promise<void>
+    /** Removes the ticked items of a list */
+    clearDone(list: string): Promise<void>
+    renameList(from: string, to: string): Promise<void>
+    removeList(list: string): Promise<void>
+  }
+  packages: {
+    list(): Promise<PackageInfo[]>
+    add(input: { number: string; label?: string; expected?: string | null }): Promise<PackageInfo>
+    update(id: string, patch: { label?: string; expected?: string | null; delivered?: boolean }): Promise<void>
+    remove(id: string): Promise<void>
+    /** Checks live tracking (PC, with a 17TRACK key) */
+    refresh(): Promise<PackageInfo[]>
+    trackingStatus(): Promise<{ configured: boolean; error: string | null }>
+    setTrackingKey(key: string | null): Promise<{ configured: boolean; error: string | null }>
+  }
+  weather: {
+    /** The next two weeks for your place (from News), downloaded when older than 3 hours */
+    forecast(): Promise<WeatherForecast | null>
+  }
+  entertainment: {
+    feed(): Promise<EntFeed>
+    refresh(): Promise<EntFeed>
+    /** A YouTube channel or Twitch streamer: a link, @handle or name */
+    add(input: string, kind?: 'youtube' | 'twitch'): Promise<EntFeed>
+    remove(id: string): Promise<EntFeed>
+    markWatched(videoId: string, watched: boolean): Promise<void>
+  }
+  assistant: {
+    status(): Promise<AssistantStatus>
+    setup(input: { key?: string | null; model?: string }): Promise<AssistantStatus>
+    ask(messages: AssistantMessage[]): Promise<{ reply: string; actions: string[] }>
+  }
   holidays: {
     /** Holidays in [from, to] for the chosen region (observances only if enabled) */
     range(from: string, to: string): Promise<Holiday[]>
@@ -1458,6 +1634,8 @@ export interface PlannrApi {
     /** Recent emails to/from this address (newest first) */
     search(email: string): Promise<ZohoMessage[]>
     message(folderId: string, messageId: string): Promise<ZohoMessageContent>
+    /** The newest emails in your inbox */
+    inbox(): Promise<ZohoMessage[]>
   }
   quickbooks: {
     status(): Promise<QboStatus>
@@ -1571,6 +1749,12 @@ export const API_SHAPE = {
   templates: ['list', 'get', 'create', 'update', 'remove'],
   links: ['backlinks'],
   calendar: ['range', 'get', 'create', 'update', 'remove', 'skipOccurrence', 'forLink', 'drop'],
+  habits: ['list', 'create', 'update', 'remove', 'toggle', 'reorder'],
+  lists: ['items', 'add', 'update', 'remove', 'clearDone', 'renameList', 'removeList'],
+  packages: ['list', 'add', 'update', 'remove', 'refresh', 'trackingStatus', 'setTrackingKey'],
+  weather: ['forecast'],
+  entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched'],
+  assistant: ['status', 'setup', 'ask'],
   holidays: ['range', 'status', 'configure', 'refresh'],
   news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark'],
   vault: [
@@ -1620,7 +1804,7 @@ export const API_SHAPE = {
     'exportCsv'
   ],
   google: ['status', 'importClient', 'connect', 'disconnect', 'syncNow', 'setCalendars', 'events'],
-  zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message'],
+  zoho: ['status', 'configure', 'connect', 'disconnect', 'search', 'message', 'inbox'],
   quickbooks: ['status', 'configureKey', 'connect', 'disconnect', 'options', 'createItem', 'setConfig', 'syncNow'],
   backup: ['status', 'runNow', 'chooseFolder', 'openFolder', 'restore'],
   sidebar: ['sections', 'createSection', 'renameSection', 'removeSection', 'reorderSections', 'move'],

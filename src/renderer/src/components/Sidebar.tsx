@@ -19,7 +19,7 @@ import {
   Wrench,
   Package,
   CheckSquare,
-  type LucideIcon, Newspaper } from 'lucide-react'
+  type LucideIcon, Newspaper, Tv, ListChecks, Package2, Mail, Sparkles } from 'lucide-react'
 import type { Folder as FolderT, NoteSummary, SidebarDest, SidebarSection } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -443,6 +443,11 @@ export function Sidebar() {
     calendar: <NavItem key="calendar" icon={<CalendarDays />} label={name('calendar')} target={{ view: 'calendar' }} {...navDrop('calendar')} />,
     money: <NavItem key="money" icon={<Wallet />} label={name('money')} target={{ view: 'money' }} {...navDrop('money')} />,
     tasks: <NavItem key="tasks" icon={<CheckSquare />} label={name('tasks')} target={{ view: 'tasks' }} count={dueTasks || undefined} {...navDrop('tasks')} />,
+    entertainment: <NavItem key="entertainment" icon={<Tv />} label={name('entertainment')} target={{ view: 'entertainment' }} {...navDrop('entertainment')} />,
+    lists: <NavItem key="lists" icon={<ListChecks />} label={name('lists')} target={{ view: 'lists' }} {...navDrop('lists')} />,
+    packages: <NavItem key="packages" icon={<Package2 />} label={name('packages')} target={{ view: 'packages' }} {...navDrop('packages')} />,
+    mail: <NavItem key="mail" icon={<Mail />} label={name('mail')} target={{ view: 'mail' }} {...navDrop('mail')} />,
+    assistant: <NavItem key="assistant" icon={<Sparkles />} label={name('assistant')} target={{ view: 'assistant' }} {...navDrop('assistant')} />,
     news: <NavItem key="news" icon={<Newspaper />} label={name('news')} target={{ view: 'news' }} {...navDrop('news')} />,
     inventory: <NavItem key="inventory" icon={<Package />} label={name('inventory')} target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
     notes: (

@@ -15,6 +15,11 @@ import { backlinks } from './services/links'
 import * as calendar from './services/calendar'
 import * as holidays from './services/holidays'
 import * as news from './services/news'
+import * as habits from './services/habits'
+import * as lists from './services/lists'
+import * as packages from './services/packages'
+import * as weather from './services/weather'
+import * as ent from './services/entertainment'
 import * as money from './services/money'
 import { search } from './services/search'
 import { saveFile } from './services/files'
@@ -36,6 +41,11 @@ export type CoreApi = Pick<
   | 'calendar'
   | 'holidays'
   | 'news'
+  | 'habits'
+  | 'lists'
+  | 'packages'
+  | 'weather'
+  | 'entertainment'
   | 'folders'
   | 'search'
   | 'settings'
@@ -146,6 +156,49 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
         return holidays.holidaysStale(db) ? holidays.refreshHolidays(db, hooks.fetchText) : holidays.holidayStatus(db)
       },
       refresh: async () => holidays.refreshHolidays(db, hooks.fetchText)
+    },
+    habits: {
+      list: async (date) => habits.listHabits(db, date),
+      create: async (input) => habits.createHabit(db, input),
+      update: async (id, input) => habits.updateHabit(db, id, input),
+      remove: async (id) => habits.removeHabit(db, id),
+      toggle: async (id, date, done) => habits.toggleHabit(db, id, date, done),
+      reorder: async (ids) => habits.reorderHabits(db, ids)
+    },
+    lists: {
+      items: async () => lists.listItems(db),
+      add: async (list, title) => lists.addItem(db, list, title),
+      update: async (id, patch) => lists.updateItem(db, id, patch),
+      remove: async (id) => lists.removeItem(db, id),
+      clearDone: async (list) => lists.clearDone(db, list),
+      renameList: async (from, to) => lists.renameList(db, from, to),
+      removeList: async (list) => lists.removeList(db, list)
+    },
+    packages: {
+      list: async () => packages.listPackages(db),
+      add: async (input) => packages.addPackage(db, input),
+      update: async (id, patch) => packages.updatePackage(db, id, patch),
+      remove: async (id) => packages.removePackage(db, id),
+      // Live tracking needs the PC (it keeps the 17TRACK key); elsewhere it's the list as it is
+      refresh: async () => packages.listPackages(db),
+      trackingStatus: async () => ({ configured: false, error: null }),
+      setTrackingKey: async () => ({ configured: false, error: 'Set the tracking key in Plannr on your PC.' })
+    },
+    weather: {
+      forecast: async () => weather.forecast(db, hooks.fetchText)
+    },
+    entertainment: {
+      feed: async () => ent.entFeed(db),
+      refresh: async () => (await ent.refreshEntertainment(db, hooks.fetchText)).feed,
+      add: async (input, kind) => {
+        await ent.addChannel(db, input, kind, hooks.fetchText)
+        return (await ent.refreshEntertainment(db, hooks.fetchText)).feed
+      },
+      remove: async (id) => {
+        ent.removeChannel(db, id)
+        return ent.entFeed(db)
+      },
+      markWatched: async (id, watched) => news.markNews(db, id, { read: watched })
     },
     news: {
       feed: async () => news.newsFeed(db),

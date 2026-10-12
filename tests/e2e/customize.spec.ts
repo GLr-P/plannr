@@ -39,7 +39,7 @@ test('look: accent colour, compact spacing and text size', async () => {
 
 test('layout: hide a menu item; reorder and hide Home sections', async () => {
   await settings('Layout')
-  await page.locator('.check-row', { hasText: 'Money' }).locator('input').uncheck()
+  await page.getByRole('checkbox', { name: 'Money', exact: true }).uncheck()
   await expect(nav('Money')).toHaveCount(0)
   await page.getByRole('button', { name: 'Move recent up' }).click()
   await page.getByRole('button', { name: 'Move recent up' }).click()

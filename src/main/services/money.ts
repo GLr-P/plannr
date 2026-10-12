@@ -67,6 +67,8 @@ interface RecurringRow {
   active: number
   cancelled_on: string | null
   due_set_on: string | null
+  trial_ends?: string | null
+  price_history?: string
   updated_at: number
 }
 
@@ -84,6 +86,14 @@ const toItem = (r: RecurringRow): RecurringItem => ({
   notes: r.notes,
   active: r.active === 1,
   cancelledOn: r.cancelled_on,
+  trialEnds: r.trial_ends ?? null,
+  priceHistory: (() => {
+    try {
+      return JSON.parse(r.price_history ?? '[]') as { date: string; cents: number }[]
+    } catch {
+      return []
+    }
+  })(),
   updatedAt: r.updated_at
 })
 
@@ -120,7 +130,17 @@ export function updateRecurring(db: Db, id: string, patch: RecurringPatch, today
     params.push(v)
   }
   if (patch.name !== undefined) set('name', patch.name.slice(0, 200))
-  if (patch.amountCents !== undefined) set('amount_cents', Math.max(0, Math.round(patch.amountCents)))
+  if (patch.amountCents !== undefined) {
+    const cents = Math.max(0, Math.round(patch.amountCents))
+    const before = getRow(db, id)
+    // Remember the old price, so a price increase can be shown
+    if (cents !== before.amount_cents && before.amount_cents > 0) {
+      const history = (JSON.parse(before.price_history ?? '[]') as { date: string; cents: number }[]).concat({ date: today, cents: before.amount_cents }).slice(-12)
+      set('price_history', JSON.stringify(history))
+    }
+    set('amount_cents', cents)
+  }
+  if (patch.trialEnds !== undefined) set('trial_ends', patch.trialEnds && /^\d{4}-\d{2}-\d{2}$/.test(patch.trialEnds) ? patch.trialEnds : null)
   if (patch.frequency !== undefined) {
     if (!FREQ_IDS.has(patch.frequency)) throw new Error(`Unknown frequency: ${patch.frequency}`)
     set('frequency', patch.frequency)

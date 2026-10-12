@@ -5,7 +5,7 @@ import { api } from '../api'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { useAutosave } from '../lib/useAutosave'
-import { formatDay, formatMoney } from '../lib/format'
+import { formatDay, formatMoney, todayISO } from '../lib/format'
 import { ConfirmButton, SaveIndicator, StatusPill } from '../components/common'
 import { undoToast } from '../lib/toast'
 import { Backlinks } from '../components/Backlinks'
@@ -135,6 +135,11 @@ function CustomerPage({ customer }: { customer: Customer }) {
                     {t.device || 'Untitled'}
                     {t.issue && <span className="muted"> · {t.issue}</span>}
                   </span>
+                  {t.warrantyUntil && t.warrantyUntil >= todayISO() && (
+                    <span className="badge warranty-badge" title={`Under warranty until ${formatDay(t.warrantyUntil)}`}>
+                      Warranty to {formatDay(t.warrantyUntil)}
+                    </span>
+                  )}
                   <StatusPill status={t.status} />
                   <span className="history-date">{formatDay(t.receivedOn)}</span>
                   <span className="history-price">{formatMoney(t.priceCents)}</span>

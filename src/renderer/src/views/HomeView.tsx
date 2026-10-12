@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { AlertTriangle, CalendarDays, DollarSign, FileText, Flag, Newspaper, Pin, Wrench } from 'lucide-react'
-import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type NewsFeed, type NewsItem, type TicketSummary } from '../../../shared/api'
+import { formatTicketNumber, type Task, type CalendarEvent, type Holiday, type MoneyOccurrence, type NewsFeed, type NewsItem, type WeatherForecast, type ListItem, type PackageInfo, type MoneySummary, type EntFeed, type TicketSummary } from '../../../shared/api'
 import { upcomingBills } from './MoneyView'
 import { addDays, formatTime } from '../lib/time'
 import { api } from '../api'
@@ -14,6 +14,8 @@ import { ItemIcon } from '../lib/icons'
 import { noteMenu } from '../menus'
 import { useUi } from '../store/ui'
 import { useNavName } from '../store/display'
+import { HabitsPanel } from '../components/Habits'
+import { weatherEmoji, weekdayShort } from '../lib/weather'
 import { hiddenList, homeOrder, type HomeSection } from '../lib/homeSections'
 import { dueLabel } from './TasksView'
 import { formatDay, formatMoney, greeting, noteTitle, relativeTime, todayISO } from '../lib/format'
@@ -44,6 +46,12 @@ export function HomeView() {
   const [dueTasks, setDueTasks] = useState<Task[]>([])
   const [news, setNews] = useState<NewsFeed | null>(null)
   const ticketsName = useNavName('tickets', 'Tickets')
+  const [forecast, setForecast] = useState<WeatherForecast | null>(null)
+  const [listItems, setListItems] = useState<ListItem[]>([])
+  const [parcels, setParcels] = useState<PackageInfo[]>([])
+  const [moneyMonth, setMoneyMonth] = useState<MoneySummary | null>(null)
+  const [ent, setEnt] = useState<EntFeed | null>(null)
+  const tiles = useUi((s) => s.prefs.homeTiles) !== '0'
   const remote = useData((s) => s.remote) // changed on another device
   useEffect(() => {
     void upcomingBills(7).then(setBills)
@@ -52,6 +60,11 @@ export function HomeView() {
     void api.holidays.range(todayISO(), addDays(todayISO(), 7)).then(setHolidays)
     void api.tickets.list({ status: 'open' }).then((list) => setTickets(list.sort(byUrgency)))
     void api.news.feed().then(setNews)
+    void api.weather.forecast().then(setForecast)
+    void api.lists.items().then(setListItems)
+    void api.packages.list().then((l) => setParcels(l.filter((p) => p.status !== 'delivered')))
+    void api.money.summary(todayISO().slice(0, 7)).then(setMoneyMonth)
+    void api.entertainment.feed().then(setEnt)
   }, [remote])
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -65,7 +78,135 @@ export function HomeView() {
     return picked.length ? picked : shown.slice(0, 3)
   })()
 
+  const deals = news ? news.items.filter((i) => i.page !== 'local' && i.important && !i.filtered).slice(0, 5) : []
+  const shopping = listItems.filter((i) => !i.done)
+  const liveNow = ent?.live.filter((l) => l.live) ?? []
+  const newVideos = ent?.videos.filter((v) => !v.watched && !v.short).slice(0, 4) ?? []
+
   const blocks: Record<HomeSection, ReactNode> = {
+    weather: forecast && forecast.days.length > 0 && (
+      <section>
+        <h2 className="section-title">Weather · {forecast.place}</h2>
+        <div className="home-forecast">
+          {forecast.days.slice(0, 7).map((d, i) => (
+            <button key={d.date} type="button" className="home-day" title={`${d.text}${d.rain ? `, ${d.rain}% chance of rain or snow` : ''}`} onClick={() => go({ view: 'calendar', date: d.date })}>
+              <span className="small muted">{i === 0 ? 'Today' : weekdayShort(d.date)}</span>
+              <span className="home-day-icon">{weatherEmoji(d.code)}</span>
+              <b>{d.max}°</b>
+              <span className="small muted">{d.min}°</span>
+            </button>
+          ))}
+        </div>
+      </section>
+    ),
+    habits: (
+      <HomeTile title="Today’s habits" onOpen={() => go({ view: 'lists' })}>
+        <HabitsPanel compact />
+      </HomeTile>
+    ),
+    lists: shopping.length > 0 && (
+      <section>
+        <h2 className="section-title">
+          Lists <span className="muted">{shopping.length}</span>
+        </h2>
+        <ul className="ticket-history">
+          {shopping.slice(0, 6).map((i) => (
+            <li key={i.id}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'lists' })}>
+                <span className="history-main">{i.title}</span>
+                <span className="history-date">{i.list}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
+    packages: parcels.length > 0 && (
+      <section>
+        <h2 className="section-title">
+          Packages on the way <span className="muted">{parcels.length}</span>
+        </h2>
+        <ul className="ticket-history">
+          {parcels.slice(0, 5).map((p) => (
+            <li key={p.id}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'packages' })}>
+                <span className="history-main">
+                  {p.label || p.number}
+                  <span className="muted"> · {p.statusText || p.carrierName}</span>
+                </span>
+                <span className="history-date">{p.expected ? dayLabel(p.expected) : ''}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
+    money: moneyMonth && (moneyMonth.incomeCents > 0 || moneyMonth.expenseCents > 0) && (
+      <section>
+        <h2 className="section-title">Money this month</h2>
+        <div className="home-money" role="button" tabIndex={0} onClick={() => go({ view: 'money' })}>
+          <div>
+            <span className="small muted">In</span>
+            <b className="money-in">{formatMoney(moneyMonth.incomeCents)}</b>
+          </div>
+          <div>
+            <span className="small muted">Out</span>
+            <b>{formatMoney(moneyMonth.expenseCents)}</b>
+          </div>
+          <div>
+            <span className="small muted">Left</span>
+            <b>{formatMoney(moneyMonth.incomeCents - moneyMonth.expenseCents)}</b>
+          </div>
+        </div>
+      </section>
+    ),
+    deals: deals.length > 0 && (
+      <section>
+        <h2 className="section-title">Top picks</h2>
+        <ul className="ticket-history">
+          {deals.map((i) => (
+            <li key={i.id}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'news', page: i.page })}>
+                <span className="history-main">
+                  {i.title}
+                  <span className="muted"> · {news?.pages.find((p) => p.id === i.page)?.name}</span>
+                </span>
+                {i.discount !== null && <span className="news-discount">−{i.discount}%</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
+    live: (liveNow.length > 0 || newVideos.length > 0) && (
+      <section>
+        <h2 className="section-title">Entertainment</h2>
+        <ul className="ticket-history">
+          {liveNow.map((l) => (
+            <li key={l.channelId}>
+              <a className="history-row" href={l.url} target="_blank" rel="noreferrer">
+                <span className="ent-live-badge inline">LIVE</span>
+                <span className="history-main">
+                  {l.name}
+                  <span className="muted"> · {l.title}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+          {newVideos.map((v) => (
+            <li key={v.id}>
+              <button type="button" className="history-row" onClick={() => go({ view: 'entertainment' })}>
+                <span className="history-main">
+                  {v.title}
+                  <span className="muted"> · {v.channelName}</span>
+                </span>
+                <span className="history-date">{relativeTime(v.publishedAt)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
     news: news && news.sources.some((s) => !s.page) && (newsItems.length > 0 || news.weather) && (
       <section>
         <h2 className="section-title">
@@ -254,7 +395,7 @@ export function HomeView() {
   const shown = homeOrder(homeOrderPref).filter((id) => !hiddenList(homeHiddenPref).includes(id))
 
   return (
-    <div className="page home">
+    <div className={`page home ${tiles ? 'tiles' : ''}`}>
       <header className="home-header">
         <div>
           <h1>{greeting()}</h1>
@@ -266,9 +407,25 @@ export function HomeView() {
         </div>
       </header>
 
-      {shown.map((id) => (
-        <Fragment key={id}>{blocks[id]}</Fragment>
-      ))}
+      <div className={tiles ? 'home-grid' : ''}>
+        {shown.map((id) => (
+          <Fragment key={id}>{blocks[id]}</Fragment>
+        ))}
+      </div>
     </div>
+  )
+}
+
+/** A Home section whose content may render nothing (it hides itself then) */
+function HomeTile({ title, onOpen, children }: { title: string; onOpen: () => void; children: ReactNode }) {
+  return (
+    <section className="home-tile-section">
+      <h2 className="section-title">
+        <button type="button" className="link-like" onClick={onOpen}>
+          {title}
+        </button>
+      </h2>
+      {children}
+    </section>
   )
 }

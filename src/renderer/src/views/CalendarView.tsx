@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench } from 'lucide-react'
-import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type TicketSummary } from '../../../shared/api'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2 } from 'lucide-react'
+import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type WeatherForecast, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -15,6 +15,7 @@ import { formatDay, todayISO } from '../lib/format'
 import { EntityIcon } from '../components/EntityIcon'
 import { EventPopover, NewEventPopover, type PopoverAnchor } from '../components/EventPopover'
 import { AddToCalendar } from './NewsView'
+import { weatherEmoji } from '../lib/weather'
 
 type ViewName = 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay'
 const VIEWS: { id: ViewName; label: string }[] = [
@@ -59,6 +60,11 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [newsSetUp, setNewsSetUp] = useState(false)
   const [newsItems, setNewsItems] = useState<NewsItem[]>([])
   const [addNews, setAddNews] = useState<NewsItem | null>(null)
+  const [packages, setPackages] = useState<PackageInfo[]>([])
+  const [forecast, setForecast] = useState<WeatherForecast | null>(null)
+  useEffect(() => {
+    void api.weather.forecast().then(setForecast)
+  }, [])
   const [version, setVersion] = useState(0) // bumps on every reload so the ticket tray refreshes too
   const [popover, setPopover] = useState<Popover | null>(null)
   const dropCell = useRef<HTMLElement | null>(null)
@@ -77,6 +83,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
     setHolidays(hols)
     setBills(due)
     setGoogleEvents(gev)
+    setPackages((await api.packages.list()).filter((p) => p.status !== 'delivered' && p.expected && p.expected >= range.from && p.expected <= range.to))
     const news = await api.news.feed()
     setNewsSetUp(news.sources.some((s) => !s.page))
     setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
@@ -145,6 +152,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-task', t.done ? 'ev-done' : ''],
         extendedProps: { task: t }
       })),
+      // Packages arriving (click opens Packages)
+      ...packages.map((p) => ({
+        id: `package:${p.id}`,
+        title: p.label || `${p.carrierName} package`,
+        start: p.expected!,
+        allDay: true,
+        editable: false,
+        order: 0,
+        classNames: ['ev-package'],
+        extendedProps: { package: p }
+      })),
       // Local news with a date (read-only; click to put it on your calendar)
       ...(showNews ? newsItems : []).map((n) => ({
         id: `news:${n.id}`,
@@ -169,7 +187,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks, newsItems, showNews]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -226,6 +244,14 @@ ${google.calendarName} (Google)`}>
         <div className="ev-chip" title={`Task${task.done ? ' (done)' : ''}: ${task.title}`}>
           <CheckSquare className="ev-icon" />
           {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
+          <span className="ev-title">{arg.event.title}</span>
+        </div>
+      )
+    const pkg = arg.event.extendedProps.package as PackageInfo | undefined
+    if (pkg)
+      return (
+        <div className="ev-chip" title={`Package arriving: ${pkg.label || pkg.number}`}>
+          <Package2 className="ev-icon" />
           <span className="ev-title">{arg.event.title}</span>
         </div>
       )
@@ -358,6 +384,19 @@ ${google.calendarName} (Google)`}>
             allDayText="All day"
             events={fcEvents}
             eventContent={renderEvent}
+            dayCellContent={(arg) => {
+              const day = forecast?.days.find((d) => d.date === isoDate(arg.date))
+              return (
+                <>
+                  {day && arg.view.type === 'dayGridMonth' && (
+                    <span className="cal-weather" title={`${day.text}, high ${day.max}°, low ${day.min}°${day.rain ? `, ${day.rain}% chance of rain or snow` : ''}`}>
+                      {weatherEmoji(day.code)} {day.max}°
+                    </span>
+                  )}
+                  <span>{arg.dayNumberText}</span>
+                </>
+              )
+            }}
             datesSet={(arg) => {
               setTitle(arg.view.title)
               lastViewed = isoDate(arg.view.calendar.getDate()) // today, unless you navigated elsewhere
@@ -374,6 +413,7 @@ ${google.calendarName} (Google)`}>
               const bill = info.event.extendedProps.bill as MoneyOccurrence | undefined
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
               if (info.event.extendedProps.task) return go({ view: 'tasks' })
+              if (info.event.extendedProps.package) return go({ view: 'packages' })
               const news = info.event.extendedProps.news as NewsItem | undefined
               if (news) return setAddNews(news)
               const r = info.el.getBoundingClientRect()

@@ -19,7 +19,7 @@ import {
   Sparkles,
   Users,
   Wallet,
-  Wrench, Newspaper } from 'lucide-react'
+  Wrench, Newspaper, Tv, ListChecks, Package2 } from 'lucide-react'
 import { suggestPrefix } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
@@ -44,6 +44,11 @@ const FEATURES: { id: string; icon: ReactNode; title: string; text: string }[] =
   { id: 'money', icon: <Wallet />, title: 'Money', text: 'Income, expenses, bills and subscriptions, and who still owes you.' },
   { id: 'vault', icon: <Lock />, title: 'Vault', text: 'Passwords, cards and documents, locked with your own passcode.' },
   { id: 'news', icon: <Newspaper />, title: 'News', text: 'Local news, events, closures, elections and the weather where you live. Add stories to your calendar.' },
+  { id: 'entertainment', icon: <Tv />, title: 'Entertainment', text: 'New videos from the YouTube channels you like, and which Twitch streamers are live.' },
+  { id: 'lists', icon: <ListChecks />, title: 'Lists & habits', text: 'Shopping and other check-off lists, and daily habits with streaks.' },
+  { id: 'packages', icon: <Package2 />, title: 'Packages', text: 'Tracking numbers in one place, on your calendar on the day they arrive.' },
+  { id: 'mail', icon: <Mail />, title: 'Mail', text: 'Your Zoho Mail inbox; turn an email into a ticket or a task.' },
+  { id: 'assistant', icon: <Sparkles />, title: 'Assistant', text: 'Ask about anything in Plannr, or have it add tasks, events and notes (your own Claude API key).' },
   { id: 'notes', icon: <FileText />, title: 'Notes', text: 'Notes with checklists, tables, toggles and photos, in folders and sections.' },
   { id: 'templates', icon: <LayoutTemplate />, title: 'Templates', text: 'Starting points for tickets and notes. Make your own anytime.' }
 ]

@@ -52,7 +52,11 @@ export const SYNCED_TABLES = [
   'tasks',
   'vault_keys',
   'vault_items',
-  'vault_files'
+  'vault_files',
+  'habits',
+  'habit_log',
+  'list_items',
+  'packages'
 ] as const
 
 /** Settings shared by every device (the rest — window size, theme, integrations, backups — stay per device). */
@@ -69,15 +73,36 @@ export const SYNCED_SETTINGS = [
   'eventReminders',
   'news.sources',
   'news.prefs',
-  'news.pages'
+  'news.pages',
+  'ent.channels'
 ]
 
 const nowMs = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`
 const notApplying = `(SELECT value FROM sync_state WHERE key = 'applying') IS NOT '1'`
 
 /** SQL for the sync tables and change-tracking triggers (run once by the database migration). */
+/** Triggers noting changed rows of these tables (a migration adds them for tables added later) */
+export function tableTriggersSql(tables: readonly string[]): string {
+  return tables
+    .flatMap((t) => [
+      `CREATE TRIGGER sync_${t}_ins AFTER INSERT ON ${t} WHEN ${notApplying} BEGIN
+       INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('${t}', NEW.id, ${nowMs}, 1)
+       ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`,
+      `CREATE TRIGGER sync_${t}_upd AFTER UPDATE ON ${t} WHEN ${notApplying} BEGIN
+       INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('${t}', NEW.id, ${nowMs}, 1)
+       ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`,
+      `CREATE TRIGGER sync_${t}_del AFTER DELETE ON ${t} WHEN ${notApplying} BEGIN
+       INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('${t}', OLD.id, ${nowMs}, 1)
+       ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`
+    ])
+    .join('\n')
+}
+
+/** The tables that existed when sync arrived (migration 20); later ones get triggers in their own migration */
+const FIRST_SYNCED = SYNCED_TABLES.slice(0, SYNCED_TABLES.indexOf('vault_files') + 1)
+
 export function syncSchemaSql(): string {
-  const triggers = SYNCED_TABLES.flatMap((t) => [
+  const triggers = FIRST_SYNCED.flatMap((t) => [
     `CREATE TRIGGER sync_${t}_ins AFTER INSERT ON ${t} WHEN ${notApplying} BEGIN
        INSERT INTO sync_dirty (tbl, id, changed_at, n) VALUES ('${t}', NEW.id, ${nowMs}, 1)
        ON CONFLICT (tbl, id) DO UPDATE SET changed_at = excluded.changed_at, n = n + 1; END;`,

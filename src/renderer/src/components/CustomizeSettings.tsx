@@ -147,6 +147,7 @@ export function MenuNameSettings() {
 
 /** Home page sections: show/hide and order. */
 export function HomeLayoutSettings() {
+  const tiles = useUi((s) => s.prefs.homeTiles) !== '0'
   const orderPref = useUi((s) => s.prefs.homeOrder)
   const hiddenPref = useUi((s) => s.prefs.homeHidden)
   const setPref = useUi((s) => s.setPref)
@@ -164,6 +165,9 @@ export function HomeLayoutSettings() {
       <div>
         <h3>Home page</h3>
         <p className="muted">Choose what Home shows, and in what order.</p>
+        <label className="check-row">
+          <input type="checkbox" checked={tiles} onChange={(e) => setPref('homeTiles', e.target.checked ? '' : '0')} /> Show Home as tiles side by side (on wide windows)
+        </label>
       </div>
       <ul className="order-list">
         {order.map((id, i) => (

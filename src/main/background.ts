@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { app, BrowserWindow, Menu, nativeImage, Notification, powerMonitor, shell, Tray } from 'electron'
 import { join } from 'node:path'
 import type { Db } from './db'
-import { dueMoneyReminders, dueReminders, markReminderFired } from './services/reminders'
+import { dueMoneyReminders, dueOtherReminders, dueReminders, markReminderFired } from './services/reminders'
 import { dueTaskReminders } from './services/tasks'
 import { openCapture } from './capture'
 import { processAutopay } from './services/money'
@@ -91,6 +91,10 @@ export function startReminders(sources: () => ReminderSource[]): () => void {
     for (const r of dueTaskReminders(db)) {
       markReminderFired(db, r.taskId, r.key)
       notify(source, r.title, r.body, { tasks: true })
+    }
+    for (const r of dueOtherReminders(db)) {
+      markReminderFired(db, r.id, r.key)
+      notify(source, r.title, r.body, r.target)
     }
     for (const r of dueReminders(db)) {
       markReminderFired(db, r.eventId, r.key) // mark first: never repeat, even if showing fails

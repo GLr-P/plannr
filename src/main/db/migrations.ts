@@ -1,4 +1,4 @@
-import { settingsTriggersSql, syncSchemaSql } from '../sync/engine'
+import { settingsTriggersSql, tableTriggersSql, syncSchemaSql } from '../sync/engine'
 // Append-only: never edit a migration that has shipped, add a new one instead.
 // Every synced record has a UUID id, created_at/updated_at (ms) and deleted_at (soft delete)
 // so cross-device sync can be added later without reshaping data.
@@ -425,6 +425,60 @@ export const migrations: string[] = [
   `,
 
   /* 24: your own News pages (games, deals…) sync too */ `
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
+  `,
+
+  /* 25: warranties, free trials and price changes, habits, lists, packages; entertainment channels sync */ `
+  ALTER TABLE tickets ADD COLUMN warranty_until TEXT;
+  ALTER TABLE recurring ADD COLUMN trial_ends TEXT;
+  ALTER TABLE recurring ADD COLUMN price_history TEXT NOT NULL DEFAULT '[]';
+  CREATE TABLE habits (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    icon TEXT NOT NULL DEFAULT '',
+    days TEXT NOT NULL DEFAULT '0123456',
+    sort REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE TABLE habit_log (
+    id TEXT PRIMARY KEY,
+    habit_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE INDEX habit_log_habit ON habit_log(habit_id, date);
+  CREATE TABLE list_items (
+    id TEXT PRIMARY KEY,
+    list TEXT NOT NULL DEFAULT 'Shopping',
+    title TEXT NOT NULL DEFAULT '',
+    done INTEGER NOT NULL DEFAULT 0,
+    sort REAL NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  CREATE TABLE packages (
+    id TEXT PRIMARY KEY,
+    number TEXT NOT NULL,
+    carrier TEXT NOT NULL DEFAULT 'other',
+    label TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'unknown',
+    status_text TEXT NOT NULL DEFAULT '',
+    expected TEXT,
+    delivered_at INTEGER,
+    events TEXT NOT NULL DEFAULT '[]',
+    last_checked INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  ${tableTriggersSql(['habits', 'habit_log', 'list_items', 'packages'])}
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}

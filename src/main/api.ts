@@ -5,6 +5,10 @@ import type { Db } from './db'
 import { API_SHAPE, type BackupStatus, type GoogleCalendarInfo, type GoogleStatus, type PlannrApi, type QboStatus, type Theme } from '../shared/api'
 import { exportAll, importContacts } from './services/portability'
 import * as money from './services/money'
+import { getBusiness } from './services/print'
+import { getSecret, putSecret } from './secrets'
+import * as packageService from './services/packages'
+import * as assistantService from './services/assistant'
 import { getOpenAtLogin, resourcePath, setOpenAtLogin } from './background'
 import * as backups from './services/backup'
 import * as google from './services/google'
@@ -171,6 +175,59 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       },
       events: async (from, to) => google.listGoogleEvents(db, from, to)
     },
+    packages: {
+      ...core.packages,
+      refresh: async () => {
+        const key = getSecret<string>(db, 'track17.key')
+        if (key) {
+          try {
+            await packageService.refreshTracking(db, key, async (url, body, headers) => {
+              const res = await net.fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+              return res.json()
+            })
+            setSetting(db, 'track17.error', null)
+          } catch (e) {
+            setSetting(db, 'track17.error', e instanceof Error ? e.message : String(e))
+          }
+        }
+        return packageService.listPackages(db)
+      },
+      trackingStatus: async () => ({ configured: Boolean(getSecret<string>(db, 'track17.key')), error: (getSetting(db, 'track17.error') as string | null) ?? null }),
+      setTrackingKey: async (key) => {
+        putSecret(db, 'track17.key', key?.trim() || null)
+        setSetting(db, 'track17.error', null)
+        return { configured: Boolean(key?.trim()), error: null }
+      }
+    },
+    assistant: {
+      status: async () => ({ configured: Boolean(getSecret<string>(db, 'assistant.key')), model: (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5' }),
+      setup: async (input) => {
+        if (input.key !== undefined) putSecret(db, 'assistant.key', input.key?.trim() || null)
+        if (input.model) setSetting(db, 'assistant.model', input.model)
+        return { configured: Boolean(getSecret<string>(db, 'assistant.key')), model: (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5' }
+      },
+      ask: async (messages) => {
+        const key = getSecret<string>(db, 'assistant.key')
+        if (!key) throw new Error('Add your Anthropic API key first (in the assistant’s settings).')
+        const model = (getSetting(db, 'assistant.model') as string | null) ?? 'claude-sonnet-5-5'
+        return assistantService.ask(
+          db,
+          model,
+          messages,
+          async (body) => {
+            const res = await net.fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+              body: JSON.stringify(body)
+            })
+            const json = (await res.json().catch(() => ({}))) as Awaited<ReturnType<assistantService.PostMessages>>
+            if (!res.ok) throw new Error(json.error?.message ?? `The assistant service answered ${res.status}`)
+            return json
+          },
+          getBusiness(db).name
+        )
+      }
+    },
     zoho: {
       status: async () => zoho.zohoStatus(db),
       configure: async (input) => {
@@ -186,7 +243,8 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         return zoho.zohoStatus(db)
       },
       search: async (email) => zoho.search(db, email),
-      message: async (folderId, messageId) => zoho.message(db, folderId, messageId)
+      message: async (folderId, messageId) => zoho.message(db, folderId, messageId),
+      inbox: async () => zoho.inbox(db)
     },
     quickbooks: {
       status: async () => qboStatus(),
@@ -361,7 +419,12 @@ const NEWS_FIXTURES: [RegExp, string][] = [
   [/cheapshark/, 'cheapshark.json'],
   [/epicgames/, 'epic.json'],
   [/gematsu/, 'gematsu.xml'],
-  [/techpowerup/, 'techpowerup.xml']
+  [/techpowerup/, 'techpowerup.xml'],
+  [/youtube\.com\/feeds/, 'yt-feed.xml'],
+  [/youtube\.com/, 'yt-channel.html'],
+  [/twitch\.tv\/shroud/, 'twitch-live.html'],
+  [/twitch\.tv/, 'twitch-offline.html'],
+  [/api\.open-meteo\.com/, 'forecast.json']
 ]
 
 /**

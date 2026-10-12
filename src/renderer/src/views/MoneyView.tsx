@@ -334,6 +334,12 @@ function RecurringRow({
             <span className="due-name">
               {r.name || <span className="muted">Untitled {r.kind}</span>}
               {r.autopay && r.active && <span className="badge">Auto-pay</span>}
+              {r.active && r.trialEnds && r.trialEnds >= todayISO() && <span className="badge trial-badge">Free trial to {formatDay(r.trialEnds)}</span>}
+              {r.active && r.priceHistory.length > 0 && r.priceHistory[r.priceHistory.length - 1].cents < r.amountCents && (
+                <span className="badge price-up-badge" title={`Was ${formatMoney(r.priceHistory[r.priceHistory.length - 1].cents)} until ${formatDay(r.priceHistory[r.priceHistory.length - 1].date)}`}>
+                  Price up from {formatMoney(r.priceHistory[r.priceHistory.length - 1].cents)}
+                </span>
+              )}
               {!r.active && <span className="badge muted-badge">Cancelled {r.cancelledOn ? formatDay(r.cancelledOn) : ''}</span>}
             </span>
             {r.active && (
@@ -448,6 +454,15 @@ function RecurringEditor({ r, categories, onChanged }: { r: RecurringItem; categ
           <option value={14}>2 weeks before (and on the day)</option>
         </select>
       </label>
+      <label className="mfield">
+        Free trial until
+        <input type="date" value={form.trialEnds ?? ''} onChange={(e) => set({ trialEnds: e.target.value || null }, true)} aria-label="Free trial until" title="Reminders 3 days before and on the day, so you can cancel in time" />
+      </label>
+      {r.priceHistory.length > 0 && (
+        <p className="small muted mfield wide price-history">
+          Earlier prices: {r.priceHistory.map((p) => `${formatMoney(p.cents)} (until ${formatDay(p.date)})`).join(', ')}
+        </p>
+      )}
       <label className="check mfield-check">
         <input type="checkbox" checked={form.autopay} onChange={(e) => set({ autopay: e.target.checked }, true)} />
         Auto-pay (record the payment automatically on the due date)

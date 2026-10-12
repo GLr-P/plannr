@@ -31,6 +31,7 @@ interface TicketRow {
   price_cents: number | null
   received_on: string | null
   pickup_on: string | null
+  warranty_until: string | null
   closed_at: number | null
   paid_cents: number
   tax_exempt: number
@@ -41,7 +42,7 @@ interface TicketRow {
   content_json?: string | null
 }
 
-const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on,
+const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on, t.warranty_until,
   t.closed_at, t.created_at, t.updated_at, t.deleted_at, t.tax_exempt,
   c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
   (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid_cents`
@@ -63,6 +64,7 @@ function toSummary(r: TicketRow): TicketSummary {
     priceCents: r.price_cents,
     receivedOn: r.received_on,
     pickupOn: r.pickup_on,
+    warrantyUntil: r.warranty_until ?? null,
     closedAt: r.closed_at,
     paidCents: r.paid_cents ?? 0,
     taxExempt: r.tax_exempt === 1,
@@ -198,6 +200,7 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
       set('pickup_on', pickup)
       syncPickupFromTicket(db, id, pickup) // the pickup shows on the calendar
     }
+    if (patch.warrantyUntil !== undefined) set('warranty_until', isDate(patch.warrantyUntil) ? patch.warrantyUntil : null)
     if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
     if (patch.content !== undefined) {
       set('content_json', JSON.stringify(patch.content))

@@ -18,6 +18,11 @@ import { MoneyView } from './views/MoneyView'
 import { InventoryView } from './views/InventoryView'
 import { TasksView } from './views/TasksView'
 import { NewsView } from './views/NewsView'
+import { EntertainmentView } from './views/EntertainmentView'
+import { ListsView } from './views/ListsView'
+import { PackagesView } from './views/PackagesView'
+import { MailView } from './views/MailView'
+import { AssistantView } from './views/AssistantView'
 import { useData } from './store/data'
 import { useNav } from './store/nav'
 import { newNote, newTicket, openEntity } from './actions'
@@ -39,6 +44,7 @@ function navigateTo(target: NavigateTarget): void {
   else if ('money' in target) useNav.getState().go({ view: 'money', itemId: target.money })
   else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
   else if ('news' in target) useNav.getState().go({ view: 'news', page: target.page })
+  else if ('packages' in target) useNav.getState().go({ view: 'packages' })
   else openEntity(target.type, target.id)
 }
 
@@ -132,6 +138,16 @@ function MainView() {
       return <TasksView />
     case 'news':
       return <NewsView page={route.page} />
+    case 'entertainment':
+      return <EntertainmentView />
+    case 'lists':
+      return <ListsView />
+    case 'packages':
+      return <PackagesView />
+    case 'mail':
+      return <MailView />
+    case 'assistant':
+      return <AssistantView />
     case 'settings':
       return <SettingsView />
   }

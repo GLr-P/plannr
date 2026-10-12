@@ -10,6 +10,7 @@ import './styles/calendar.css'
 import './styles/vault.css'
 import './styles/money.css'
 import './styles/news.css'
+import './styles/extras.css'
 
 // The main process passes the starting theme so the first paint has the right colors.
 const initial = new URLSearchParams(location.search).get('theme')

@@ -59,6 +59,28 @@ export function decodeEntities(s: string): string {
 const addresses = (s?: string): string[] => (decodeEntities(s ?? '').match(/[^\s<>",;]+@[^\s<>",;]+/g) ?? []).map((a) => a.toLowerCase())
 
 /** Turns search results into Plannr's shape, keeping only mail actually to/from/cc the customer, newest first. */
+/** The inbox: every message, newest first */
+export function parseInbox(raw: RawMessage[], mailBase: string): ZohoMessage[] {
+  const seen = new Set<string>()
+  const out: ZohoMessage[] = []
+  for (const m of raw) {
+    if (!m.messageId || !m.folderId || seen.has(String(m.messageId))) continue
+    seen.add(String(m.messageId))
+    out.push({
+      id: String(m.messageId),
+      folderId: String(m.folderId),
+      subject: decodeEntities(m.subject ?? '') || '(no subject)',
+      summary: decodeEntities(m.summary ?? '').trim(),
+      from: decodeEntities(m.sender ?? m.fromAddress ?? ''),
+      incoming: true,
+      date: Number(m.receivedTime ?? m.sentDateInGMT ?? 0),
+      hasAttachment: m.hasAttachment === true || m.hasAttachment === '1' || m.hasAttachment === 'true',
+      link: `${mailBase}/zm/#mail/folder/${encodeURIComponent(String(m.folderId))}/p/${encodeURIComponent(String(m.messageId))}`
+    })
+  }
+  return out.sort((a, b) => b.date - a.date)
+}
+
 export function parseMessages(raw: RawMessage[], customerEmail: string, mailBase: string): ZohoMessage[] {
   const target = customerEmail.trim().toLowerCase()
   const seen = new Set<string>()

@@ -18,6 +18,11 @@ export type Route =
   | { view: 'inventory' }
   | { view: 'tasks' }
   | { view: 'news'; page?: string }
+  | { view: 'entertainment' }
+  | { view: 'lists' }
+  | { view: 'packages' }
+  | { view: 'mail' }
+  | { view: 'assistant' }
   | { view: 'settings' }
 
 interface NavState {

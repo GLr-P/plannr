@@ -16,6 +16,7 @@ const ticket = (over: Partial<Ticket> = {}): Ticket => ({
   priceCents: 15750,
   receivedOn: '2026-10-05',
   pickupOn: null,
+  warrantyUntil: null,
   closedAt: null,
   paidCents: 0,
   taxExempt: false,
