@@ -8,6 +8,7 @@ import { DatabaseSync, useSqlite } from './shims/sqlite'
 import { useFileStore, readFileSync } from './shims/fs'
 import { migrate, type Db } from '../main/db'
 import { createCoreApi } from '../main/api-core'
+import { pacedForReddit } from '../main/services/reddit-gate'
 import { VaultCore } from '../main/vault-core'
 import { SyncService } from '../main/sync/service'
 import { loadDisplayPrefs } from '../main/display'
@@ -64,7 +65,7 @@ async function openStorage(profile: string): Promise<{ db: Db; persistent: boole
 
 function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncService } {
   // Holiday calendars come through a public helper; news through this device's sync space (signed in)
-  const fetchText = (url: string, post?: string): Promise<string> => (url.includes('calendar.google.com') ? fetchHolidays(url) : sync.fetchText(url, post))
+  const fetchText = (url: string, post?: string): Promise<string> => (url.includes('calendar.google.com') ? fetchHolidays(url) : pacedForReddit((u, p) => sync.fetchText(u, p))(url, post))
   const core = createCoreApi(db, DATA, { moneyChanged: () => undefined, calendarChanged: () => undefined, fetchText })
   const vault = new VaultCore(db, DATA, () => emit('vault-locked'))
   const sync: SyncService = new SyncService(

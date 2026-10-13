@@ -12,6 +12,7 @@ import * as media from '../../src/main/services/media'
 import { discover, favouriteGenres } from '../../src/main/services/discover'
 import { parseIdeas } from '../../src/shared/ideas'
 import { whereToWatch } from '../../src/main/services/watch'
+import { createRedditGate, REDDIT_GAP_MS } from '../../src/main/services/reddit-gate'
 import * as assistant from '../../src/main/services/assistant'
 import * as money from '../../src/main/services/money'
 import { createTicket, getTicket, updateTicket } from '../../src/main/services/tickets'
@@ -300,6 +301,11 @@ describe('movies, shows, books, games, podcasts and Reddit', () => {
     await ent.addChannel(db, pod.feedUrl, 'podcast', fakeFetch)
     await ent.addChannel(db, 'r/pcmasterrace', undefined, fakeFetch)
     await expect(ent.addChannel(db, 'https://www.reddit.com/r/pcmasterrace/', undefined, fakeFetch)).rejects.toThrow(/Already added/)
+    expect(ent.entFeed(db).videos.some((v) => v.kind === 'reddit')).toBe(false) // posts come afterwards
+    await ent.addChannel(db, 'nosuchsubxyz', 'reddit', fakeFetch)
+    await ent.refreshReddit(db, fakeFetch)
+    const nosuch = ent.entFeed(db).channels.find((c) => c.handle === 'nosuchsubxyz')!
+    expect(ent.entFeed(db).errors.find((e) => e.channelId === nosuch.id)?.message).toMatch(/busy|find/)
     const feed = ent.entFeed(db)
     const episode = feed.videos.find((v) => v.kind === 'podcast')!
     expect(episode.audio).toMatch(/\.mp3/)
@@ -390,5 +396,29 @@ describe('where to watch', () => {
     const book = await whereToWatch(db, { kind: 'book', title: 'Project Hail Mary', year: 2021, extId: '/works/OL21745884W' }, fakeFetch)
     expect(book.offers.map((o) => o.service)).toEqual(['Open Library', 'A library near you', 'Libby', 'Amazon', 'Google Books'])
     expect(book.offers.find((o) => o.service === 'Amazon')?.url).toContain('amazon.ca')
+  })
+})
+
+describe('the Reddit queue', () => {
+  it('spaces Reddit downloads a minute apart and tries once more after "too many requests"; others go straight through', async () => {
+    let clock = 0
+    const waited: number[] = []
+    const gate = createRedditGate(async (ms) => {
+      waited.push(ms)
+      clock += ms
+    }, () => clock)
+    const asked: string[] = []
+    let refuse = 1
+    const paced = gate(async (url) => {
+      asked.push(url)
+      if (url.includes('busy') && refuse-- > 0) throw new Error('HTTP 429')
+      return 'ok'
+    })
+    await Promise.all([paced('https://www.reddit.com/r/a/top/.rss'), paced('https://www.reddit.com/r/b/top/.rss'), paced('https://example.com/feed')])
+    expect(asked).toEqual(['https://example.com/feed', 'https://www.reddit.com/r/a/top/.rss', 'https://www.reddit.com/r/b/top/.rss'])
+    expect(waited).toEqual([REDDIT_GAP_MS])
+    expect(await paced('https://www.reddit.com/r/busy/top/.rss')).toBe('ok')
+    expect(waited).toEqual([REDDIT_GAP_MS, REDDIT_GAP_MS, REDDIT_GAP_MS])
+    await expect(gate(async () => Promise.reject(new Error('HTTP 404')))('https://www.reddit.com/r/x/.rss')).rejects.toThrow(/404/)
   })
 })

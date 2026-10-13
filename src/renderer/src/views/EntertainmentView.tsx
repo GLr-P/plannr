@@ -412,6 +412,14 @@ function RedditTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f: 
   const setPref = useUi((s) => s.setPref)
   const subs = feed.channels.filter((c) => c.kind === 'reddit')
   const [mode, setMode] = useMode('reddit', subs.length === 0)
+  // Subreddits still waiting for their first posts (Reddit allows about one download a minute)
+  const waiting = subs.filter((c) => !feed.videos.some((v) => v.channelId === c.id) && !feed.errors.some((e) => e.channelId === c.id))
+  const problems = subs.flatMap((c) => feed.errors.filter((e) => e.channelId === c.id).map((e) => ({ name: c.name, message: e.message })))
+  useEffect(() => {
+    if (!waiting.length) return
+    const t = setInterval(() => void api.entertainment.feed().then(setFeed), 5000)
+    return () => clearInterval(t)
+  }, [waiting.length, setFeed])
   const posts = feed.videos.filter((v) => v.kind === 'reddit' && (which === 'all' || v.channelId === which) && (!hideRead || !v.watched) && has(q, v.title, v.summary, v.channelName))
   const add = async (): Promise<void> => {
     if (!input.trim()) return
@@ -466,12 +474,22 @@ function RedditTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f: 
               {hideRead ? 'Showing unread' : 'Hide read'}
             </button>
           </div>
+          {waiting.length > 0 && (
+            <p className="small muted ent-waiting">
+              <RefreshCw className="spin" /> Getting posts from {waiting.map((c) => c.name).join(', ')}… Reddit only allows a check about once a minute, so this can take a minute or two.
+            </p>
+          )}
+          {problems.map((p) => (
+            <p key={p.name} className="small muted">
+              {p.name}: {p.message}
+            </p>
+          ))}
           <div className="ent-feed-list">
             {posts.slice(0, 80).map((v) => (
               <PostCard key={v.id} v={v} actions={actions} />
             ))}
           </div>
-          {posts.length === 0 && <p className="muted small">No posts yet. Reddit sometimes asks readers to wait; Plannr tries again every 30 minutes.</p>}
+          {posts.length === 0 && !waiting.length && <p className="muted small">No posts yet.</p>}
         </section>
       )}
     </>

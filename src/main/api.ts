@@ -25,6 +25,7 @@ import { resolveFilePath } from './services/files'
 import { getSetting, setSetting } from './services/settings'
 import { printTicket } from './print-window'
 import { createCoreApi } from './api-core'
+import { pacedForReddit } from './services/reddit-gate'
 import { join } from 'node:path'
 
 export const TITLEBAR_HEIGHT = 44
@@ -514,6 +515,10 @@ export async function fetchText(url: string, post?: string): Promise<string> {
     return readFileSync(join(newsFixtures, hit[1]), 'utf8')
   }
   if (holidayFixture) throw new Error('Offline (test)')
+  return pacedForReddit(download)(url, post)
+}
+
+async function download(url: string, post?: string): Promise<string> {
   // Some services (e.g. CheapShark) want to know which app is asking
   const headers: Record<string, string> = { 'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Plannr/${app.getVersion()} (+https://github.com/GLr-P/plannr)` }
   const res = await net.fetch(url, post === undefined ? { headers } : { method: 'POST', body: post, headers: { ...headers, 'Content-Type': 'application/json' } })

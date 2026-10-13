@@ -199,7 +199,13 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       feed: async () => ent.entFeed(db),
       refresh: async () => (await ent.refreshEntertainment(db, hooks.fetchText)).feed,
       add: async (input, kind) => {
-        await ent.addChannel(db, input, kind, hooks.fetchText)
+        const channel = await ent.addChannel(db, input, kind, hooks.fetchText)
+        if (channel.kind === 'reddit') {
+          // Posts come in the background (Reddit's queue); answer as soon as they're in, or after 3 seconds
+          const job = ent.refreshReddit(db, hooks.fetchText, [channel.id]).catch(() => undefined)
+          await Promise.race([job, new Promise((r) => setTimeout(r, 3000))])
+          return ent.entFeed(db)
+        }
         return (await ent.refreshEntertainment(db, hooks.fetchText)).feed
       },
       remove: async (id) => {

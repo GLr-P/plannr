@@ -58,18 +58,46 @@ export function redditPosts(xml: string, now = Date.now()): RawItem[] {
     .map((p) => ({ ...p, summary: p.summary.replace(/\s*submitted by[\s\S]*$/i, '').trim() }))
 }
 
-/** A subreddit from a link, r/name or name (checked by reading its feed) */
-export async function resolveReddit(input: string, fetchText: FetchText): Promise<{ channel: EntChannel; items: RawItem[] }> {
+/** A subreddit from a link, r/name or name. Its posts are downloaded afterwards (Reddit allows about one download a minute). */
+export function resolveReddit(input: string): EntChannel {
   const sub = /reddit\.com\/r\/(\w+)/i.exec(input)?.[1] ?? /^\/?r\/(\w+)/i.exec(input.trim())?.[1] ?? input.trim()
   if (!/^\w{2,21}$/.test(sub)) throw new Error('That doesn’t look like a subreddit name')
-  let xml: string
-  try {
-    xml = await fetchText(redditFeedUrl(sub))
-  } catch {
-    throw new Error('Couldn’t find that subreddit (or Reddit is busy; try again in a minute)')
+  return { id: newId(), kind: 'reddit', name: `r/${sub}`, handle: sub.toLowerCase(), url: `https://www.reddit.com/r/${sub}` }
+}
+
+function setChannelError(db: Db, channelId: string, message: string): void {
+  const earlier = getSetting(db, 'ent.errors')
+  const errors = (Array.isArray(earlier) ? (earlier as EntFeed['errors']) : []).filter((e) => e.channelId !== channelId)
+  setSetting(db, 'ent.errors', message ? [...errors, { channelId, message }] : errors)
+}
+
+const redditJobs = new WeakMap<Db, Promise<void>>()
+
+/**
+ * Subreddits' top posts of the day, one at a time (each download waits its turn in the Reddit queue, so this
+ * runs in the background). `only` = just these channels (a subreddit that was just added).
+ */
+export function refreshReddit(db: Db, fetchText: FetchText, only?: string[]): Promise<void> {
+  const running = redditJobs.get(db)
+  if (running && !only) return running
+  const job = (async () => {
+    for (const c of entChannels(db).filter((x) => x.kind === 'reddit' && (!only || only.includes(x.id)))) {
+      let message = ''
+      try {
+        const xml = await fetchText(redditFeedUrl(c.handle))
+        if (!/<feed/i.test(xml)) throw new Error('HTTP 404')
+        storeItems(db, c.id, redditPosts(xml))
+      } catch (e) {
+        message = /\b(404|403)\b/.test(String(e)) ? 'Couldn’t find this subreddit (check the name)' : 'Reddit is busy right now; Plannr tries again soon'
+      }
+      if (entChannels(db).some((x) => x.id === c.id)) setChannelError(db, c.id, message)
+    }
+  })()
+  if (!only) {
+    redditJobs.set(db, job)
+    void job.finally(() => redditJobs.get(db) === job && redditJobs.delete(db))
   }
-  if (!/<feed/i.test(xml)) throw new Error('Couldn’t find that subreddit')
-  return { channel: { id: newId(), kind: 'reddit', name: `r/${sub}`, handle: sub.toLowerCase(), url: `https://www.reddit.com/r/${sub}` }, items: redditPosts(xml) }
+  return job
 }
 
 /** Podcasts by name, from Apple's podcast directory (no account needed) */
@@ -232,17 +260,15 @@ export async function refreshEntertainment(db: Db, fetchText: FetchText, now = D
   const channels = entChannels(db)
   const before = (getSetting(db, 'ent.live') as Record<string, EntLive> | null) ?? {}
   const live: Record<string, EntLive> = {}
-  // Reddit and podcasts change slowly (and Reddit turns away readers who ask too often): every 30 minutes
+  // Reddit and podcasts change slowly: every 30 minutes (Reddit in the background, as it allows one download a minute)
   const slowDue = now - ((getSetting(db, 'ent.slowAt') as number | null) ?? 0) > 30 * 60_000
-  const checked = channels.filter((c) => slowDue || c.kind === 'youtube' || c.kind === 'twitch')
-  const earlier = getSetting(db, 'ent.errors')
-  const errors: EntFeed['errors'] = (Array.isArray(earlier) ? (earlier as EntFeed['errors']) : []).filter((e) => channels.some((c) => c.id === e.channelId) && !checked.some((c) => c.id === e.channelId))
+  const checked = channels.filter((c) => c.kind === 'youtube' || c.kind === 'twitch' || (slowDue && c.kind === 'podcast'))
+  if (slowDue && channels.some((c) => c.kind === 'reddit')) void refreshReddit(db, fetchText).catch(() => undefined)
+  const errors: EntFeed['errors'] = []
   await inBatches(checked, 6, async (c) => {
       try {
         if (c.kind === 'youtube') {
           storeItems(db, c.id, (await youtubeVideos(c.handle, fetchText, now)).slice(0, 15), now)
-        } else if (c.kind === 'reddit') {
-          storeItems(db, c.id, redditPosts(await fetchText(redditFeedUrl(c.handle)), now), now)
         } else if (c.kind === 'podcast') {
           storeItems(db, c.id, parseFeed(await fetchText(c.handle), now).slice(0, 20), now)
         } else {
@@ -256,7 +282,10 @@ export async function refreshEntertainment(db: Db, fetchText: FetchText, now = D
   })
   if (slowDue) setSetting(db, 'ent.slowAt', now)
   setSetting(db, 'ent.live', live)
-  setSetting(db, 'ent.errors', errors)
+  // Read again now: Reddit's background downloads may have noted problems meanwhile
+  const earlier = getSetting(db, 'ent.errors')
+  const kept = (Array.isArray(earlier) ? (earlier as EntFeed['errors']) : []).filter((e) => channels.some((c) => c.id === e.channelId) && !checked.some((c) => c.id === e.channelId))
+  setSetting(db, 'ent.errors', [...kept, ...errors])
   setSetting(db, 'ent.refreshedAt', now)
   const wentLive = Object.values(live).filter((l) => l.live && !before[l.channelId]?.live)
   return { feed: entFeed(db), wentLive }
@@ -266,7 +295,8 @@ export async function addChannel(db: Db, input: string, kind: EntChannel['kind']
   const k = kind ?? (/twitch\.tv/i.test(input) ? 'twitch' : /reddit\.com|^\/?r\//i.test(input.trim()) ? 'reddit' : 'youtube')
   let items: RawItem[] = []
   let channel: EntChannel
-  if (k === 'reddit' || k === 'podcast') ({ channel, items } = await (k === 'reddit' ? resolveReddit(input, fetchText) : resolvePodcast(input, fetchText)))
+  if (k === 'podcast') ({ channel, items } = await resolvePodcast(input, fetchText))
+  else if (k === 'reddit') channel = resolveReddit(input)
   else channel = k === 'twitch' ? resolveTwitch(input) : await resolveYouTube(input, fetchText)
   const channels = entChannels(db)
   if (channels.some((c) => c.kind === channel.kind && c.handle === channel.handle)) throw new Error('Already added')
