@@ -19,7 +19,7 @@ export interface Box {
   h: number
 }
 
-export type CanvasItemType = 'formField' | 'canvasText' | 'image' | 'canvasShape' | 'canvasPart'
+export type CanvasItemType = 'formField' | 'canvasText' | 'image' | 'canvasShape' | 'canvasPart' | 'canvasDrawing'
 
 /** Built-in parts of a ticket that can be placed on a canvas */
 export const CANVAS_PARTS = [

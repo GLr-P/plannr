@@ -49,6 +49,16 @@ export interface NoteSummary {
   deletedAt: number | null
 }
 
+/** An earlier version of a note */
+export interface NoteVersion {
+  id: string
+  noteId: string
+  title: string
+  content: DocJSON | null
+  words: number
+  createdAt: number
+}
+
 export interface Note extends NoteSummary {
   content: DocJSON | null
 }
@@ -1429,6 +1439,12 @@ export interface PlannrApi {
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
     destroy(id: string): Promise<void>
+    /** A copy of the note (title ends with “(copy)”) in the same folder */
+    duplicate(id: string): Promise<Note>
+    /** Earlier versions, newest first */
+    versions(id: string): Promise<NoteVersion[]>
+    /** Goes back to an earlier version (what's there now is kept as a version first) */
+    restoreVersion(versionId: string): Promise<Note>
     tags(): Promise<string[]>
   }
   customers: {
@@ -1757,6 +1773,8 @@ export interface PlannrApi {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
     /** Recolours the window (title bar and background); the colours come from the colour theme when given */
+    /** Prints what's on screen (the open note), or saves it as a PDF from the print window */
+    printPage(): Promise<void>
     setTheme(theme: Theme, colors?: { bg: string; titlebar: string; symbol: string }): Promise<void>
     /** Quick capture box */
     openCapture(): Promise<void>
@@ -1778,7 +1796,7 @@ export interface PlannrApi {
 }
 
 export const API_SHAPE = {
-  notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags'],
+  notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags', 'duplicate', 'versions', 'restoreVersion'],
   customers: ['list', 'get', 'create', 'update', 'trash', 'restore'],
   tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
   parts: ['list', 'create', 'update', 'remove', 'restore', 'lowCount'],
@@ -1852,7 +1870,7 @@ export const API_SHAPE = {
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
   updates: ['status', 'check', 'install'],
-  app: ['info', 'openDataFolder', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
+  app: ['info', 'openDataFolder', 'printPage', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

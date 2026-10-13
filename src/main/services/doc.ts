@@ -1,7 +1,8 @@
 import type { DocJSON, EntityType } from '../../shared/api'
+import { calculate, evaluateSheet } from '../../shared/sheet'
 import type { LinkTarget } from './links'
 
-const BLOCKS = new Set(['paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader', 'fileAttachment', 'canvasText', 'formField'])
+const BLOCKS = new Set(['sheet', 'mathLine', 'paragraph', 'heading', 'codeBlock', 'detailsSummary', 'tableCell', 'tableHeader', 'fileAttachment', 'canvasText', 'formField'])
 const ENTITY_TYPES = new Set<EntityType>(['note', 'customer', 'ticket'])
 
 /** Plain text of a document, one line per block; used for search and previews. */
@@ -20,6 +21,11 @@ export function extractText(doc: DocJSON | null | undefined): string {
     } else if (node.type === 'hardBreak') line += ' '
     else if (node.type === 'fileAttachment') line += String(node.attrs?.name ?? '')
     else if (node.type === 'canvasText') line += String(node.attrs?.text ?? '').replace(/\s+/g, ' ')
+    else if (node.type === 'sheet') line += sheetText(node.attrs?.cells)
+    else if (node.type === 'mathLine') {
+      const r = calculate(String(node.attrs?.expr ?? ''))
+      line += `${String(node.attrs?.expr ?? '')}${r === null ? '' : ` = ${r}`}`
+    }
     node.content?.forEach(walk)
     if (BLOCKS.has(node.type)) {
       if (line.trim()) lines.push(line.trim())
@@ -69,4 +75,16 @@ export function fieldText(kind: string, raw: string): string {
     }
   }
   return raw
+}
+
+/** A spreadsheet's cells as text (results of formulas, row by row) */
+export function sheetText(raw: unknown): string {
+  let cells: string[][] = []
+  try {
+    cells = typeof raw === 'string' ? (JSON.parse(raw) as string[][]) : ((raw as string[][]) ?? [])
+  } catch {
+    return ''
+  }
+  const values = evaluateSheet(cells)
+  return values.map((row) => row.filter((v) => v !== null && v !== '').join(' ')).filter(Boolean).join(' · ')
 }

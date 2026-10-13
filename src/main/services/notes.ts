@@ -1,7 +1,7 @@
 import type { Db } from '../db'
 import { newCanvas } from '../../shared/canvas'
 import { newId, now, tx } from '../db'
-import type { DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate } from '../../shared/api'
+import type { DocJSON, Note, NoteListOptions, NoteSummary, NoteUpdate, NoteVersion } from '../../shared/api'
 import { indexEntity, unindexEntity } from './search'
 import { deleteLinksOf, setLinks } from './links'
 import { extractMentions, extractText } from './doc'
@@ -124,7 +124,49 @@ export function createNote(db: Db, input: { title?: string; folderId?: string | 
   return getNote(db, id)!
 }
 
-export function updateNote(db: Db, id: string, patch: NoteUpdate): NoteSummary {
+const VERSION_EVERY = 10 * 60_000
+const words = (text: string): number => text.split(/\s+/).filter(Boolean).length
+
+/** Keeps what the note was before this edit, if the last kept version is more than 10 minutes old (50 per note) */
+function keepVersion(db: Db, id: string, force = false): void {
+  const before = db.prepare('SELECT title, content_json, content_text FROM notes WHERE id = ?').get(id) as { title: string; content_json: string | null; content_text: string } | undefined
+  if (!before) return
+  const last = db.prepare('SELECT created_at, content_json, title FROM note_versions WHERE note_id = ? ORDER BY created_at DESC LIMIT 1').get(id) as { created_at: number; content_json: string | null; title: string } | undefined
+  if (last && last.content_json === before.content_json && last.title === before.title) return
+  if (!force && last && Date.now() - last.created_at < VERSION_EVERY) return
+  db.prepare('INSERT INTO note_versions (id, note_id, title, content_json, words, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(newId(), id, before.title, before.content_json, words(before.content_text ?? ''), Date.now())
+  db.prepare('DELETE FROM note_versions WHERE note_id = ? AND id NOT IN (SELECT id FROM note_versions WHERE note_id = ? ORDER BY created_at DESC LIMIT 50)').run(id, id)
+}
+
+export function listVersions(db: Db, noteId: string): NoteVersion[] {
+  return (db.prepare('SELECT * FROM note_versions WHERE note_id = ? ORDER BY created_at DESC').all(noteId) as { id: string; note_id: string; title: string; content_json: string | null; words: number; created_at: number }[]).map((r) => ({
+    id: r.id,
+    noteId: r.note_id,
+    title: r.title,
+    content: r.content_json ? (JSON.parse(r.content_json) as DocJSON) : null,
+    words: r.words,
+    createdAt: r.created_at
+  }))
+}
+
+export function restoreVersion(db: Db, versionId: string): Note {
+  const v = db.prepare('SELECT note_id, title, content_json FROM note_versions WHERE id = ?').get(versionId) as { note_id: string; title: string; content_json: string | null } | undefined
+  if (!v) throw new Error('That version is gone')
+  keepVersion(db, v.note_id, true) // what's there now can be brought back too
+  updateNote(db, v.note_id, { title: v.title, content: v.content_json ? (JSON.parse(v.content_json) as DocJSON) : { type: 'doc', content: [{ type: 'paragraph' }] } }, false)
+  return getNote(db, v.note_id)!
+}
+
+export function duplicateNote(db: Db, id: string): Note {
+  const n = getNote(db, id)
+  if (!n) throw new Error('Note not found')
+  const copy = createNote(db, { title: `${n.title || 'Untitled'} (copy)`, folderId: n.folderId })
+  updateNote(db, copy.id, { content: n.content ?? undefined, tags: n.tags, icon: n.icon, color: n.color }, false)
+  return getNote(db, copy.id)!
+}
+
+export function updateNote(db: Db, id: string, patch: NoteUpdate, history = true): NoteSummary {
+  if (history && (patch.content !== undefined || patch.title !== undefined)) keepVersion(db, id)
   return tx(db, () => {
     const sets: string[] = []
     const params: (string | number | null)[] = []

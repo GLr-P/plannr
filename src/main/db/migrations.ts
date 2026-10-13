@@ -482,5 +482,17 @@ export const migrations: string[] = [
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}
+  `,
+
+  /* 26: earlier versions of notes (kept on this device; a snapshot at most every 10 minutes of editing) */ `
+  CREATE TABLE note_versions (
+    id TEXT PRIMARY KEY,
+    note_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    content_json TEXT,
+    words INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX note_versions_note ON note_versions(note_id, created_at);
   `
 ]

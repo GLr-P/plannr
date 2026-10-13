@@ -6,6 +6,7 @@ import { resolveFilePath } from './files'
 import { createCustomer } from './customers'
 import { digitsOnly, fieldText, localDate } from './doc'
 import { readingOrder } from '../../shared/canvas'
+import { calculate, evaluateSheet } from '../../shared/sheet'
 
 /*
  * Your data in plain files, and contacts in from other apps.
@@ -143,6 +144,26 @@ function block(n: DocJSON, files: (id: string) => string | null, indent = ''): s
       const line = (r: string[]): string => `| ${Array.from({ length: width }, (_, i) => r[i] ?? '').join(' | ')} |`
       return [line(rows[0]), `|${' --- |'.repeat(width)}`, ...rows.slice(1).map(line)].join('\n')
     }
+    case 'sheet': {
+      let cells: string[][] = []
+      try {
+        cells = JSON.parse(String(n.attrs?.cells ?? '[]')) as string[][]
+      } catch {
+        cells = []
+      }
+      const values = evaluateSheet(cells)
+      const width = Math.max(1, ...values.map((r) => r.length))
+      const line = (r: unknown[]): string => `| ${Array.from({ length: width }, (_, i) => String(r[i] ?? '').replace(/\|/g, '\\|')).join(' | ')} |`
+      return values.length ? [line(values[0]), `|${' --- |'.repeat(width)}`, ...values.slice(1).map(line)].join('\n') : ''
+    }
+    case 'mathLine': {
+      const r = calculate(String(n.attrs?.expr ?? ''))
+      return `\`${String(n.attrs?.expr ?? '')}\`${r === null ? '' : ` = ${r}`}`
+    }
+    case 'drawing':
+      return '*(drawing)*'
+    case 'toc':
+      return ''
     case 'canvas':
       // A free-form page: its text, fields and pictures, top to bottom
       return readingOrder(n.content ?? [])

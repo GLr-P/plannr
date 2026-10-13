@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
-import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline } from 'lucide-react'
+import { Bold, Code, Highlighter, Italic, Link2, Strikethrough, Underline, Palette, ALargeSmall, AlignLeft, AlignCenter, AlignRight, AlignJustify, RemoveFormatting } from 'lucide-react'
 import type { DocJSON, EntityType } from '../../../shared/api'
 import { openEntity } from '../actions'
 import { buildExtensions, type EditorOptions } from './extensions'
@@ -116,6 +116,7 @@ export function NoteEditor({ docId, content, editable, onChange, onReady, option
 
 function SelectionToolbar({ editor }: { editor: Editor }) {
   const [linkMode, setLinkMode] = useState(false)
+  const [panel, setPanel] = useState<'' | 'color' | 'size'>('')
   const [href, setHref] = useState('')
   const active = useEditorState({
     editor,
@@ -127,6 +128,9 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
       code: e.isActive('code'),
       highlight: e.isActive('highlight'),
       link: e.isActive('link'),
+      color: (e.getAttributes('textStyle').color as string | undefined) ?? '',
+      size: (e.getAttributes('textStyle').fontSize as string | undefined) ?? '',
+      align: ((e.getAttributes('paragraph').textAlign ?? e.getAttributes('heading').textAlign) as string | undefined) ?? 'left',
       linkHref: (e.getAttributes('link').href as string | undefined) ?? ''
     })
   })
@@ -192,9 +196,51 @@ function SelectionToolbar({ editor }: { editor: Editor }) {
               setHref(active.linkHref)
               setLinkMode(true)
             })}
+            <span className="bubble-sep" />
+            {btn('Text colour and highlight', panel === 'color' || Boolean(active.color), <Palette style={active.color ? { color: active.color } : undefined} />, () => setPanel(panel === 'color' ? '' : 'color'))}
+            {btn('Text size', panel === 'size' || Boolean(active.size), <ALargeSmall />, () => setPanel(panel === 'size' ? '' : 'size'))}
+            {btn('Align left', active.align === 'left', <AlignLeft />, () => align(editor, null))}
+            {btn('Centre', active.align === 'center', <AlignCenter />, () => align(editor, 'center'))}
+            {btn('Align right', active.align === 'right', <AlignRight />, () => align(editor, 'right'))}
+            {btn('Justify', active.align === 'justify', <AlignJustify />, () => align(editor, 'justify'))}
+            {btn('Clear formatting', false, <RemoveFormatting />, () => editor.chain().focus().unsetAllMarks().run())}
+            {panel === 'color' && (
+              <div className="bubble-panel" onMouseDown={(e) => e.preventDefault()}>
+                <span className="small muted">Text</span>
+                {TEXT_COLORS.map((c) => (
+                  <button key={c || 'default'} type="button" className={`bubble-swatch ${active.color === c ? 'on' : ''}`} style={{ background: c || 'var(--text)' }} title={c ? c : 'Default'} aria-label={`Text colour ${c || 'default'}`} onClick={() => (c ? editor.chain().focus().setColor(c).run() : editor.chain().focus().unsetColor().run())} />
+                ))}
+                <span className="small muted">Highlight</span>
+                {HIGHLIGHTS.map((c) => (
+                  <button key={c || 'none'} type="button" className="bubble-swatch hl" style={{ background: c || 'transparent' }} title={c ? c : 'No highlight'} aria-label={`Highlight ${c || 'none'}`} onClick={() => (c ? editor.chain().focus().setHighlight({ color: c }).run() : editor.chain().focus().unsetHighlight().run())} />
+                ))}
+              </div>
+            )}
+            {panel === 'size' && (
+              <div className="bubble-panel" onMouseDown={(e) => e.preventDefault()}>
+                {SIZES.map((s) => (
+                  <button key={s.label} type="button" className={`bubble-size ${active.size === s.value ? 'on' : ''}`} onClick={() => (s.value ? editor.chain().focus().setFontSize(s.value).run() : editor.chain().focus().unsetFontSize().run())}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
     </BubbleMenu>
   )
+}
+
+const TEXT_COLORS = ['', '#d23f3f', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2f6ae0', '#7c3aed', '#db2777', '#6b7280']
+const HIGHLIGHTS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#ddd6fe', '#fed7aa', '']
+const SIZES = [
+  { label: 'Small', value: '13px' },
+  { label: 'Normal', value: '' },
+  { label: 'Large', value: '19px' },
+  { label: 'Huge', value: '26px' }
+]
+/** Alignment for the paragraphs and headings in the selection */
+function align(editor: Editor, value: string | null): void {
+  editor.chain().focus().updateAttributes('paragraph', { textAlign: value }).updateAttributes('heading', { textAlign: value }).run()
 }

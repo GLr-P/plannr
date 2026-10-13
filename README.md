@@ -12,7 +12,7 @@ Plannr started as the one app a small business owner wanted instead of five: som
 
 | | |
 |---|---|
-| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos, or a free-form page where you put text, fill-in fields and pictures anywhere. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
+| **Notes** | A clean editor with checklists, tables, callouts, toggles and photos, spreadsheets with formulas and charts, calculations, drawings, columns and a table of contents, or a free-form page where you put text, fields, shapes, sticky notes, drawings and pictures anywhere. Earlier versions are kept, and any note prints or saves as PDF. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
 | **Calendar** | Month, week and day views. Drag notes and tickets onto a day. Reminders pop up in Windows. Public holidays included. |
 | **Customers** | The people and companies you work with: their details and everything you've done for them. Search by name, email or phone number in any format. |
 | **Tickets** | Track jobs, repairs, orders or requests from start to finish: status, dates, price, photos and a form you design, either as a document or on a free-form canvas where you put fields, text and pictures anywhere. Print a slip, a receipt or a label. Rename the statuses to fit your work. |

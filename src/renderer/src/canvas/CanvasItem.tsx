@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { DrawingPad } from '../editor/Drawing'
+import { parseStrokes } from '../../../shared/drawing'
 import { create } from 'zustand'
 import { Images, ListOrdered, Wallet } from 'lucide-react'
 import type { DocJSON } from '../../../shared/api'
@@ -32,8 +34,8 @@ export function CanvasItemContent({ item, live, onValue }: { item: DocJSON; live
       const st = textStyle(item)
       return (
         <div
-          className="cv-text"
-          style={{ fontSize: st.size, fontWeight: st.bold ? 700 : 400, fontStyle: st.italic ? 'italic' : 'normal', color: st.color || undefined, textAlign: st.align }}
+          className={`cv-text ${a.fill ? 'cv-sticky' : ''}`}
+          style={{ background: a.fill ? String(a.fill) : undefined, fontSize: st.size, fontWeight: st.bold ? 700 : 400, fontStyle: st.italic ? 'italic' : 'normal', color: st.color || undefined, textAlign: st.align }}
         >
           {String(a.text ?? '') || (live ? '' : <span className="cv-empty">Double-click to type</span>)}
         </div>
@@ -45,7 +47,19 @@ export function CanvasItemContent({ item, live, onValue }: { item: DocJSON; live
       ) : (
         <div className="cv-placeholder">Picture</div>
       )
+    case 'canvasDrawing':
+      return <DrawingPad strokes={parseStrokes(a.strokes)} height={1000} editable={false} onChange={() => undefined} fill />
     case 'canvasShape': {
+      if (a.shape === 'arrow') {
+        const w = Math.max(1, Number(a.borderWidth ?? 3))
+        const c = String(a.borderColor || 'var(--text)')
+        return (
+          <svg className="cv-arrow" viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden>
+            <line x1="1" y1="10" x2="96" y2="10" stroke={c} strokeWidth={w} vectorEffect="non-scaling-stroke" />
+            <polyline points="88,3 97,10 88,17" fill="none" stroke={c} strokeWidth={w} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          </svg>
+        )
+      }
       const line = a.shape === 'line'
       const border = Number(a.borderWidth ?? 2)
       return line ? (
@@ -56,7 +70,7 @@ export function CanvasItemContent({ item, live, onValue }: { item: DocJSON; live
           style={{
             background: String(a.fill || 'transparent'),
             border: border ? `${border}px solid ${String(a.borderColor || 'var(--border-strong)')}` : 'none',
-            borderRadius: Number(a.radius ?? 8)
+            borderRadius: a.shape === 'ellipse' ? '50%' : Number(a.radius ?? 8)
           }}
         />
       )

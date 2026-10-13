@@ -406,6 +406,9 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       openDataFolder: async () => {
         await shell.openPath(dataDir)
       },
+      printPage: async () => {
+        await new Promise<void>((resolve) => getWindow()?.webContents.print({ silent: false, printBackground: true }, () => resolve()) ?? resolve())
+      },
       setTheme: async (theme, colors) => {
         const win = getWindow()
         if (!win) return

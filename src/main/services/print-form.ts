@@ -1,4 +1,5 @@
 import { formatCurrency, formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type Ticket } from '../../shared/api'
+import { drawingSvg, parseStrokes } from '../../shared/drawing'
 import { CANVAS_WIDTH, boxOf, fittedHeight, isCanvas, DEFAULT_TEXT_STYLE, type TextStyle } from '../../shared/canvas'
 import { fieldText } from './doc'
 import { collectFields, evaluateFormula, formatCalc, parseNumber, type FormValue } from '../../shared/formula'
@@ -152,17 +153,21 @@ function canvasHtml(doc: DocJSON, d: FormPrintData): string {
       if (it.type === 'formField') inner = fieldHtml(a, d, false, { w: b.w * k, h: b.h * k })
       else if (it.type === 'canvasText') {
         const st = { ...DEFAULT_TEXT_STYLE, ...((a.style as Partial<TextStyle>) ?? {}) }
-        inner = `<div class="tx" style="${textCss({ ...st, size: Math.round(st.size * k * 10) / 10, color: st.color || '#000' })}">${lines(String(a.text ?? ''))}</div>`
+        inner = `<div class="tx" style="${a.fill ? `background:${esc(String(a.fill))};padding:10px;height:100%;box-sizing:border-box;border-radius:4px;` : ''}${textCss({ ...st, size: Math.round(st.size * k * 10) / 10, color: st.color || '#000' })}">${lines(String(a.text ?? ''))}</div>`
       } else if (it.type === 'image') {
         const src = d.fileData(String(a.src ?? ''))
         inner = src ? `<img class="im" src="${src}" style="object-fit:${a.fit === 'cover' ? 'cover' : 'contain'}" alt="">` : ''
+      } else if (it.type === 'canvasDrawing') {
+        inner = drawingSvg(parseStrokes(a.strokes), 1000).replace('preserveAspectRatio="xMidYMid meet"', 'preserveAspectRatio="none"')
       } else if (it.type === 'canvasShape') {
         const border = Number(a.borderWidth ?? 2)
         const color = esc(String(a.borderColor || '#222'))
         inner =
-          a.shape === 'line'
+          a.shape === 'arrow'
+            ? `<svg viewBox="0 0 100 20" preserveAspectRatio="none" style="width:100%;height:100%"><line x1="1" y1="10" x2="96" y2="10" stroke="${color}" stroke-width="${Math.max(1, border)}" vector-effect="non-scaling-stroke"/><polyline points="88,3 97,10 88,17" fill="none" stroke="${color}" stroke-width="${Math.max(1, border)}" vector-effect="non-scaling-stroke"/></svg>`
+            : a.shape === 'line'
             ? `<div class="ln" style="border-top:${Math.max(1, border)}px solid ${color}"></div>`
-            : `<div class="sh" style="background:${esc(String(a.fill || 'transparent'))};border:${border ? `${border}px solid ${color}` : 'none'};border-radius:${Number(a.radius ?? 8)}px"></div>`
+            : `<div class="sh" style="background:${esc(String(a.fill || 'transparent'))};border:${border ? `${border}px solid ${color}` : 'none'};border-radius:${a.shape === 'ellipse' ? '50%' : `${Number(a.radius ?? 8)}px`}"></div>`
       } else if (it.type === 'canvasPart') inner = partHtml(String(a.part ?? ''), d)
       return `<div class="it it-${it.type}" style="${at}">${inner}</div>`
     })

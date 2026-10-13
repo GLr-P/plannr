@@ -12,6 +12,7 @@ import './styles/money.css'
 import './styles/news.css'
 import './styles/extras.css'
 import './styles/themes.css'
+import './styles/notes-blocks.css'
 
 // The main process passes the starting theme so the first paint has the right colors.
 const initial = new URLSearchParams(location.search).get('theme')

@@ -184,6 +184,7 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       copyNote: offline
     },
     app: {
+      printPage: async () => undefined, // the phone page prints itself (see the renderer)
       info: async () => ({ version: __APP_VERSION__, dataDir: DATA, tests: false, web: true }),
       openDataFolder: async () => undefined,
       setTheme: async () => undefined,

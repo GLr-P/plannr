@@ -12,6 +12,12 @@ export async function newNote(folderId: string | null = null, title?: string, te
   go({ view: 'note', id: note.id })
 }
 
+export async function duplicateNote(id: string): Promise<void> {
+  const copy = await api.notes.duplicate(id)
+  await useData.getState().refresh()
+  go({ view: 'note', id: copy.id })
+}
+
 export async function trashNote(id: string): Promise<void> {
   await api.notes.trash(id)
   await useData.getState().refresh()

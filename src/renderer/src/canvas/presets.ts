@@ -53,6 +53,27 @@ export const lineItem = (y: number): DocJSON => ({
   attrs: { id: id(), box: { x: M, y, w: FULL, h: 10 }, shape: 'line', borderColor: '', borderWidth: 2 }
 })
 
+export const ellipseItem = (y: number): DocJSON => ({
+  type: 'canvasShape',
+  attrs: { id: id(), box: { x: M, y, w: 180, h: 180 }, shape: 'ellipse', fill: '', borderColor: '', borderWidth: 2 }
+})
+
+export const arrowItem = (y: number): DocJSON => ({
+  type: 'canvasShape',
+  attrs: { id: id(), box: { x: M, y, w: 260, h: 40 }, shape: 'arrow', borderColor: '', borderWidth: 3 }
+})
+
+/** A sticky note: text on a coloured square */
+export const stickyItem = (y: number): DocJSON => ({
+  type: 'canvasText',
+  attrs: { id: id(), box: { x: M, y, w: 220, h: 200 }, text: '', fill: '#fef08a', style: { size: 17, bold: false, italic: false, color: '#3f3a1f', align: 'left' } }
+})
+
+export const drawingItem = (y: number): DocJSON => ({
+  type: 'canvasDrawing',
+  attrs: { id: id(), box: { x: M, y, w: 420, h: 280 }, strokes: '[]' }
+})
+
 const PART_HEIGHT: Record<CanvasPart, number> = { photos: 160, lines: 220, payments: 80 }
 export const partItem = (y: number, part: CanvasPart): DocJSON => ({
   type: 'canvasPart',

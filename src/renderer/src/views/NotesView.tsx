@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useUi } from '../store/ui'
 import { FileText, Pin, PinOff, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import type { NoteSummary } from '../../../shared/api'
 import { api } from '../api'
@@ -17,7 +18,12 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
   const folders = useData((s) => s.folders)
   const [trash, setTrash] = useState<NoteSummary[]>([])
   const [query, setQuery] = useState('')
+  const sort = useUi((s) => s.prefs.notesSort) || 'updated'
+  const cards = useUi((s) => s.prefs.notesView) === 'cards'
+  const setPref = useUi((s) => s.setPref)
+  const [tag, setTag] = useState('')
   const isTrash = filter.kind === 'trash'
+  const allTags = useMemo(() => [...new Set(allNotes.flatMap((n) => n.tags))].sort((a, b) => a.localeCompare(b)), [allNotes])
   const folder = filter.kind === 'folder' ? folders.find((f) => f.id === filter.id) : undefined
 
   useEffect(() => setQuery(''), [filter])
@@ -31,8 +37,16 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
     if (filter.kind === 'tag') list = list.filter((n) => n.tags.some((t) => t.toLowerCase() === filter.tag.toLowerCase()))
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((n) => `${n.title} ${n.preview} ${n.tags.join(' ')}`.toLowerCase().includes(q))
+    if (tag) list = list.filter((n) => n.tags.some((t) => t.toLowerCase() === tag.toLowerCase()))
+    const by: Record<string, (a: NoteSummary, b: NoteSummary) => number> = {
+      updated: (a, b) => b.updatedAt - a.updatedAt,
+      created: (a, b) => b.createdAt - a.createdAt,
+      oldest: (a, b) => a.createdAt - b.createdAt,
+      title: (a, b) => (a.title || 'Untitled').localeCompare(b.title || 'Untitled')
+    }
+    list = [...list].sort(by[sort] ?? by.updated)
     return list
-  }, [allNotes, trash, filter, query, isTrash])
+  }, [allNotes, trash, filter, query, isTrash, sort, tag])
 
   const title =
     filter.kind === 'all' ? 'All notes' : filter.kind === 'trash' ? 'Trash' : filter.kind === 'tag' ? `#${filter.tag}` : (folder?.name ?? 'Folder')
@@ -69,7 +83,33 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
           {isTrash ? 'Trash is empty.' : query ? 'No notes match that filter.' : 'No notes here yet.'}
         </div>
       ) : (
-        <ul className="note-list">
+        <>
+        <div className="notes-tools">
+          <select aria-label="Sort notes" value={sort} onChange={(e) => setPref('notesSort', e.target.value === 'updated' ? '' : e.target.value)}>
+            <option value="updated">Recently edited</option>
+            <option value="created">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="title">A–Z</option>
+          </select>
+          <div className="segmented" role="radiogroup" aria-label="Show as">
+            <button type="button" role="radio" aria-checked={!cards} className={!cards ? 'active' : ''} onClick={() => setPref('notesView', '')}>
+              List
+            </button>
+            <button type="button" role="radio" aria-checked={cards} className={cards ? 'active' : ''} onClick={() => setPref('notesView', 'cards')}>
+              Cards
+            </button>
+          </div>
+          {allTags.length > 0 && filter.kind !== 'tag' && (
+            <div className="notes-tags">
+              {allTags.slice(0, 12).map((t) => (
+                <button key={t} type="button" className={`chip-btn ${tag === t ? 'active' : ''}`} onClick={() => setTag(tag === t ? '' : t)}>
+                  #{t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <ul className={`note-list ${cards ? 'cards' : ''}`}>
           {notes.map((n) => (
             <li
               key={n.id}
@@ -148,6 +188,7 @@ export function NotesView({ filter }: { filter: NotesFilter }) {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   )

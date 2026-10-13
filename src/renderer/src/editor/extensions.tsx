@@ -1,11 +1,15 @@
 import { Extension, type Editor, type Range } from '@tiptap/core'
 import { PluginKey, Selection } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
-import { Placeholder } from '@tiptap/extensions'
+import { Placeholder, TrailingNode } from '@tiptap/extensions'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Image from '@tiptap/extension-image'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import Highlight from '@tiptap/extension-highlight'
+import { Color, FontSize, TextStyle } from '@tiptap/extension-text-style'
+import { Sheet } from './Sheet'
+import { Drawing } from './Drawing'
+import { Column, Columns, columnsContent, MathLine, TableOfContents, TextAlign } from './Blocks'
 import Mention from '@tiptap/extension-mention'
 import Suggestion from '@tiptap/suggestion'
 import { TableKit } from '@tiptap/extension-table'
@@ -30,7 +34,13 @@ import {
   MessageSquareWarning,
   Quote,
   Table as TableIcon,
-  Type
+  Type,
+  Sheet as Sheet2,
+  Calculator as CalculatorIcon,
+  PenTool,
+  Columns2,
+  Columns3,
+  ListTree
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { api } from '../api'
@@ -153,13 +163,19 @@ const SLASH_COMMANDS: SlashCommand[] = [
       ]).run() },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },
-  { label: 'Table', hint: 'Rows and columns (right-click to add more)', icon: <TableIcon />, keywords: 'table grid rows columns spreadsheet', run: (e, r) =>
+  { label: 'Table', hint: 'Rows and columns (right-click to add more)', icon: <TableIcon />, keywords: 'table grid rows columns', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { label: 'Callout', hint: 'Coloured box for tips and warnings', icon: <MessageSquareWarning />, keywords: 'callout note tip warning info box alert', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent({ type: 'callout', attrs: { tone: 'info' }, content: [{ type: 'paragraph' }] }).run() },
   { label: 'Quote', hint: 'Quoted text', icon: <Quote />, keywords: 'blockquote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
   { label: 'Code', hint: 'Code or command block', icon: <Code />, keywords: 'codeblock pre', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
-  { label: 'Divider', hint: 'Horizontal line', icon: <Minus />, keywords: 'hr line separator rule', run: (e, r) => e.chain().focus().deleteRange(r).setHorizontalRule().run() }
+  { label: 'Divider', hint: 'Horizontal line', icon: <Minus />, keywords: 'hr line separator rule', run: (e, r) => e.chain().focus().deleteRange(r).setHorizontalRule().run() },
+  { label: 'Spreadsheet', hint: 'Cells with formulas, money and a chart (like Excel)', icon: <Sheet2 />, keywords: 'spreadsheet excel sheet formula calculate sum budget numbers chart grid', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'sheet' }).run() },
+  { label: 'Calculation', hint: 'One line of maths with its answer', icon: <CalculatorIcon />, keywords: 'calculator calculate math maths sum equation', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'mathLine' }).run() },
+  { label: 'Drawing', hint: 'Draw, sketch and mark up with pen, shapes and colours', icon: <PenTool />, keywords: 'draw drawing sketch pen paint doodle whiteboard diagram', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'drawing' }).run() },
+  { label: '2 columns', hint: 'Two side-by-side columns', icon: <Columns2 />, keywords: 'columns layout side by side two', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(2)).setTextSelection(r.from + 2).run() },
+  { label: '3 columns', hint: 'Three side-by-side columns', icon: <Columns3 />, keywords: 'columns layout side by side three', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(3)).setTextSelection(r.from + 2).run() },
+  { label: 'Table of contents', hint: 'The note’s headings, kept up to date', icon: <ListTree />, keywords: 'toc contents outline index headings', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() }
 ]
 
 const SlashCommands = Extension.create({
@@ -176,7 +192,10 @@ const SlashCommands = Extension.create({
           const ticket = Boolean(storageOf(editor)?.ticket)
           return SLASH_COMMANDS.filter(
             (c) => (plannrFiles || !c.plannrFiles) && (ticket || !c.ticketOnly) && `${c.label} ${c.keywords}`.toLowerCase().includes(q)
-          ).map((c) => ({
+          )
+            // Names that match what was typed first ("columns" → 2 columns before Table)
+            .sort((a, b) => Number(!a.label.toLowerCase().includes(q)) - Number(!b.label.toLowerCase().includes(q)))
+            .map((c) => ({
             key: c.label,
             label: c.label,
             hint: c.hint,
@@ -254,6 +273,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
         return options.mentions === false ? "Type '/' for headings, checklists, toggles, images…" : "Type '/' for blocks, '@' to link a note, ticket or customer"
       }
     }),
+    TrailingNode, // always a line to type on after a drawing, spreadsheet or table at the end
     TaskList,
     TaskItem.configure({ nested: true }),
     Image.configure({ resize: { enabled: true, alwaysPreserveAspectRatio: true, minWidth: 80 } }),
@@ -261,7 +281,17 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     DetailsSummary,
     DetailsContent,
     ToggleKeys,
-    Highlight,
+    Highlight.configure({ multicolor: true }),
+    TextStyle,
+    Color,
+    FontSize,
+    TextAlign,
+    Sheet,
+    Drawing,
+    Columns,
+    Column,
+    TableOfContents,
+    MathLine,
     FormField,
     Callout,
     FileAttachment,

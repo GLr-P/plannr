@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
-import { FileText, Pin, PinOff, RotateCcw, Trash2, X, Move, PencilLine } from 'lucide-react'
+import { FileText, Pin, PinOff, RotateCcw, Trash2, X, Move, PencilLine, ListTree, History, Copy, Printer } from 'lucide-react'
 import type { DocJSON, Note, NoteUpdate } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
-import { moveNote, togglePin, trashNote } from '../actions'
+import { moveNote, togglePin, trashNote, duplicateNote } from '../actions'
 import { useAutosave } from '../lib/useAutosave'
 import { SaveIndicator } from '../components/common'
 import { Backlinks } from '../components/Backlinks'
@@ -14,6 +14,9 @@ import { NoteEditor } from '../editor/NoteEditor'
 import { CanvasDesigner } from '../canvas/CanvasDesigner'
 import { CanvasView } from '../canvas/CanvasView'
 import { isCanvas } from '../../../shared/canvas'
+import { headingsOf, scrollToHeading, type Heading } from '../editor/Blocks'
+import { relativeTime } from '../lib/format'
+import type { NoteVersion } from '../../../shared/api'
 import { IconPicker, openPanel } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { styleNote } from '../menus'
@@ -82,6 +85,9 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
   }
 
   const [words, setWords] = useState(() => countWords(note.content))
+  const [outline, setOutline] = useState(false)
+  const [history, setHistory] = useState(false)
+  const [headings, setHeadings] = useState<Heading[]>([])
   const onChange = useCallback(
     (doc: DocJSON) => {
       queue({ content: doc })
@@ -102,6 +108,9 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
   )
   const onReady = useCallback((editor: Editor) => {
     editorRef.current = editor
+    const update = (): void => setHeadings(headingsOf(editor.state.doc))
+    update()
+    editor.on('update', update)
   }, [])
 
   const restore = async (): Promise<void> => {
@@ -150,6 +159,20 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
                 onClick={() => void togglePin(note.id, !pinned)}
               >
                 {pinned ? <PinOff /> : <Pin />}
+              </button>
+              {!canvas && (
+                <button type="button" className={`icon-btn ${outline ? 'active' : ''}`} title="Outline: the note’s headings" aria-label="Outline" aria-pressed={outline} onClick={() => setOutline((o) => !o)}>
+                  <ListTree />
+                </button>
+              )}
+              <button type="button" className="icon-btn" title="Earlier versions" aria-label="Earlier versions" onClick={() => setHistory(true)}>
+                <History />
+              </button>
+              <button type="button" className="icon-btn" title="Duplicate this note" aria-label="Duplicate note" onClick={() => void duplicateNote(note.id)}>
+                <Copy />
+              </button>
+              <button type="button" className="icon-btn" title="Print, or save as PDF" aria-label="Print note" onClick={() => printNote()}>
+                <Printer />
               </button>
               <button type="button" className="icon-btn" title="Move to trash" aria-label="Move to trash" onClick={() => void trashNote(note.id)}>
                 <Trash2 />
@@ -267,6 +290,27 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
             {words.toLocaleString()} {words === 1 ? 'word' : 'words'} · {Math.max(1, Math.round(words / 230))} min read
           </div>
         )}
+        {outline && !canvas && (
+          <aside className="note-outline" aria-label="Outline">
+            <div className="note-outline-title">Outline</div>
+            {headings.length === 0 && <div className="muted small">No headings yet. Type / then Heading.</div>}
+            {headings.map((h, i) => (
+              <button key={i} type="button" className={`note-outline-item l${h.level}`} onClick={() => editorRef.current && scrollToHeading(editorRef.current, h.pos)}>
+                {h.text}
+              </button>
+            ))}
+          </aside>
+        )}
+        {history && (
+          <VersionHistory
+            noteId={note.id}
+            onClose={() => setHistory(false)}
+            onRestored={async () => {
+              setHistory(false)
+              await reload()
+            }}
+          />
+        )}
         <LinkedEvents id={note.id} />
         <Backlinks id={note.id} />
       </div>
@@ -284,4 +328,73 @@ function countWords(doc: DocJSON | null | undefined): number {
   }
   if (doc) walk(doc)
   return n
+}
+
+/** Prints the open note (the page's print styles hide everything else), or saves it as a PDF */
+function printNote(): void {
+  document.body.classList.add('printing-note')
+  const done = (): void => document.body.classList.remove('printing-note')
+  void api.app.info().then((info) => {
+    if (info.web) {
+      window.print()
+      done()
+    } else void api.app.printPage().finally(done)
+  })
+}
+
+/** Earlier versions of the note: pick one to see it, and bring it back */
+function VersionHistory({ noteId, onClose, onRestored }: { noteId: string; onClose: () => void; onRestored: () => void }) {
+  const [versions, setVersions] = useState<NoteVersion[] | null>(null)
+  const [pick, setPick] = useState<NoteVersion | null>(null)
+  useEffect(() => {
+    void api.notes.versions(noteId).then((v) => {
+      setVersions(v)
+      setPick(v[0] ?? null)
+    })
+  }, [noteId])
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <div className="dialog version-dialog" role="dialog" aria-label="Earlier versions" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2>Earlier versions</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+        {versions && versions.length === 0 && <p className="muted">No earlier versions yet. While you edit, Plannr keeps one every 10 minutes (the last 50).</p>}
+        {versions && versions.length > 0 && (
+          <div className="version-body">
+            <ul className="version-list">
+              {versions.map((v) => (
+                <li key={v.id}>
+                  <button type="button" className={pick?.id === v.id ? 'on' : ''} onClick={() => setPick(v)}>
+                    <b>{new Date(v.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</b>
+                    <span className="small muted">
+                      {relativeTime(v.createdAt)} · {v.words} words
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="version-preview prose">
+              {pick && (
+                <>
+                  <h3>{pick.title || 'Untitled'}</h3>
+                  {isCanvas(pick.content) ? <p className="muted">A free-form page.</p> : <NoteEditor key={pick.id} docId={`version-${pick.id}`} content={pick.content} editable={false} onChange={() => undefined} />}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose}>
+            Close
+          </button>
+          <button type="button" className="btn primary" disabled={!pick} onClick={() => pick && void api.notes.restoreVersion(pick.id).then(onRestored)}>
+            Bring this version back
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }

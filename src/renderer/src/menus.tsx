@@ -15,8 +15,7 @@ import {
   Plus,
   Trash2,
   Copy,
-  ArrowRightLeft
-} from 'lucide-react'
+  ArrowRightLeft } from 'lucide-react'
 import { otherProfiles, switchProfile } from './store/profiles'
 import { ProfileDot } from './components/Profiles'
 import { showToast } from './lib/toast'
@@ -24,7 +23,7 @@ import type { Folder, NoteSummary, SidebarSection } from '../../shared/api'
 import { api } from './api'
 import { useData } from './store/data'
 import { go, useNav } from './store/nav'
-import { moveNote, newNote, togglePin, trashNote } from './actions'
+import { moveNote, newNote, togglePin, trashNote, duplicateNote } from './actions'
 import { IconPicker, type MenuEntry } from './components/ContextMenu'
 import { ItemIcon } from './lib/icons'
 import { placeItem, useAddingFolder } from './lib/sidebarTree'
@@ -65,6 +64,7 @@ export function noteMenu(note: NoteSummary, opts: { renameKey?: string } = {}): 
   const folders = useData.getState().folders
   return [
     { label: 'Open', icon: <ExternalLink />, onSelect: () => go({ view: 'note', id: note.id }) },
+    { label: 'Duplicate', icon: <Copy />, onSelect: () => void duplicateNote(note.id) },
     ...(opts.renameKey ? [{ label: 'Rename', icon: <Pencil />, onSelect: () => useRenaming.getState().set(opts.renameKey!) }] : []),
     {
       label: 'Icon & colour',

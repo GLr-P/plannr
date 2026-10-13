@@ -1,31 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  BringToFront,
-  CalendarRange,
-  Copy,
-  FormInput,
-  Heading,
-  ImageIcon,
-  Images,
-  Italic,
-  ListOrdered,
-  Magnet,
-  Minus,
-  Redo2,
-  SendToBack,
-  Settings2,
-  Square,
-  Trash2,
-  Type,
-  Undo2,
-  UserRound,
-  Wallet,
-  TextCursorInput
-} from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, Bold, BringToFront, CalendarRange, Copy, FormInput, Heading, ImageIcon, Images, Italic, ListOrdered, Magnet, Minus, Redo2, SendToBack, Settings2, Square, Trash2, Type, Undo2, UserRound, Wallet, TextCursorInput, Circle, ArrowRight, StickyNote, PenTool } from 'lucide-react'
 import type { DocJSON } from '../../../shared/api'
 import {
   CANVAS_MIN_HEIGHT,
@@ -47,7 +21,9 @@ import { storeFile } from '../editor/upload'
 import { pickImages } from '../editor/upload'
 import { CanvasItemContent, textStyle } from './CanvasItem'
 import { useWidth } from './CanvasView'
-import { boxItem, customerItems, dateItems, duplicate, fieldItem, imageItem, lineItem, partItem, textItem, titleItem } from './presets'
+import { arrowItem, boxItem, customerItems, dateItems, drawingItem, duplicate, ellipseItem, fieldItem, imageItem, lineItem, partItem, stickyItem, textItem, titleItem } from './presets'
+import { DrawingPad } from '../editor/Drawing'
+import { parseStrokes } from '../../../shared/drawing'
 
 /*
  * The canvas designer (ticket templates made as a canvas): put anything anywhere and resize it, like Canva.
@@ -294,6 +270,10 @@ export function CanvasDesigner({ doc, onChange, forTicket = true }: { doc: DocJS
         )}
         <ToolButton icon={<ImageIcon />} label="Picture" onClick={() => void addPicture()} />
         <ToolButton icon={<Square />} label="Box" onClick={() => add([boxItem(y())])} />
+        <ToolButton icon={<Circle />} label="Circle" onClick={() => add([ellipseItem(y())])} />
+        <ToolButton icon={<ArrowRight />} label="Arrow" onClick={() => add([arrowItem(y())])} />
+        <ToolButton icon={<StickyNote />} label="Sticky" title="A sticky note" onClick={() => add([stickyItem(y())])} />
+        <ToolButton icon={<PenTool />} label="Draw" title="A drawing (double-click it to draw)" onClick={() => add([drawingItem(y())])} />
         <ToolButton icon={<Minus />} label="Line" onClick={() => add([lineItem(y())])} />
         {forTicket && (
           <>
@@ -354,11 +334,18 @@ export function CanvasDesigner({ doc, onChange, forTicket = true }: { doc: DocJS
                   data-label={it.type === 'formField' ? String(it.attrs?.label ?? '') : undefined}
                   onPointerDown={(e) => startDrag(e, it, MOVE)}
                   onDoubleClick={() => {
-                    if (it.type === 'canvasText') setEditing(id)
+                    if (it.type === 'canvasText' || it.type === 'canvasDrawing') setEditing(id)
                     if (it.type === 'formField') setFieldSettings(true)
                   }}
                 >
-                  {editing === id ? (
+                  {editing === id && it.type === 'canvasDrawing' ? (
+                    <div className="cv-draw-edit" onPointerDown={(e) => e.stopPropagation()}>
+                      <DrawingPad strokes={parseStrokes(it.attrs?.strokes)} height={1000} editable fill onChange={(strokes) => patchItem(id, { strokes: JSON.stringify(strokes) })} />
+                      <button type="button" className="btn sm primary cv-draw-done" onClick={() => setEditing(null)}>
+                        Done
+                      </button>
+                    </div>
+                  ) : editing === id ? (
                     <TextEditor
                       item={it}
                       onDone={(text) => {
@@ -518,8 +505,14 @@ function PropertiesBar({
       <NumberBox label="H" value={b.h} onChange={(h) => setBox({ h })} min={8} />
       <span className="cv-props-sep" />
 
+      {item.type === 'canvasDrawing' && (
+        <button type="button" className="btn sm" onClick={onEditText}>
+          <PenTool /> Draw
+        </button>
+      )}
       {item.type === 'canvasText' && (
         <>
+          <Swatches label="Background" value={String(a.fill ?? '')} options={FILLS} onChange={(fill) => onPatch({ fill })} />
           <button type="button" className="btn sm" onClick={onEditText}>
             Edit text
           </button>
@@ -556,10 +549,10 @@ function PropertiesBar({
 
       {item.type === 'canvasShape' && (
         <>
-          {a.shape !== 'line' && <Swatches label="Fill" value={String(a.fill ?? '')} options={FILLS} onChange={(fill) => onPatch({ fill })} />}
+          {a.shape !== 'line' && a.shape !== 'arrow' && <Swatches label="Fill" value={String(a.fill ?? '')} options={FILLS} onChange={(fill) => onPatch({ fill })} />}
           <Swatches label="Border colour" value={String(a.borderColor ?? '')} options={COLORS} onChange={(borderColor) => onPatch({ borderColor })} />
           <NumberBox label="Border" value={Number(a.borderWidth ?? 2)} onChange={(borderWidth) => onPatch({ borderWidth })} max={12} />
-          {a.shape !== 'line' && <NumberBox label="Corners" value={Number(a.radius ?? 8)} onChange={(radius) => onPatch({ radius })} max={80} />}
+          {a.shape !== 'line' && a.shape !== 'arrow' && a.shape !== 'ellipse' && <NumberBox label="Corners" value={Number(a.radius ?? 8)} onChange={(radius) => onPatch({ radius })} max={80} />}
         </>
       )}
 
