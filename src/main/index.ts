@@ -20,7 +20,7 @@ import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
 import { ensureSearchIndex } from './services/reindex'
 import type { NavigateTarget, Theme, ThemePref } from '../shared/api'
-import { adoptLoginItem, APP_ID, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
+import { adoptLoginItem, appUserModelId, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
 import { SyncService } from './sync/service'
@@ -46,7 +46,7 @@ const dataDir = profiles.dir
 // Tray, close-to-tray and reminders. Off in tests; PLANNR_BACKGROUND=1 turns them on to verify real notifications.
 const background = !isTest || process.env.PLANNR_BACKGROUND === '1'
 if (isTest) app.setPath('userData', join(baseDir, '.electron'))
-if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
+if (process.platform === 'win32') app.setAppUserModelId(appUserModelId())
 // Started with Windows (login item): stay in the tray until opened.
 const startHidden = process.argv.includes('--hidden')
 mkdirSync(dataDir, { recursive: true })

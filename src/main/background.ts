@@ -9,6 +9,9 @@ import { processAutopay } from './services/money'
 import type { NavigateTarget } from '../shared/api'
 
 export const APP_ID = 'com.nanotechservices.plannr'
+/** The taskbar/notification identity: development and test runs get their own, so Windows never shows
+ *  Electron's logo (from a shortcut Electron makes for them) on the installed app's taskbar button */
+export const appUserModelId = (): string => (app.isPackaged ? APP_ID : `${APP_ID}.dev`)
 
 /** resources/ lives next to package.json in development, and in the app's resources folder when installed. */
 export const resourcePath = (file: string): string =>
@@ -125,22 +128,21 @@ export function startReminders(sources: () => ReminderSource[]): () => void {
  */
 export function ensureStartMenuShortcut(): void {
   if (process.platform !== 'win32' || app.isPackaged) return
-  const lnk = join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Plannr.lnk')
+  const lnk = join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Plannr (development).lnk')
   const options = {
     target: process.execPath,
     args: `"${app.getAppPath()}"`,
     cwd: app.getAppPath(),
     icon: resourcePath('icon.ico'),
     iconIndex: 0,
-    appUserModelId: APP_ID,
-    description: 'Plannr'
+    appUserModelId: appUserModelId(),
+    description: 'Plannr (development)'
   }
   shell.writeShortcutLink(lnk, 'replace', options)
-  // Keep the Desktop shortcut's icon in sync too, if it exists.
+  // Keep a Desktop shortcut to this development copy in sync too (never one to the installed app)
   const desktop = join(app.getPath('desktop'), 'Plannr.lnk')
   try {
-    shell.readShortcutLink(desktop)
-    shell.writeShortcutLink(desktop, 'replace', options)
+    if (/electron\.exe$/i.test(shell.readShortcutLink(desktop).target)) shell.writeShortcutLink(desktop, 'replace', options)
   } catch {
     // no desktop shortcut — fine
   }
