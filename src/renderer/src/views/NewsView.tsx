@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, Bookmark, BookmarkCheck, CalendarCheck, CalendarPlus, CloudSun, Cpu, ExternalLink, EyeOff, Flame, Gamepad2, ListPlus, MapPin, Newspaper, Plus, RefreshCw, Search, Settings2, Star, Trash2, X, CheckCheck } from 'lucide-react'
-import { LOCAL_NEWS_PAGE, NEWS_PRESETS, NEWS_TOPICS, topicsFor, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
+import { AlertTriangle, Bookmark, BookmarkCheck, CalendarCheck, CalendarPlus, CloudSun, Cpu, ExternalLink, EyeOff, Flame, Gamepad2, ListPlus, MapPin, Newspaper, Plus, RefreshCw, Search, Settings2, Star, Trash2, X, CheckCheck, Sparkles, FileText, Link2 } from 'lucide-react'
+import { LOCAL_NEWS_PAGE, NEWS_PRESETS, type NewsArticle, type DocJSON, NEWS_TOPICS, topicsFor, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic } from '../../../shared/api'
 import { api } from '../api'
 import { go } from '../store/nav'
 import { useData } from '../store/data'
@@ -31,8 +31,18 @@ export function NewsView({ page: startPage }: { page?: string }) {
   const [settings, setSettings] = useState(false)
   const [addingPage, setAddingPage] = useState(false)
   const [adding, setAdding] = useState<NewsItem | null>(null)
+  const [reading, setReading] = useState<NewsItem | null>(null)
+  const [summary, setSummary] = useState<{ busy: boolean; text: string; error: string } | null>(null)
+  const [source, setSource] = useState('')
   const prefs = useUi((s) => s.prefs)
   const hideRead = prefs.newsHideRead === '1'
+  const seenKey = `newsSeen.${pageId}`
+  const [seenAt, setSeenAt] = useState(() => Number(prefs[seenKey] ?? 0))
+  useEffect(() => {
+    setSeenAt(Number(useUi.getState().prefs[seenKey] ?? 0))
+    const t = setTimeout(() => useUi.getState().setPref(seenKey, String(Date.now())), 4000)
+    return () => clearTimeout(t)
+  }, [seenKey])
   const look = { photos: prefs.newsPhotos !== '0', compact: prefs.newsCompact === '1', urgent: prefs.newsUrgent !== '0', coming: prefs.newsComing !== '0' }
 
   const refresh = useCallback(async () => {
@@ -69,6 +79,33 @@ export function NewsView({ page: startPage }: { page?: string }) {
   const patchItem = (id: string, patch: Partial<NewsItem>): void => setFeed((f) => (f ? { ...f, items: f.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) } : f))
 
   const actions: CardActions = {
+    read: (item) => {
+      setReading(item)
+      if (!item.read) {
+        patchItem(item.id, { read: true })
+        void api.news.mark(item.id, { read: true })
+      }
+    },
+    note: async (item) => {
+      const note = await api.notes.create({ title: item.title.replace(/\s+[-–|]\s+[^-–|]{2,40}$/, '') })
+      const p = (content: DocJSON[]): DocJSON => ({ type: 'paragraph', content })
+      await api.notes.update(note.id, {
+        tags: ['news'],
+        content: {
+          type: 'doc',
+          content: [
+            ...(item.summary ? [p([{ type: 'text', text: item.summary }])] : []),
+            p([{ type: 'text', text: `${item.sourceName} · ` }, ...(item.url ? [{ type: 'text', text: 'Read the story', marks: [{ type: 'link', attrs: { href: item.url } }] }] : [])])
+          ]
+        }
+      })
+      await useData.getState().refresh()
+      showToast('Saved to a note', { label: 'Open', run: () => go({ view: 'note', id: note.id }) })
+    },
+    copy: (item) => {
+      void navigator.clipboard.writeText(item.url || item.title)
+      showToast('Link copied')
+    },
     open: (item) => {
       if (item.url) window.open(item.url, '_blank')
       if (!item.read) {
@@ -113,7 +150,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
     const today = todayISO()
     const q = query.trim().toLowerCase()
     const matches = (i: NewsItem): boolean => !q || `${i.title} ${i.summary} ${i.sourceName}`.toLowerCase().includes(q)
-    const visible = pageItems.filter((i) => matches(i) && (showFiltered || !i.filtered) && (!hideRead || !i.read || i.saved))
+    const visible = pageItems.filter((i) => matches(i) && (showFiltered || !i.filtered) && (!hideRead || !i.read || i.saved) && (!source || i.sourceId === source))
     const hiddenCount = pageItems.filter((i) => i.filtered && matches(i)).length
     if (tab === 'saved') return { list: visible.filter((i) => i.saved), hiddenCount }
     if (tab !== 'foryou') return { list: pageItems.filter((i) => matches(i) && i.topic === tab), hiddenCount: 0 }
@@ -124,7 +161,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
       .slice(0, 10)
     const shown = new Set([...urgent, ...coming].map((i) => i.id))
     return { urgent, coming, latest: visible.filter((i) => !shown.has(i.id)), hiddenCount }
-  }, [feed, pageItems, tab, query, showFiltered, prefs.newsUrgent, local, hideRead])
+  }, [feed, pageItems, tab, query, showFiltered, prefs.newsUrgent, local, hideRead, source])
 
   if (!feed) return <div className="page news-page" />
   const pageTabs = (
@@ -176,6 +213,25 @@ export function NewsView({ page: startPage }: { page?: string }) {
           </button>
           <button
             type="button"
+            className="btn sm"
+            title="A short summary of this page by the assistant"
+            onClick={async () => {
+              const top = pageItems.filter((i) => !i.filtered).sort((a, b) => Number(b.important) - Number(a.important) || b.publishedAt - a.publishedAt).slice(0, 25)
+              if (!top.length) return
+              setSummary({ busy: true, text: '', error: '' })
+              try {
+                const list = top.map((i) => `- ${i.title}${i.summary ? `: ${i.summary.slice(0, 220)}` : ''} (${i.sourceName}${i.when ? `, ${i.when.date}` : ''})`).join('\n')
+                const { reply } = await api.assistant.ask([{ role: 'user', text: `Summarize these news stories for me in 5 to 8 short bullet points, most important first. Mention dates for anything coming up. Don't use any tools.\n\n${list}` }])
+                setSummary({ busy: false, text: reply, error: '' })
+              } catch (e) {
+                setSummary({ busy: false, text: '', error: e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'The assistant couldn’t answer' })
+              }
+            }}
+          >
+            <Sparkles /> Summarize
+          </button>
+          <button
+            type="button"
             className="icon-btn"
             title="Mark everything on this page as read"
             aria-label="Mark all as read"
@@ -203,6 +259,18 @@ export function NewsView({ page: startPage }: { page?: string }) {
         {topicsWithStories.map((t) => (
           <TabChip key={t.id} id={t.id} tab={tab} setTab={setTab} label={t.label} dim={hideTopics.includes(t.id)} />
         ))}
+        {pageSources.filter((s) => s.kind !== 'facebook').length > 1 && (
+          <select className="news-source-filter" aria-label="Show stories from" value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value="">All sources</option>
+            {pageSources
+              .filter((s) => s.kind !== 'facebook')
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </select>
+        )}
         <label className="news-search">
           <Search />
           <input value={query} placeholder="Search news" aria-label="Search news" onChange={(e) => setQuery(e.target.value)} />
@@ -235,7 +303,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
                 <section className={`news-section ${local ? 'news-urgent' : 'news-picks'}`}>
                   <h2 className="section-title">{local ? <AlertTriangle /> : <Flame />} {local ? 'Need to know' : 'Top picks'}</h2>
                   {groups.urgent!.map((i) => (
-                    <NewsCard key={i.id} item={i} actions={actions} compact={local} photos={look.photos} />
+                    <NewsCard key={i.id} item={i} isNew={seenAt > 0 && i.publishedAt > seenAt && !i.read} actions={actions} compact={local} photos={look.photos} />
                   ))}
                 </section>
               )}
@@ -253,7 +321,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
                 <h2 className="section-title">Latest</h2>
                 {groups.latest!.length === 0 && pageSources.length > 0 && <div className="empty-state">No stories yet{busy ? ' – checking now…' : '.'}</div>}
                 {groups.latest!.slice(0, more).map((i) => (
-                  <NewsCard key={i.id} item={i} actions={actions} compact={look.compact} photos={look.photos} />
+                  <NewsCard key={i.id} item={i} isNew={seenAt > 0 && i.publishedAt > seenAt && !i.read} actions={actions} compact={look.compact} photos={look.photos} />
                 ))}
                 {groups.latest!.length > more && (
                   <button type="button" className="btn news-more" onClick={() => setMore((m) => m + 30)}>
@@ -266,7 +334,7 @@ export function NewsView({ page: startPage }: { page?: string }) {
             <section className="news-section">
               {groups?.list?.length === 0 && <div className="empty-state">{tab === 'saved' ? 'Stories you save (the bookmark) show here.' : 'Nothing here right now.'}</div>}
               {groups?.list?.map((i) => (
-                <NewsCard key={i.id} item={i} actions={actions} compact={look.compact} photos={look.photos} />
+                <NewsCard key={i.id} item={i} isNew={seenAt > 0 && i.publishedAt > seenAt && !i.read} actions={actions} compact={look.compact} photos={look.photos} />
               ))}
             </section>
           )}
@@ -299,6 +367,31 @@ export function NewsView({ page: startPage }: { page?: string }) {
         />
       )}
       {addPageDialog}
+      {reading && <ArticleReader item={reading} onClose={() => setReading(null)} actions={actions} />}
+      {summary && (
+        <div className="dialog-backdrop" onMouseDown={() => setSummary(null)}>
+          <div className="dialog news-summary-dialog" role="dialog" aria-label="News summary" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="dialog-head">
+              <h2>
+                <Sparkles className="inline-icon" /> Summary
+              </h2>
+              <button type="button" className="icon-btn" aria-label="Close" onClick={() => setSummary(null)}>
+                <X />
+              </button>
+            </div>
+            {summary.busy && <p className="muted">Reading the news…</p>}
+            {summary.error && (
+              <p className="small danger-text">
+                {summary.error}{' '}
+                <button type="button" className="link-btn" onClick={() => go({ view: 'assistant' })}>
+                  Set up the assistant
+                </button>
+              </p>
+            )}
+            {summary.text && <div className="news-summary-text">{summary.text}</div>}
+          </div>
+        </div>
+      )}
       {adding && (
         <AddToCalendar
           item={adding}
@@ -378,6 +471,7 @@ function PageSettings({ feed, page, onChange, onClose, onDeleted }: { feed: News
   const [only, setOnly] = useState(listText(page.only))
   const [muted, setMuted] = useState(listText(page.muted))
   const [boost, setBoost] = useState(listText(page.boost))
+  const [pageAlerts, setPageAlerts] = useState(listText(page.alertWords ?? []))
   const [link, setLink] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -399,7 +493,7 @@ function PageSettings({ feed, page, onChange, onClose, onDeleted }: { feed: News
   const save = async (): Promise<void> => {
     setSaving(true)
     try {
-      const next = { ...draft, only: textList(only), muted: textList(muted), boost: textList(boost) }
+      const next = { ...draft, only: textList(only), muted: textList(muted), boost: textList(boost), alertWords: textList(pageAlerts) }
       onChange(await api.news.configure({ pages: feed.pages.map((p) => (p.id === page.id ? next : p)), sources }))
       onClose()
     } finally {
@@ -510,6 +604,10 @@ function PageSettings({ feed, page, onChange, onClose, onDeleted }: { feed: News
           <input type="checkbox" checked={draft.notify} onChange={(e) => setDraft({ ...draft, notify: e.target.checked })} />
           Notify me about new Top picks
         </label>
+        <label className="mfield">
+          Notify me when a story mentions (commas between)
+          <input value={pageAlerts} placeholder="e.g. RTX 5080, Hollow Knight, free" aria-label="Alert words" onChange={(e) => setPageAlerts(e.target.value)} />
+        </label>
 
         <div className="dialog-actions">
           {confirmDelete ? (
@@ -547,14 +645,18 @@ interface CardActions {
   hide: (item: NewsItem) => void
   calendar: (item: NewsItem) => void
   task: (item: NewsItem) => void
+  read: (item: NewsItem) => void
+  note: (item: NewsItem) => void
+  copy: (item: NewsItem) => void
 }
 
-function NewsCard({ item, actions, compact, photos = true }: { item: NewsItem; actions: CardActions; compact?: boolean; photos?: boolean }) {
+function NewsCard({ item, actions, compact, photos = true, isNew = false }: { item: NewsItem; actions: CardActions; compact?: boolean; photos?: boolean; isNew?: boolean }) {
   const [imageOk, setImageOk] = useState(true)
   return (
     <article className={`news-card ${item.read ? 'read' : ''} ${item.important ? 'important' : ''} ${compact ? 'compact' : ''}`} data-topic={item.topic}>
       <div className="news-card-body">
         <div className="news-meta small">
+          {isNew && <span className="news-new">New</span>}
           <span className="news-source">{item.sourceName}</span>
           <span className="muted">· {relativeTime(item.publishedAt)}</span>
           <span className={`news-topic t-${item.topic}`}>{topicLabel(item.topic)}</span>
@@ -563,7 +665,7 @@ function NewsCard({ item, actions, compact, photos = true }: { item: NewsItem; a
         </div>
         <h3 className="news-title">
           {item.url ? (
-            <a href={item.url} onClick={(e) => (e.preventDefault(), actions.open(item))}>
+            <a href={item.url} onClick={(e) => (e.preventDefault(), actions.read(item))}>
               {item.title}
             </a>
           ) : (
@@ -581,6 +683,12 @@ function NewsCard({ item, actions, compact, photos = true }: { item: NewsItem; a
           </button>
           <button type="button" className={`icon-btn sm ${item.saved ? 'on' : ''}`} title={item.saved ? 'Saved (click to unsave)' : 'Save for later'} aria-label={item.saved ? 'Unsave' : 'Save for later'} onClick={() => actions.save(item)}>
             {item.saved ? <BookmarkCheck /> : <Bookmark />}
+          </button>
+          <button type="button" className="icon-btn sm" title="Save to a note" aria-label="Save to a note" onClick={() => void actions.note(item)}>
+            <FileText />
+          </button>
+          <button type="button" className="icon-btn sm" title="Copy the link" aria-label="Copy the link" onClick={() => actions.copy(item)}>
+            <Link2 />
           </button>
           <button type="button" className="icon-btn sm" title="Hide this story" aria-label="Hide this story" onClick={() => actions.hide(item)}>
             <EyeOff />
@@ -606,7 +714,7 @@ function ComingRow({ item, actions }: { item: NewsItem; actions: CardActions }) 
         <b>{d.getDate()}</b>
       </div>
       <div className="news-coming-body">
-        <a href={item.url} className="news-coming-title" onClick={(e) => (e.preventDefault(), actions.open(item))}>
+        <a href={item.url} className="news-coming-title" onClick={(e) => (e.preventDefault(), actions.read(item))}>
           {item.title}
         </a>
         <span className="small muted">
@@ -905,6 +1013,7 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
   const [prefs, setPrefs] = useState<NewsPrefs>(feed.prefs)
   const [muted, setMuted] = useState(listText(feed.prefs.muted))
   const [boost, setBoost] = useState(listText(feed.prefs.boost))
+  const [alerts, setAlerts] = useState(listText(feed.prefs.alertWords ?? []))
   const [link, setLink] = useState('')
   const [changingPlace, setChangingPlace] = useState(false)
   const [suggested, setSuggested] = useState<NewsSource[]>([])
@@ -932,7 +1041,7 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
     try {
       const all = [...sources, ...others]
       const sourcesChanged = JSON.stringify(all) !== JSON.stringify(feed.sources)
-      onChange(await api.news.configure({ prefs: { ...prefs, muted: textList(muted), boost: textList(boost) }, ...(sourcesChanged ? { sources: all } : {}) }))
+      onChange(await api.news.configure({ prefs: { ...prefs, muted: textList(muted), boost: textList(boost), alertWords: textList(alerts) }, ...(sourcesChanged ? { sources: all } : {}) }))
       onClose()
     } finally {
       setSaving(false)
@@ -1039,6 +1148,19 @@ function NewsSettings({ feed, onChange, onClose }: { feed: NewsFeed; onChange: (
           <input type="checkbox" checked={prefs.notifyUrgent} onChange={(e) => setPrefs((p) => ({ ...p, notifyUrgent: e.target.checked }))} />
           Notify me about urgent alerts (weather warnings, closures, advisories)
         </label>
+        <label className="mfield">
+          Notify me when a story mentions (commas between)
+          <input value={alerts} placeholder="e.g. boil water, Main Street, school closure" aria-label="Alert words" onChange={(e) => setAlerts(e.target.value)} />
+        </label>
+        <label className="mfield news-briefing">
+          Morning briefing: a notification with what’s waiting, every day at
+          <input type="time" value={prefs.briefing} aria-label="Morning briefing time" onChange={(e) => setPrefs((p) => ({ ...p, briefing: e.target.value }))} />
+          {prefs.briefing && (
+            <button type="button" className="link-btn small" onClick={() => setPrefs((p) => ({ ...p, briefing: '' }))}>
+              Turn off
+            </button>
+          )}
+        </label>
         <NewsLook />
 
         <div className="dialog-actions">
@@ -1078,5 +1200,57 @@ function NewsLook() {
         )
       })}
     </>
+  )
+}
+
+/** The story's text inside Plannr, with its picture; anything the site won't share opens in the browser */
+function ArticleReader({ item, onClose, actions }: { item: NewsItem; onClose: () => void; actions: CardActions }) {
+  const [article, setArticle] = useState<NewsArticle | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (!item.url) return setFailed(true)
+    void api.news
+      .read(item.url)
+      .then((a) => (a.blocks.length >= 2 ? setArticle(a) : setFailed(true)))
+      .catch(() => setFailed(true))
+  }, [item.url])
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <div className="dialog news-reader" role="dialog" aria-label="Story" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="news-reader-bar">
+          <span className="small muted">
+            {item.sourceName} · {relativeTime(item.publishedAt)}
+          </span>
+          <span className="news-reader-actions">
+            <button type="button" className="btn sm" onClick={() => void actions.note(item)}>
+              <FileText /> Save to a note
+            </button>
+            <button type="button" className="btn sm" onClick={() => actions.calendar(item)}>
+              <CalendarPlus /> Add to calendar
+            </button>
+            {item.url && (
+              <button type="button" className="btn sm" onClick={() => actions.open(item)}>
+                <ExternalLink /> Open in browser
+              </button>
+            )}
+            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+              <X />
+            </button>
+          </span>
+        </div>
+        <article className="news-reader-body">
+          <h1>{article?.title || item.title}</h1>
+          {(article?.image || item.image) && <img className="news-reader-image" src={article?.image || item.image} alt="" referrerPolicy="no-referrer" />}
+          {!article && !failed && <p className="muted">Loading the story…</p>}
+          {failed && (
+            <>
+              {item.summary && <p>{item.summary}</p>}
+              <p className="muted small">This site doesn’t let the story be read here. Open it in your browser to read the rest.</p>
+            </>
+          )}
+          {article?.blocks.map((b, i) => (b.kind === 'h' ? <h3 key={i}>{b.text}</h3> : b.kind === 'li' ? <p key={i} className="news-reader-li">• {b.text}</p> : <p key={i}>{b.text}</p>))}
+        </article>
+      </div>
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { ProfileSwitcher } from './Profiles'
-import { useRef, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react'
+import { useRef, useState, type DragEvent, type MouseEvent, type ReactNode, useEffect } from 'react'
 import {
   CalendarDays,
   ChevronDown,
@@ -402,6 +402,14 @@ export function Sidebar() {
   const openTickets = useData((s) => s.counts.open)
   const lowStock = useData((s) => s.counts.lowStock)
   const dueTasks = useData((s) => s.counts.dueTasks)
+  // Unread Need to know / Top picks, for the News count (checked every few minutes)
+  const [newsUnread, setNewsUnread] = useState(0)
+  useEffect(() => {
+    const count = (): void => void api.news.feed().then((f) => setNewsUnread(f.items.filter((i) => i.important && !i.filtered && !i.read).length)).catch(() => undefined)
+    count()
+    const t = setInterval(count, 3 * 60_000)
+    return () => clearInterval(t)
+  }, [])
   const showRecent = useUi((s) => s.prefs.sidebarRecent === '1')
   const groups = navGroups(useUi((s) => s.prefs.navGroups))
   const hidden = navHidden(useUi((s) => s.prefs.navHidden))
@@ -451,7 +459,7 @@ export function Sidebar() {
     packages: <NavItem key="packages" icon={<Package2 />} label={name('packages')} target={{ view: 'packages' }} {...navDrop('packages')} />,
     mail: <NavItem key="mail" icon={<Mail />} label={name('mail')} target={{ view: 'mail' }} {...navDrop('mail')} />,
     assistant: <NavItem key="assistant" icon={<Sparkles />} label={name('assistant')} target={{ view: 'assistant' }} {...navDrop('assistant')} />,
-    news: <NavItem key="news" icon={<Newspaper />} label={name('news')} target={{ view: 'news' }} {...navDrop('news')} />,
+    news: <NavItem key="news" icon={<Newspaper />} label={name('news')} target={{ view: 'news' }} count={newsUnread || undefined} {...navDrop('news')} />,
     inventory: <NavItem key="inventory" icon={<Package />} label={name('inventory')} target={{ view: 'inventory' }} count={lowStock || undefined} {...navDrop('inventory')} />,
     notes: (
       <NavItem

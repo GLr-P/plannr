@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
 import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from './api'
 import { holidaysStale, refreshHolidays } from './services/holidays'
-import { newsStale, refreshNews } from './services/news'
+import { briefingText, newsFeed, newsPrefs, newsStale, refreshNews } from './services/news'
 import { entStale, refreshEntertainment } from './services/entertainment'
 import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
@@ -317,6 +317,22 @@ if (!app.requestSingleInstanceLock()) {
       }
       setTimeout(updateNews, 8_000)
       setInterval(updateNews, 10 * 60 * 1000)
+      // The morning briefing, once a day at the time chosen in News → Sources & topics
+      const briefing = (): void => {
+        const at = newsPrefs(db).briefing
+        if (!background || !/^\d{2}:\d{2}$/.test(at) || !Notification.isSupported()) return
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+        const [h, m] = at.split(':').map(Number)
+        if (now.getHours() * 60 + now.getMinutes() < h * 60 + m || getSetting(db, 'news.briefingSent') === today) return
+        setSetting(db, 'news.briefingSent', today)
+        const text = briefingText(newsFeed(db), today)
+        if (!text) return
+        const n = new Notification({ title: text.title, body: text.body, icon: resourcePath('icon.png') })
+        n.on('click', () => showWindow(getWindow, { news: true }))
+        n.show()
+      }
+      setInterval(briefing, 60 * 1000)
       // New videos and who's live; a notification when a streamer goes live only if turned on (Entertainment → Channels)
       const updateEnt = (): void => {
         if (!entStale(db, Date.now(), 5)) return

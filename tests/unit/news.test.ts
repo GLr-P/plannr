@@ -293,3 +293,28 @@ describe('pages for games and PC parts', () => {
     expect(news.newsFeed(db, now).items.some((i) => i.page === page.id)).toBe(false)
   })
 })
+
+describe('reading, alerts and the briefing', () => {
+  it('reads a story page: title, picture and paragraphs, without menus', () => {
+    const html = `<html><head><meta property="og:title" content="Fire hall open house"><meta property="og:image" content="https://x.test/a.jpg"><meta property="og:site_name" content="Castanet"></head>
+      <body><nav><p>Home News Sports Weather and much more menu text here to skip</p></nav>
+      <article><h2>What happened</h2><p>Osoyoos Fire Rescue welcomed more than 70 visitors to its open house on the weekend.</p>
+      <p>Advertisement</p><p>Firefighters showed how to use an extinguisher and answered questions from families.</p>
+      <ul><li>Smoke alarm checks were free for everyone</li></ul></article><footer><p>Copyright notice and other footer text that is long enough</p></footer></body></html>`
+    const a = news.extractArticle(html, 'https://www.castanet.net/news/1')
+    expect(a).toMatchObject({ title: 'Fire hall open house', site: 'Castanet', image: 'https://x.test/a.jpg' })
+    expect(a.blocks.map((b) => b.kind)).toEqual(['h', 'p', 'p', 'li'])
+    expect(a.blocks.some((b) => /menu text|Copyright/.test(b.text))).toBe(false)
+  })
+
+  it('alert words notify once; the briefing sums up what is waiting', async () => {
+    news.configureNews(db, { sources: [source('rss', 'https://www.castanet.net/rss/page-87.xml', 'Castanet')], prefs: { notifyUrgent: false, alertWords: ['aurora'] } })
+    const now = Date.parse('2026-10-11T16:00:00-07:00')
+    const first = await news.refreshNews(db, fakeFetch, now)
+    expect(first.urgent.map((i) => i.title)).toEqual(['Local photographer captures aurora over Osoyoos'])
+    expect((await news.refreshNews(db, fakeFetch, now + 60_000)).urgent).toEqual([])
+    const b = news.briefingText(first.feed, '2026-10-11')
+    expect(b?.title).toMatch(/^Your news: /)
+    expect(b?.body.length).toBeGreaterThan(5)
+  })
+})

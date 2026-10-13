@@ -217,7 +217,8 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       findPlace: async (query) => news.findPlace(query, hooks.fetchText),
       suggest: async (place) => news.suggestSources(place),
       detect: async (url) => news.detectSource(url, hooks.fetchText),
-      mark: async (id, patch) => news.markNews(db, id, patch)
+      mark: async (id, patch) => news.markNews(db, id, patch),
+      read: async (url) => news.readArticle(url, hooks.fetchText)
     },
     folders: {
       list: async () => folders.listFolders(db),

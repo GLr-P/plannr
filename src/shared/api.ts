@@ -718,6 +718,8 @@ export interface NewsPage {
   minDiscount: number
   /** A Windows notification for new Top picks */
   notify: boolean
+  /** A notification for any new story with one of these words */
+  alertWords: string[]
 }
 
 export const NEWS_PRESETS = [
@@ -750,6 +752,10 @@ export interface NewsPrefs {
   keepDays: number
   /** A Windows notification for urgent alerts (weather warnings, closures, advisories) */
   notifyUrgent: boolean
+  /** A notification for any new story with one of these words */
+  alertWords: string[]
+  /** A morning briefing notification at this time (HH:MM), or blank for none */
+  briefing: string
 }
 
 export interface NewsItem {
@@ -788,6 +794,15 @@ export interface NewsWeather {
   warnings: { title: string; url: string }[]
   url: string
   updatedAt: number
+}
+
+/** A story's text, read inside Plannr */
+export interface NewsArticle {
+  url: string
+  title: string
+  site: string
+  image: string
+  blocks: { kind: 'p' | 'h' | 'li'; text: string }[]
 }
 
 export interface NewsFeed {
@@ -1558,6 +1573,8 @@ export interface PlannrApi {
     /** Works out what a pasted link is (feed, web page or Facebook page) */
     detect(url: string): Promise<NewsSource>
     mark(id: string, patch: { read?: boolean; saved?: boolean; hidden?: boolean; eventId?: string | null }): Promise<void>
+    /** The story's text, to read inside Plannr */
+    read(url: string): Promise<NewsArticle>
   }
   habits: {
     list(date?: string): Promise<Habit[]>
@@ -1812,7 +1829,7 @@ export const API_SHAPE = {
   entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched'],
   assistant: ['status', 'setup', 'ask'],
   holidays: ['range', 'status', 'configure', 'refresh'],
-  news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark'],
+  news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark', 'read'],
   vault: [
     'status',
     'setup',

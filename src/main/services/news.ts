@@ -1,6 +1,6 @@
 import type { Db } from '../db'
 import { newId, tx } from '../db'
-import { LOCAL_NEWS_PAGE, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic, type NewsWeather } from '../../shared/api'
+import { LOCAL_NEWS_PAGE, type NewsArticle, type NewsFeed, type NewsItem, type NewsPage, type NewsPlace, type NewsPrefs, type NewsPreset, type NewsSource, type NewsSourceKind, type NewsTopic, type NewsWeather } from '../../shared/api'
 import { findWhen, ymd } from '../../shared/news-dates'
 import { getSetting, setSetting } from './settings'
 
@@ -19,7 +19,9 @@ export const DEFAULT_NEWS_PREFS: NewsPrefs = {
   muted: [],
   boost: [],
   keepDays: 21,
-  notifyUrgent: true
+  notifyUrgent: true,
+  alertWords: [],
+  briefing: ''
 }
 
 // ---------- Reading feeds and pages ----------
@@ -503,7 +505,8 @@ const normalizePage = (p: Partial<NewsPage>): NewsPage => ({
   boost: list(p.boost),
   only: list(p.only),
   minDiscount: Number.isFinite(Number(p.minDiscount)) && Number(p.minDiscount) > 0 ? Math.min(95, Number(p.minDiscount)) : 40,
-  notify: p.notify === true
+  notify: p.notify === true,
+  alertWords: list(p.alertWords)
 })
 
 /** Your pages besides the local one */
@@ -771,13 +774,14 @@ export async function refreshNews(db: Db, fetchText: FetchText, now = Date.now()
   setSetting(db, 'news.refreshedAt', now)
   const feed = newsFeed(db, now)
   const alerted = new Set((db.prepare('SELECT id FROM news_items WHERE alerted = 1').all() as { id: string }[]).map((r) => r.id))
-  // Local alerts (if you want them) and Top picks on pages that ask for a notification
+  // Local alerts (if you want them), Top picks on pages that ask for a notification, and stories with your alert words
   const notifyPages = new Set(feed.pages.filter((p) => p.notify).map((p) => p.id))
-  const urgent = feed.items.filter(
-    (i) => i.important && !i.filtered && !alerted.has(i.id) && now - i.publishedAt < 2 * 86_400_000 && (i.page === LOCAL_NEWS_PAGE ? feed.prefs.notifyUrgent : notifyPages.has(i.page))
-  )
+  const alertWordsOf = (page: string): string[] => (page === LOCAL_NEWS_PAGE ? feed.prefs.alertWords : (feed.pages.find((p) => p.id === page)?.alertWords ?? []))
+  const wanted = (i: NewsItem): boolean =>
+    (i.important && !i.filtered && (i.page === LOCAL_NEWS_PAGE ? feed.prefs.notifyUrgent : notifyPages.has(i.page))) || hasWord(`${i.title}. ${i.summary}`, alertWordsOf(i.page))
+  const urgent = feed.items.filter((i) => !alerted.has(i.id) && now - i.publishedAt < 2 * 86_400_000 && wanted(i))
   const mark = db.prepare('UPDATE news_items SET alerted = 1 WHERE id = ?')
-  for (const i of feed.items.filter((x) => x.important)) mark.run(i.id)
+  for (const i of feed.items.filter((x) => x.important || hasWord(`${x.title}. ${x.summary}`, alertWordsOf(x.page)))) mark.run(i.id)
   return { feed, urgent }
 }
 
@@ -785,6 +789,47 @@ export function newsStale(db: Db, now = Date.now(), minutes = 30): boolean {
   if (!newsSources(db).some((s) => s.enabled && s.kind !== 'facebook')) return false
   const at = getSetting(db, 'news.refreshedAt') as number | null
   return !at || now - at > minutes * 60_000
+}
+
+// ---------- Reading a story inside Plannr ----------
+
+/** A story page's text: its title, picture and paragraphs (headings and list items kept, menus and ads left out) */
+export function extractArticle(html: string, url: string): NewsArticle {
+  const meta = (prop: string): string =>
+    decodeEntities(new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']*)["']`, 'i').exec(html)?.[1] ?? new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${prop}["']`, 'i').exec(html)?.[1] ?? '')
+  // The story itself: <article> when there is one, else the whole page without its frame
+  const body = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style|noscript|nav|header|footer|aside|form|figure|svg|button|iframe)[\s\S]*?<\/\1>/gi, '')
+  const articles = [...body.matchAll(/<article[\s>][\s\S]*?<\/article>/gi)].map((m) => m[0])
+  const scope = articles.sort((a, b) => b.length - a.length)[0] ?? body
+  const blocks: NewsArticle['blocks'] = []
+  const seen = new Set<string>()
+  for (const m of scope.matchAll(/<(p|h2|h3|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)) {
+    const text = htmlToText(m[2]).replace(/\s+/g, ' ').trim()
+    const tag = m[1].toLowerCase()
+    const min = tag === 'p' ? 40 : tag === 'li' ? 25 : 4
+    if (text.length < min || seen.has(text) || /^(advertisement|share this|related:|read more|sign up|subscribe)/i.test(text)) continue
+    seen.add(text)
+    blocks.push({ kind: tag === 'p' ? 'p' : tag === 'li' ? 'li' : 'h', text })
+  }
+  const title = meta('og:title') || htmlToText(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1] ?? '') || htmlToText(/<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')
+  const image = meta('og:image')
+  return { url, title: title.trim(), site: meta('og:site_name') || new URL(url).hostname.replace(/^www\./, ''), image: /^https:\/\//.test(image) ? image : '', blocks: blocks.slice(0, 120) }
+}
+
+export async function readArticle(url: string, fetchText: FetchText): Promise<NewsArticle> {
+  return extractArticle(await withTimeout(fetchText(url), 20_000), url)
+}
+
+/** The morning briefing: a line on what's waiting (null when there's nothing to say) */
+export function briefingText(feed: NewsFeed, today: string): { title: string; body: string } | null {
+  const shown = feed.items.filter((i) => !i.filtered)
+  const urgent = shown.filter((i) => i.important && i.page === LOCAL_NEWS_PAGE)
+  const todays = shown.filter((i) => i.when?.date === today)
+  const picks = shown.filter((i) => i.important && i.page !== LOCAL_NEWS_PAGE)
+  const parts = [urgent.length ? `${urgent.length} to know` : '', todays.length ? `${todays.length} happening today` : '', picks.length ? `${picks.length} top ${picks.length === 1 ? 'pick' : 'picks'}` : ''].filter(Boolean)
+  const top = urgent[0] ?? todays[0] ?? picks[0] ?? shown[0]
+  if (!top) return null
+  return { title: `Your news: ${parts.join(' · ') || 'the latest'}`, body: top.title }
 }
 
 // ---------- Finding a place and suggesting sources ----------
