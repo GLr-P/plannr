@@ -21,6 +21,7 @@ import * as packages from './services/packages'
 import * as weather from './services/weather'
 import * as ent from './services/entertainment'
 import * as media from './services/media'
+import { discover } from './services/discover'
 import * as money from './services/money'
 import { search } from './services/search'
 import { saveFile } from './services/files'
@@ -48,6 +49,7 @@ export type CoreApi = Pick<
   | 'weather'
   | 'entertainment'
   | 'media'
+  | 'discover'
   | 'folders'
   | 'search'
   | 'settings'
@@ -206,6 +208,9 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       markWatched: async (id, watched) => news.markNews(db, id, { read: watched }),
       save: async (id, saved) => news.markNews(db, id, { saved }),
       findPodcasts: async (query) => ent.findPodcasts(query, hooks.fetchText)
+    },
+    discover: {
+      list: async (tab, refresh) => discover(db, tab, hooks.fetchText, refresh)
     },
     media: {
       list: async () => media.listMedia(db),

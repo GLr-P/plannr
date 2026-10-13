@@ -999,6 +999,30 @@ export interface MediaResult {
   summary: string
   total: number
   genres: string[]
+  /** Viewers' rating out of 10, when known */
+  score?: number
+}
+
+/** Which Entertainment tab a Discover list is for */
+export type DiscoverTab = 'watch' | MediaKind | 'podcast' | 'reddit'
+/** A suggestion: a movie, show, book or game to add, a podcast to follow, or a channel or subreddit to add */
+export interface DiscoverItem {
+  title: string
+  subtitle: string
+  image: string
+  url: string
+  summary: string
+  /** e.g. "#1", "★ 8.4", "−40%" */
+  badge: string
+  media?: MediaResult
+  feedUrl?: string
+  channel?: { kind: 'youtube' | 'twitch' | 'reddit'; input: string }
+}
+export interface DiscoverSection {
+  id: string
+  title: string
+  note: string
+  items: DiscoverItem[]
 }
 
 // ---------- Assistant ----------
@@ -1692,6 +1716,10 @@ export interface PlannrApi {
     save(videoId: string, saved: boolean): Promise<void>
     findPodcasts(query: string): Promise<PodcastResult[]>
   }
+  /** Top picks, popular lists and picks for you, for each Entertainment tab (kept 6 hours) */
+  discover: {
+    list(tab: DiscoverTab, refresh?: boolean): Promise<DiscoverSection[]>
+  }
   /** Movies, shows, books and games: your lists, ratings and progress */
   media: {
     list(): Promise<MediaItem[]>
@@ -1915,6 +1943,7 @@ export const API_SHAPE = {
   weather: ['forecast'],
   entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched', 'save', 'findPodcasts'],
   media: ['list', 'search', 'add', 'update', 'remove', 'refresh'],
+  discover: ['list'],
   assistant: ['status', 'setup', 'ask'],
   holidays: ['range', 'status', 'configure', 'refresh'],
   news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark', 'read'],

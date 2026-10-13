@@ -120,8 +120,12 @@ export function parseImdb(json: string): MediaResult[] {
     }))
 }
 
-interface TvShow {
+export interface TvShow {
   id: number
+  type?: string
+  language?: string | null
+  weight?: number
+  rating?: { average: number | null } | null
   name: string
   url: string
   premiered?: string | null
@@ -139,7 +143,7 @@ interface TvEpisode {
   airdate: string
 }
 
-const showResult = (s: TvShow): MediaResult => ({
+export const showResult = (s: TvShow): MediaResult => ({
   kind: 'show',
   extId: String(s.id),
   title: s.name,
@@ -149,7 +153,8 @@ const showResult = (s: TvShow): MediaResult => ({
   year: year(s.premiered),
   summary: htmlToText(s.summary ?? ''),
   total: 0,
-  genres: s.genres ?? []
+  genres: s.genres ?? [],
+  score: s.rating?.average ?? undefined
 })
 
 export const parseTvSearch = (json: string): MediaResult[] => (JSON.parse(json) as { show: TvShow }[]).map((r) => showResult(r.show))
@@ -163,8 +168,20 @@ export function parseTvShow(json: string): { result: MediaResult; episodes: Medi
   return { result: showResult(s), episodes, next: s._embedded?.nextepisode ? episode(s._embedded.nextepisode) : null }
 }
 
+interface OlDoc {
+  key: string
+  title: string
+  author_name?: string[]
+  first_publish_year?: number
+  cover_i?: number
+  number_of_pages_median?: number
+  subject?: string[]
+}
+
+/** Open Library search results (docs) or a trending list (works) */
 export function parseOpenLibrary(json: string): MediaResult[] {
-  const docs = (JSON.parse(json) as { docs?: { key: string; title: string; author_name?: string[]; first_publish_year?: number; cover_i?: number; number_of_pages_median?: number; subject?: string[] }[] }).docs ?? []
+  const parsed = JSON.parse(json) as { docs?: OlDoc[]; works?: OlDoc[] }
+  const docs = parsed.docs ?? parsed.works ?? []
   return docs.map((b) => ({
     kind: 'book' as const,
     extId: b.key,

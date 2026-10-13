@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bookmark, BookmarkCheck, BookOpen, CalendarClock, Check, ExternalLink, Film, Gamepad2, MessageSquare, Play, Plus, Podcast, Radio, RefreshCw, Search, Shuffle, Star, Trash2, Tv, X, MonitorPlay as Youtube } from 'lucide-react'
-import type { EntChannel, EntFeed, EntVideo, MediaItem, MediaKind, MediaPatch, MediaResult, MediaStatus, PodcastResult } from '../../../shared/api'
+import { Bookmark, BookmarkCheck, BookOpen, CalendarClock, Check, ExternalLink, Film, Gamepad2, MessageSquare, Play, Plus, Podcast, Radio, RefreshCw, Search, Shuffle, Star, Trash2, Tv, X, MonitorPlay as Youtube, Sparkles } from 'lucide-react'
+import type { DiscoverItem, DiscoverSection, DiscoverTab, EntChannel, EntFeed, EntVideo, MediaItem, MediaKind, MediaPatch, MediaResult, MediaStatus, PodcastResult } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { formatDay, relativeTime, todayISO } from '../lib/format'
 import { showToast } from '../lib/toast'
+import { go } from '../store/nav'
+import { parseIdeas, type Idea } from '../../../shared/ideas'
 
 type Tab = 'watch' | MediaKind | 'podcast' | 'reddit' | 'saved'
 const TABS: { id: Tab; label: string; icon: typeof Film }[] = [
@@ -240,6 +242,7 @@ function WatchTab({ feed, setFeed, busy, q, actions }: { feed: EntFeed; setFeed:
   const live = feed.live.filter((l) => l.live)
   const offline = feed.live.filter((l) => !l.live)
   const youtube = feed.channels.filter((c) => c.kind === 'youtube')
+  const [mode, setMode] = useMode('watch', !feed.channels.some((c) => c.kind === 'youtube' || c.kind === 'twitch'))
   const videos = feed.videos.filter((v) => v.kind === 'youtube' && (showShorts || !v.short) && (channel === 'all' || v.channelId === channel) && (!hideWatched || !v.watched) && has(q, v.title, v.channelName))
 
   return (
@@ -265,7 +268,11 @@ function WatchTab({ feed, setFeed, busy, q, actions }: { feed: EntFeed; setFeed:
         </button>
       </form>
       {error && <p className="small danger-text">{error}</p>}
-
+      <ModeSwitch mode={mode} setMode={setMode} list="Following" />
+      {mode === 'discover' ? (
+        <Discover tab="watch" onFeed={setFeed} />
+      ) : (
+        <>
       {feed.channels.filter((c) => c.kind === 'youtube' || c.kind === 'twitch').length === 0 && (
         <div className="empty-state welcome">
           <p>Add the YouTube channels and Twitch streamers you watch. New videos show here, and you’ll see who’s live.</p>
@@ -346,6 +353,8 @@ function WatchTab({ feed, setFeed, busy, q, actions }: { feed: EntFeed; setFeed:
           {videos.length === 0 && <p className="muted small">No videos yet{busy ? ' – checking…' : '.'}</p>}
         </section>
       )}
+        </>
+      )}
     </>
   )
 }
@@ -402,6 +411,7 @@ function RedditTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f: 
   const hideRead = useUi((s) => s.prefs.entHideRead === '1')
   const setPref = useUi((s) => s.setPref)
   const subs = feed.channels.filter((c) => c.kind === 'reddit')
+  const [mode, setMode] = useMode('reddit', subs.length === 0)
   const posts = feed.videos.filter((v) => v.kind === 'reddit' && (which === 'all' || v.channelId === which) && (!hideRead || !v.watched) && has(q, v.title, v.summary, v.channelName))
   const add = async (): Promise<void> => {
     if (!input.trim()) return
@@ -431,7 +441,10 @@ function RedditTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f: 
         </button>
       </form>
       {error && <p className="small danger-text">{error}</p>}
-      {subs.length === 0 ? (
+      <ModeSwitch mode={mode} setMode={setMode} list="Following" />
+      {mode === 'discover' ? (
+        <Discover tab="reddit" onFeed={setFeed} />
+      ) : subs.length === 0 ? (
         <div className="empty-state welcome">
           <p>Follow subreddits and see each one’s top posts of the day here, with pictures. No Reddit account needed.</p>
         </div>
@@ -502,6 +515,7 @@ function PodcastTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f:
   const [error, setError] = useState('')
   const [which, setWhich] = useState('all')
   const pods = feed.channels.filter((c) => c.kind === 'podcast')
+  const [mode, setMode] = useMode('podcast', pods.length === 0)
   const episodes = feed.videos.filter((v) => v.kind === 'podcast' && (which === 'all' || v.channelId === which) && has(q, v.title, v.summary, v.channelName))
   const follow = async (feedUrl: string): Promise<void> => {
     setError('')
@@ -516,13 +530,13 @@ function PodcastTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f:
       setBusy(false)
     }
   }
-  const find = async (): Promise<void> => {
-    if (!term.trim()) return
-    if (/^https?:\/\//i.test(term.trim())) return void follow(term.trim()).then(() => setTerm(''))
+  const find = async (q = term): Promise<void> => {
+    if (!q.trim()) return
+    if (/^https?:\/\//i.test(q.trim())) return void follow(q.trim()).then(() => setTerm(''))
     setError('')
     setBusy(true)
     try {
-      const r = await api.entertainment.findPodcasts(term)
+      const r = await api.entertainment.findPodcasts(q)
       setResults(r)
       if (!r.length) setError('No podcasts found by that name')
     } catch (e) {
@@ -577,12 +591,28 @@ function PodcastTab({ feed, setFeed, q, actions }: { feed: EntFeed; setFeed: (f:
           })}
         </section>
       )}
-      {pods.length === 0 && !results && (
+      <ModeSwitch mode={mode} setMode={setMode} list="Following" />
+      {mode === 'discover' && (
+        <Discover
+          tab="podcast"
+          onFeed={setFeed}
+          ideas={{
+            noun: 'podcasts',
+            prompt: () =>
+              `Suggest 8 podcasts I'd probably enjoy.${pods.length ? ` I already listen to: ${pods.map((p) => p.name).join(', ')}.` : ' Pick a varied mix of widely loved ones.'}\nReply with only the list, one per line, in this exact form:\nPodcast name | a short reason\nDon't use any tools.`,
+            onFind: (t) => {
+              setTerm(t)
+              void find(t)
+            }
+          }}
+        />
+      )}
+      {mode === 'list' && pods.length === 0 && !results && (
         <div className="empty-state welcome">
           <p>Find the podcasts you like and follow them. New episodes show here, and you can listen right in Plannr: it remembers where you stopped.</p>
         </div>
       )}
-      {pods.length > 0 && (
+      {mode === 'list' && pods.length > 0 && (
         <section className="ent-section">
           {pods.length > 1 && (
             <div className="news-tabs">
@@ -689,6 +719,7 @@ function MediaShelf({ kind, items, setItems, q, web }: { kind: MediaKind; items:
   }, [kind])
   const today = todayISO()
   const mine = items.filter((m) => m.kind === kind)
+  const [mode, setMode] = useMode(kind, mine.length === 0)
   const shown = mine
     .filter((m) => (filter === 'all' || m.status === filter) && has(q, m.title, m.subtitle, m.notes))
     .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || (b.finishedOn ?? '').localeCompare(a.finishedOn ?? '') || b.createdAt - a.createdAt)
@@ -707,14 +738,14 @@ function MediaShelf({ kind, items, setItems, q, web }: { kind: MediaKind; items:
       : []
 
   const update = (item: MediaItem): void => setItems((list) => list.map((m) => (m.id === item.id ? item : m)))
-  const search = async (): Promise<void> => {
-    if (!term.trim()) return
+  const search = async (q = term): Promise<void> => {
+    if (!q.trim()) return
     setError('')
     setBusy(true)
     try {
-      const r = await api.media.search(kind, term)
+      const r = await api.media.search(kind, q)
       setResults(r)
-      if (!r.length) setError(`Nothing found. You can still add “${term.trim()}” by name.`)
+      if (!r.length) setError(`Nothing found. You can still add “${q.trim()}” by name.`)
     } catch (e) {
       setResults([])
       setError(`${errText(e, 'Couldn’t look that up')}. You can still add it by name.`)
@@ -792,6 +823,27 @@ function MediaShelf({ kind, items, setItems, q, web }: { kind: MediaKind; items:
         </section>
       )}
 
+      <ModeSwitch mode={mode} setMode={setMode} list={`My ${w.plural}`} />
+      {mode === 'discover' && (
+        <Discover
+          tab={kind}
+          onMedia={(m) => setItems((list) => [m, ...list])}
+          ideas={{
+            noun: w.plural,
+            prompt: () => {
+              const had = mine.filter((m) => m.status !== 'want').slice(0, 40).map((m) => `${m.title}${m.year ? ` (${m.year})` : ''}: ${statusLabel(kind, m.status).toLowerCase()}${m.rating ? `, ${m.rating}/5` : ''}`)
+              const want = mine.filter((m) => m.status === 'want').slice(0, 25).map((m) => m.title)
+              return `Suggest 8 ${w.plural} I'd probably enjoy that aren't on my lists.${had.length ? `\nWhat I've already got to, and how I rated them:\n${had.join('\n')}` : ''}${want.length ? `\nAlready on my list: ${want.join(', ')}` : ''}${!had.length && !want.length ? '\nI haven\'t added any yet, so pick a varied mix of widely loved ones.' : ''}\nReply with only the list, one per line, in this exact form:\nTitle (Year) | a short reason\nDon't use any tools.`
+            },
+            onFind: (t) => {
+              setTerm(t)
+              void search(t)
+            }
+          }}
+        />
+      )}
+      {mode === 'list' && (
+        <>
       {mine.length === 0 && !results && (
         <div className="empty-state welcome">
           <p>
@@ -867,6 +919,8 @@ function MediaShelf({ kind, items, setItems, q, web }: { kind: MediaKind; items:
           />{' '}
           Notify me the day a new episode of one of my shows comes out
         </label>
+      )}
+        </>
       )}
 
       {openItem && (
@@ -1053,5 +1107,211 @@ function MediaDialog({ item, picked, onChange, onClose, onRemove }: { item: Medi
         </div>
       </div>
     </div>
+  )
+}
+
+// ---------- Discover ----------
+
+type Mode = 'list' | 'discover'
+
+/** My list or Discover, remembered per tab on this device (Discover first while the list is empty) */
+function useMode(tab: string, empty: boolean): [Mode, (m: Mode) => void] {
+  const pref = useUi((s) => s.prefs[`entMode.${tab}`]) as Mode | undefined
+  const setPref = useUi((s) => s.setPref)
+  return [pref === 'list' || pref === 'discover' ? pref : empty ? 'discover' : 'list', (m) => setPref(`entMode.${tab}`, m)]
+}
+
+function ModeSwitch({ mode, setMode, list }: { mode: Mode; setMode: (m: Mode) => void; list: string }) {
+  return (
+    <div className="segmented ent-mode" role="radiogroup" aria-label="Show">
+      <button type="button" role="radio" aria-checked={mode === 'list'} className={mode === 'list' ? 'active' : ''} onClick={() => setMode('list')}>
+        {list}
+      </button>
+      <button type="button" role="radio" aria-checked={mode === 'discover'} className={mode === 'discover' ? 'active' : ''} onClick={() => setMode('discover')}>
+        <Sparkles /> Discover
+      </button>
+    </div>
+  )
+}
+
+const SHAPE: Record<DiscoverTab, string> = { movie: 'poster', show: 'poster', book: 'poster', game: 'wide', podcast: 'square', reddit: 'round', watch: 'round' }
+
+function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?: (m: MediaItem) => void; onFeed?: (f: EntFeed) => void; ideas?: IdeasProps }) {
+  const [sections, setSections] = useState<DiscoverSection[] | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [added, setAdded] = useState<Set<string>>(() => new Set())
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const setPref = useUi((s) => s.setPref)
+  const load = useCallback(
+    async (refresh = false) => {
+      setBusy(true)
+      setError('')
+      try {
+        setSections(await api.discover.list(tab, refresh))
+      } catch (e) {
+        setError(errText(e, 'Couldn’t load suggestions'))
+      } finally {
+        setBusy(false)
+      }
+    },
+    [tab]
+  )
+  useEffect(() => {
+    void load()
+  }, [load])
+  const keyOf = (i: DiscoverItem): string => i.media?.extId ?? i.feedUrl ?? i.channel?.input ?? i.title
+  const add = async (i: DiscoverItem): Promise<void> => {
+    const key = keyOf(i)
+    setAdded((s) => new Set(s).add(key))
+    setPref(`entMode.${tab}`, 'discover') // stay here while discovering
+    try {
+      if (i.media) {
+        const m = await api.media.add(i.media)
+        onMedia?.(m)
+        showToast(`Added ${m.title} to your list`)
+      } else if (i.feedUrl) {
+        onFeed?.(await api.entertainment.add(i.feedUrl, 'podcast'))
+        showToast(`Following ${i.title}`)
+      } else if (i.channel) {
+        onFeed?.(await api.entertainment.add(i.channel.input, i.channel.kind))
+        showToast(`Added ${i.title}`)
+      }
+    } catch (e) {
+      setAdded((s) => {
+        const n = new Set(s)
+        n.delete(key)
+        return n
+      })
+      showToast(errText(e, 'Couldn’t add that'))
+    }
+  }
+  const verb = (i: DiscoverItem): string => (i.feedUrl ? 'Follow' : 'Add')
+  return (
+    <div className="disc">
+      {ideas && <Ideas {...ideas} />}
+      {busy && !sections && <p className="muted small">Finding things for you…</p>}
+      {error && (
+        <p className="small danger-text">
+          {error}.{' '}
+          <button type="button" className="link-btn" onClick={() => void load(true)}>
+            Try again
+          </button>
+        </p>
+      )}
+      {sections?.map((s) => {
+        const open = expanded.has(s.id)
+        const limit = SHAPE[tab] === 'wide' ? 8 : 12
+        return (
+          <section key={s.id} className="disc-section" aria-label={s.title}>
+            <div className="disc-head">
+              <h2 className="section-title">{s.title}</h2>
+              {s.note && <span className="small muted">{s.note}</span>}
+            </div>
+            <div className={`disc-grid ${SHAPE[tab]}`}>
+              {(open ? s.items : s.items.slice(0, limit)).map((i) => {
+                const done = added.has(keyOf(i))
+                return (
+                  <div key={keyOf(i)} className="disc-card">
+                    <a className="disc-cover" href={i.url} target="_blank" rel="noreferrer" title={i.summary || i.title}>
+                      {i.image ? <img src={i.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="media-cover-empty">{i.title.replace(/^(r\/|@)/, '').slice(0, 1).toUpperCase()}</span>}
+                      {i.badge && <span className="disc-badge">{i.badge}</span>}
+                    </a>
+                    <b className="ent-clamp" title={i.title}>
+                      {i.title}
+                    </b>
+                    {i.subtitle && <span className="small muted ent-clamp1">{i.subtitle}</span>}
+                    <button type="button" className="btn sm disc-add" disabled={done} aria-label={`${verb(i)} ${i.title}`} onClick={() => void add(i)}>
+                      {done ? (
+                        <>
+                          <Check /> {i.feedUrl ? 'Following' : 'Added'}
+                        </>
+                      ) : (
+                        <>
+                          <Plus /> {verb(i)}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+            {s.items.length > limit && (
+              <button type="button" className="link-btn small disc-more" onClick={() => setExpanded((x) => { const n = new Set(x); if (open) n.delete(s.id); else n.add(s.id); return n })}>
+                {open ? 'Show fewer' : `Show all ${s.items.length}`}
+              </button>
+            )}
+          </section>
+        )
+      })}
+      {sections && sections.length === 0 && <p className="muted small">Nothing new to suggest right now. You’ve added everything on these lists!</p>}
+      {sections && (
+        <p className="small muted disc-foot">
+          Lists are updated every few hours.{' '}
+          <button type="button" className="link-btn" disabled={busy} onClick={() => void load(true)}>
+            {busy ? 'Updating…' : 'Update now'}
+          </button>
+        </p>
+      )}
+    </div>
+  )
+}
+
+interface IdeasProps {
+  noun: string
+  prompt: () => string
+  onFind: (title: string) => void
+}
+
+/** Suggestions picked for you by the assistant, from what's on your lists */
+function Ideas({ noun, prompt, onFind }: IdeasProps) {
+  const [state, setState] = useState<{ busy: boolean; error: string; ideas: Idea[] } | null>(null)
+  const ask = async (): Promise<void> => {
+    setState({ busy: true, error: '', ideas: [] })
+    try {
+      if (!(await api.assistant.status()).configured) return setState({ busy: false, error: 'setup', ideas: [] })
+      const { reply } = await api.assistant.ask([{ role: 'user', text: prompt() }])
+      const ideas = parseIdeas(reply)
+      setState({ busy: false, error: ideas.length ? '' : 'The assistant didn’t suggest anything. Try again.', ideas })
+    } catch (e) {
+      setState({ busy: false, error: errText(e, 'The assistant couldn’t answer'), ideas: [] })
+    }
+  }
+  return (
+    <section className="card disc-ideas" aria-label="Ideas just for you">
+      <div className="disc-ideas-head">
+        <Sparkles />
+        <div>
+          <b>Ideas just for you</b>
+          <span className="small muted">The assistant suggests {noun} from what’s on your lists and how you rated them.</span>
+        </div>
+        <button type="button" className="btn sm" disabled={state?.busy} onClick={() => void ask()}>
+          {state?.busy ? 'Thinking…' : state?.ideas.length ? 'More ideas' : 'Get ideas'}
+        </button>
+      </div>
+      {state?.error === 'setup' && (
+        <p className="small muted">
+          Set up the assistant first (it’s free with a Gemini or Groq key).{' '}
+          <button type="button" className="link-btn" onClick={() => go({ view: 'assistant' })}>
+            Open the Assistant
+          </button>
+        </p>
+      )}
+      {state?.error && state.error !== 'setup' && <p className="small danger-text">{state.error}</p>}
+      {state?.ideas.map((i) => (
+        <div key={i.title} className="disc-idea">
+          <div>
+            <b>
+              {i.title}
+              {i.year ? ` (${i.year})` : ''}
+            </b>
+            <span className="small muted">{i.reason}</span>
+          </div>
+          <button type="button" className="btn sm" aria-label={`Find ${i.title}`} onClick={() => onFind(i.title)}>
+            <Search /> Find
+          </button>
+        </div>
+      ))}
+    </section>
   )
 }

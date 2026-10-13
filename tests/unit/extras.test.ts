@@ -9,6 +9,8 @@ import * as packages from '../../src/main/services/packages'
 import * as weather from '../../src/main/services/weather'
 import * as ent from '../../src/main/services/entertainment'
 import * as media from '../../src/main/services/media'
+import { discover, favouriteGenres } from '../../src/main/services/discover'
+import { parseIdeas } from '../../src/shared/ideas'
 import * as assistant from '../../src/main/services/assistant'
 import * as money from '../../src/main/services/money'
 import { createTicket, getTicket, updateTicket } from '../../src/main/services/tickets'
@@ -25,6 +27,17 @@ const fakeFetch = async (url: string): Promise<string> => {
   if (url.includes('twitch.tv/shroud')) return fixture('twitch-live.html')
   if (url.includes('twitch.tv')) return fixture('twitch-offline.html')
   if (url.includes('open-meteo')) return fixture('forecast.json')
+  if (url.includes('tvmaze.com/schedule/web')) return fixture('tv-web.json')
+  if (url.includes('tvmaze.com/schedule')) return fixture('tv-network.json')
+  if (/itunes\.apple\.com\/\w+\/rss\/topmovies/.test(url)) return fixture('top-movies.json')
+  if (/marketingtools.*podcasts/.test(url)) return fixture('top-podcasts.json')
+  if (/marketingtools.*books/.test(url)) return fixture('top-books.json')
+  if (url.includes('itunes.apple.com/lookup')) return fixture('podcast-lookup.json')
+  if (url.includes('openlibrary.org/trending')) return fixture('ol-trending.json')
+  if (url.includes('openlibrary.org/subjects')) return fixture('ol-subject.json')
+  if (url.includes('steampowered.com/api/featuredcategories')) return fixture('steam-featured.json')
+  if (url.includes('cheapshark.com/api/1.0/deals')) return fixture('cheapshark.json')
+  if (url.includes('reddit.com/r/popular')) return fixture('reddit-popular.xml')
   if (url.includes('tvmaze.com/search')) return fixture('tvmaze-search.json')
   if (url.includes('tvmaze.com/shows')) return fixture('tvmaze-show.json')
   if (url.includes('media-imdb')) return fixture('imdb.json')
@@ -293,5 +306,54 @@ describe('movies, shows, books, games, podcasts and Reddit', () => {
     expect(feed.videos.filter((v) => v.kind === 'reddit' && v.image).length).toBeGreaterThan(3)
     markNews(db, post.id, { saved: true })
     expect(ent.entFeed(db).videos.find((v) => v.id === post.id)?.saved).toBe(true)
+  })
+})
+
+describe('discover', () => {
+  it('top picks and popular lists for every tab', async () => {
+    const titles = async (tab: Parameters<typeof discover>[1]) => (await discover(db, tab, fakeFetch)).map((s) => s.title)
+    expect(await titles('show')).toEqual(['Top picks: new episodes out now', 'Highest rated, airing now'])
+    const movies = await discover(db, 'movie', fakeFetch)
+    expect(movies[0]).toMatchObject({ title: 'Top picks: popular right now' })
+    expect(movies[0].items[0]).toMatchObject({ badge: '#1', media: { kind: 'movie', extId: expect.stringMatching(/^itunes:/) } })
+    expect(movies[0].items[0].image).toMatch(/300x450bb\.jpg$/)
+    expect((await titles('book')).slice(0, 2)).toEqual(['Top picks: bestsellers', 'Trending this week'])
+    const games = await discover(db, 'game', fakeFetch)
+    expect(games.map((s) => s.id)).toEqual(['top', 'sellers', 'specials', 'new'])
+    expect(games[0].items[0].media?.extId).toMatch(/^steam:\d+$/)
+    const pods = await discover(db, 'podcast', fakeFetch)
+    expect(pods[0].items.length).toBeGreaterThan(10)
+    expect(pods[0].items[0].feedUrl).toMatch(/^https?:/)
+    const reddit = await discover(db, 'reddit', fakeFetch)
+    expect(reddit[0]).toMatchObject({ title: 'Top picks: popular today' })
+    expect(reddit[0].items[0].channel?.kind).toBe('reddit')
+    expect((await discover(db, 'watch', fakeFetch))[0].items[0]).toMatchObject({ title: 'Linus Tech Tips', channel: { kind: 'youtube', input: '@LinusTechTips' } })
+  })
+
+  it('picks for you from your genres; leaves out what you already have; kept for 6 hours', async () => {
+    const [sev] = await media.searchMedia('show', 'severance', fakeFetch)
+    const show = await media.addMedia(db, sev, 'done', fakeFetch)
+    media.updateMedia(db, show.id, { rating: 5 })
+    expect(favouriteGenres(media.listMedia(db))).toEqual(['Drama', 'Science-Fiction', 'Mystery'])
+    const sections = await discover(db, 'show', fakeFetch)
+    expect(sections[1]).toMatchObject({ id: 'foryou', title: 'For you: more drama and science-fiction', note: 'Because you added Severance' })
+    const first = sections[0].items[0].media!
+    await media.addMedia(db, first)
+    const offline = async (): Promise<string> => Promise.reject(new Error('offline'))
+    const again = await discover(db, 'show', offline) // from what was kept
+    expect(again[0].items.some((i) => i.media?.extId === first.extId)).toBe(false)
+    const [book] = await media.searchMedia('book', 'project hail mary', fakeFetch)
+    await media.addMedia(db, book, 'done')
+    expect((await discover(db, 'book', fakeFetch)).map((s) => s.id)).toContain('subject')
+    await ent.addChannel(db, 'https://www.youtube.com/@LinusTechTips', undefined, fakeFetch)
+    expect((await discover(db, 'watch', fakeFetch))[0].items.some((i) => i.title === 'Linus Tech Tips')).toBe(false)
+  })
+
+  it('reads the assistant’s ideas', () => {
+    expect(parseIdeas('Here you go:\n1. Arrival (2016) | Smart, quiet sci-fi\n- **1917** (2019) | One-shot war film\n* Dark | German mystery\nEnjoy!')).toEqual([
+      { title: 'Arrival', year: 2016, reason: 'Smart, quiet sci-fi' },
+      { title: '1917', year: 2019, reason: 'One-shot war film' },
+      { title: 'Dark', year: null, reason: 'German mystery' }
+    ])
   })
 })
