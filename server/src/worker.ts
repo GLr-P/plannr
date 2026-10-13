@@ -9,6 +9,7 @@
  *   PUT/GET/HEAD /api/s/:space/blob/:id  encrypted file contents (R2 if bound, else in D1 in 1.5 MB parts)
  *   GET  /api/ics?u=                     a public holiday calendar from Google (the phone app can't fetch it itself)
  *   GET  /api/s/<space>/fetch?u=         a public web page or feed for a signed-in device (news on the phone)
+ *   POST /api/s/<space>/fetch?u=         the same for an allow-listed API that only answers POST (where to watch)
  *
  * Anything else is served from the static assets (the phone web app), when they're bound.
  */
@@ -54,6 +55,9 @@ const MAX_PUSH = 40 // D1 allows 50 queries per request on the free plan
 const PART = 1_500_000 // D1 rows are at most 2 MB
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...CORS } })
+/** Hosts the fetch helper may send a request body to */
+const POST_HOSTS = ['apis.justwatch.com']
+
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PUT, HEAD, OPTIONS' }
 
 async function sha256Hex(text: string): Promise<string> {
@@ -124,7 +128,13 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
       return json({ error: 'Bad address' }, 400)
     }
     if (parsed.protocol !== 'https:' || /^(localhost|127.|10.|192.168.|169.254.)/.test(parsed.hostname)) return json({ error: 'Not allowed' }, 400)
-    const res = await fetch(parsed.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Plannr news; +https://github.com/GLr-P/plannr)', Accept: 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8' }, redirect: 'follow' })
+    // Sending (POST) is only for public APIs that answer nothing else: where to watch (JustWatch)
+    const post = request.method === 'POST'
+    if (post && !POST_HOSTS.includes(parsed.hostname)) return json({ error: 'Not allowed' }, 400)
+    const sent = post ? await request.text() : undefined
+    if (sent && sent.length > 20_000) return json({ error: 'Too big' }, 413)
+    const headers: Record<string, string> = { 'User-Agent': 'Mozilla/5.0 (compatible; Plannr news; +https://github.com/GLr-P/plannr)', Accept: 'text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8' }
+    const res = await fetch(parsed.toString(), post ? { method: 'POST', body: sent, headers: { ...headers, 'Content-Type': 'application/json' }, redirect: 'follow' } : { headers, redirect: 'follow' })
     const body = await res.arrayBuffer()
     if (body.byteLength > 3_000_000) return json({ error: 'Too big' }, 413)
     return new Response(body, { status: res.ok ? 200 : 502, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'private, max-age=300', ...CORS } })

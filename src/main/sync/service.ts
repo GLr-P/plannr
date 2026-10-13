@@ -141,11 +141,11 @@ export class SyncService {
   }
 
   /** Downloads a public page through the sync server (how the phone gets the news) */
-  async fetchText(url: string): Promise<string> {
+  async fetchText(url: string, post?: string): Promise<string> {
     const c = this.config()
     if (!c) throw new Error('Turn on sync (Settings) to get the news on this device')
     this.engine ??= await this.open(c.server, c.key)
-    return this.engine.fetchText(url)
+    return this.engine.fetchText(url, post)
   }
 
   async start(): Promise<void> {

@@ -460,6 +460,8 @@ export function registerIpc(api: PlannrApi): void {
 
 /** Saved copies of real news sources, for tests (PLANNR_NEWS_FIXTURES = the folder) */
 const NEWS_FIXTURES: [RegExp, string][] = [
+  [/cheapshark\.com\/api\/1\.0\/deals\?steamAppID/, 'cheapshark-steam.json'],
+  [/cheapshark\.com\/api\/1\.0\/stores/, 'cheapshark-stores.json'],
   [/api\.tvmaze\.com\/schedule\/web/, 'tv-web.json'],
   [/api\.tvmaze\.com\/schedule/, 'tv-network.json'],
   [/itunes\.apple\.com\/\w+\/rss\/topmovies/, 'top-movies.json'],
@@ -501,18 +503,20 @@ const NEWS_FIXTURES: [RegExp, string][] = [
  * Downloads text (holiday calendars, news). Tests never use the internet: PLANNR_HOLIDAY_FIXTURE is a saved
  * holiday feed and PLANNR_NEWS_FIXTURES a folder of saved news sources.
  */
-export async function fetchText(url: string): Promise<string> {
+export async function fetchText(url: string, post?: string): Promise<string> {
   const holidayFixture = process.env.PLANNR_HOLIDAY_FIXTURE
   if (holidayFixture && url.includes('calendar.google.com')) return readFileSync(holidayFixture, 'utf8')
   const newsFixtures = process.env.PLANNR_NEWS_FIXTURES
   if (newsFixtures) {
+    if (url.includes('justwatch.com')) return readFileSync(join(newsFixtures, post?.includes('"SHOW"') ? 'jw-show.json' : 'jw-movie.json'), 'utf8')
     const hit = NEWS_FIXTURES.find(([re]) => re.test(url))
     if (!hit) throw new Error('Offline (test)')
     return readFileSync(join(newsFixtures, hit[1]), 'utf8')
   }
   if (holidayFixture) throw new Error('Offline (test)')
   // Some services (e.g. CheapShark) want to know which app is asking
-  const res = await net.fetch(url, { headers: { 'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Plannr/${app.getVersion()} (+https://github.com/GLr-P/plannr)` } })
+  const headers: Record<string, string> = { 'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Plannr/${app.getVersion()} (+https://github.com/GLr-P/plannr)` }
+  const res = await net.fetch(url, post === undefined ? { headers } : { method: 'POST', body: post, headers: { ...headers, 'Content-Type': 'application/json' } })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.text()
 }

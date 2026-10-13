@@ -160,6 +160,7 @@ describe('news through the sync server (phones)', () => {
     const asked: string[] = []
     globalThis.fetch = (async (input: string | URL | Request) => {
       asked.push(String(input))
+      if (String(input).includes('justwatch')) return new Response('{"ok":true}')
       return new Response('<rss><channel><title>Local</title></channel></rss>')
     }) as typeof fetch
     try {
@@ -167,11 +168,17 @@ describe('news through the sync server (phones)', () => {
       expect(asked).toEqual(['https://www.castanet.net/rss/page-87.xml'])
       // Not for strangers, and only public https addresses
       const stranger = await device(srv, newSyncKey(), 'stranger')
+      const postDenied = await srv.fetch(`/api/s/${'x'.repeat(16)}/fetch?u=${encodeURIComponent('https://example.com/')}`, { method: 'POST', body: '{}', headers: { Authorization: 'Bearer nope' } })
+      expect(postDenied.status).toBe(401)
       const denied = await srv.fetch(`/api/s/${'x'.repeat(16)}/fetch?u=${encodeURIComponent('https://example.com/')}`, { headers: { Authorization: 'Bearer nope' } })
       expect(denied.status).toBe(401)
       await expect(stranger.engine.fetchText('https://example.com/')).resolves.toMatch(/Not allowed/)
       await expect(a.engine.fetchText('http://192.168.1.1/')).resolves.toMatch(/Not allowed/)
+      // Sending a request body only to the where-to-watch API
+      await expect(a.engine.fetchText('https://example.com/api', '{"q":1}')).rejects.toThrow(/Not allowed/)
       expect(asked).toHaveLength(1)
+      expect(JSON.parse(await a.engine.fetchText('https://apis.justwatch.com/graphql', '{"query":"x"}'))).toEqual({ ok: true })
+      expect(asked[1]).toBe('https://apis.justwatch.com/graphql')
     } finally {
       globalThis.fetch = real
     }

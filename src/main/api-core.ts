@@ -22,6 +22,7 @@ import * as weather from './services/weather'
 import * as ent from './services/entertainment'
 import * as media from './services/media'
 import { discover } from './services/discover'
+import { whereToWatch } from './services/watch'
 import * as money from './services/money'
 import { search } from './services/search'
 import { saveFile } from './services/files'
@@ -218,7 +219,8 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       add: async (item, status) => media.addMedia(db, item, status, hooks.fetchText),
       update: async (id, patch) => media.updateMedia(db, id, patch),
       remove: async (id) => media.removeMedia(db, id),
-      refresh: async () => media.refreshMedia(db, hooks.fetchText)
+      refresh: async () => media.refreshMedia(db, hooks.fetchText),
+      where: async (item) => whereToWatch(db, { kind: item.kind, title: item.title, year: item.year, extId: item.extId }, hooks.fetchText)
     },
     news: {
       feed: async () => news.newsFeed(db),

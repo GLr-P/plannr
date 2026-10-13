@@ -11,7 +11,8 @@ import { getSetting, setSetting } from './settings'
  * Downloading goes through `fetchText` (the PC fetches directly; the phone through the sync service).
  */
 
-export type FetchText = (url: string) => Promise<string>
+/** Downloads a page; with `post`, sends it as a JSON request body (for APIs that only answer POST) */
+export type FetchText = (url: string, post?: string) => Promise<string>
 
 export const DEFAULT_NEWS_PREFS: NewsPrefs = {
   place: null,

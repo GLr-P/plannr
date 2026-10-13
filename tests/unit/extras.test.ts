@@ -11,6 +11,7 @@ import * as ent from '../../src/main/services/entertainment'
 import * as media from '../../src/main/services/media'
 import { discover, favouriteGenres } from '../../src/main/services/discover'
 import { parseIdeas } from '../../src/shared/ideas'
+import { whereToWatch } from '../../src/main/services/watch'
 import * as assistant from '../../src/main/services/assistant'
 import * as money from '../../src/main/services/money'
 import { createTicket, getTicket, updateTicket } from '../../src/main/services/tickets'
@@ -21,7 +22,10 @@ import { listTasks } from '../../src/main/services/tasks'
 
 // Habits, lists, packages, weather, entertainment, the assistant's tools, warranties and free trials.
 const fixture = (name: string): string => readFileSync(join(__dirname, '../fixtures/news', name), 'utf8')
-const fakeFetch = async (url: string): Promise<string> => {
+const fakeFetch = async (url: string, post?: string): Promise<string> => {
+  if (url.includes('justwatch.com')) return fixture(post?.includes('"SHOW"') ? 'jw-show.json' : 'jw-movie.json')
+  if (url.includes('cheapshark.com/api/1.0/deals?steamAppID')) return fixture('cheapshark-steam.json')
+  if (url.includes('cheapshark.com/api/1.0/stores')) return fixture('cheapshark-stores.json')
   if (url.includes('youtube.com/feeds')) return fixture('yt-feed.xml')
   if (url.includes('youtube.com')) return fixture('yt-channel.html')
   if (url.includes('twitch.tv/shroud')) return fixture('twitch-live.html')
@@ -355,5 +359,27 @@ describe('discover', () => {
       { title: '1917', year: 2019, reason: 'One-shot war film' },
       { title: 'Dark', year: null, reason: 'German mystery' }
     ])
+  })
+})
+
+describe('where to watch', () => {
+  it('movies and shows: the right title (by IMDb id or name and year), grouped offers with links; games: store prices; books: links', async () => {
+    configureNews(db, { prefs: { place: { name: 'Osoyoos', region: 'British Columbia', country: 'Canada', countryCode: 'CA', lat: 49.03, lon: -119.45 } } })
+    const dune = await whereToWatch(db, { kind: 'movie', title: 'Dune', year: 1984, extId: 'tt0087182' }, fakeFetch)
+    expect(dune).toMatchObject({ found: true, source: 'JustWatch', country: 'ca', link: 'https://www.justwatch.com/ca/movie/dune' })
+    expect(dune.offers.find((o) => o.kind === 'stream')).toMatchObject({ service: 'Amazon Prime Video', url: expect.stringMatching(/^https:/), icon: expect.stringMatching(/^https:\/\/images\.justwatch\.com\/icon\/.+\.png$/) })
+    expect(dune.offers.map((o) => o.kind)).toEqual([...dune.offers.map((o) => o.kind)].sort((a, b) => ['stream', 'free', 'ads', 'library', 'rent', 'buy'].indexOf(a) - ['stream', 'free', 'ads', 'library', 'rent', 'buy'].indexOf(b)))
+    // Each service once per kind (the best quality)
+    expect(new Set(dune.offers.map((o) => o.serviceId + o.kind)).size).toBe(dune.offers.length)
+    const byName = await whereToWatch(db, { kind: 'movie', title: 'Dune: Part Two', year: 2024, extId: 'itunes:1' }, fakeFetch)
+    expect(byName.link).toBe('https://www.justwatch.com/ca/movie/dune-part-two-2023')
+    expect((await whereToWatch(db, { kind: 'movie', title: 'Not a real film', year: 2001, extId: '' }, fakeFetch)).found).toBe(false)
+    const show = await whereToWatch(db, { kind: 'show', title: 'Severance', year: 2022, extId: '44933' }, fakeFetch)
+    expect(show.offers.some((o) => o.kind === 'stream' && o.service === 'Apple TV')).toBe(true)
+    const game = await whereToWatch(db, { kind: 'game', title: 'Hollow Knight', year: null, extId: 'steam:367520' }, fakeFetch)
+    expect(game.offers[0]).toMatchObject({ kind: 'buy', price: expect.stringMatching(/^US\$/), url: expect.stringContaining('cheapshark.com/redirect') })
+    const book = await whereToWatch(db, { kind: 'book', title: 'Project Hail Mary', year: 2021, extId: '/works/OL21745884W' }, fakeFetch)
+    expect(book.offers.map((o) => o.service)).toEqual(['Open Library', 'A library near you', 'Libby', 'Amazon', 'Google Books'])
+    expect(book.offers.find((o) => o.service === 'Amazon')?.url).toContain('amazon.ca')
   })
 })

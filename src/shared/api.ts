@@ -1003,6 +1003,28 @@ export interface MediaResult {
   score?: number
 }
 
+/** One place to watch, buy or borrow something */
+export interface WatchOffer {
+  service: string
+  serviceId: string
+  icon: string
+  /** stream = with a subscription; ads = free with ads; library = borrow */
+  kind: 'stream' | 'free' | 'ads' | 'library' | 'rent' | 'buy'
+  url: string
+  price: string
+  note: string
+}
+export interface WhereToWatch {
+  /** False when the title couldn't be found (link is then a search) */
+  found: boolean
+  offers: WatchOffer[]
+  /** The full list on the source's site */
+  link: string
+  /** Where the information comes from (shown with it) */
+  source: string
+  country: string
+}
+
 /** Which Entertainment tab a Discover list is for */
 export type DiscoverTab = 'watch' | MediaKind | 'podcast' | 'reddit'
 /** A suggestion: a movie, show, book or game to add, a podcast to follow, or a channel or subreddit to add */
@@ -1730,6 +1752,8 @@ export interface PlannrApi {
     remove(id: string): Promise<void>
     /** Checks your shows for new episodes (at most once a day each) */
     refresh(): Promise<MediaItem[]>
+    /** Where to watch (movies, shows), buy (games) or read (books), for your country */
+    where(item: Pick<MediaResult, 'kind' | 'title' | 'year' | 'extId'>): Promise<WhereToWatch>
   }
   assistant: {
     status(): Promise<AssistantStatus>
@@ -1942,7 +1966,7 @@ export const API_SHAPE = {
   packages: ['list', 'add', 'update', 'remove', 'refresh', 'trackingStatus', 'setTrackingKey'],
   weather: ['forecast'],
   entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched', 'save', 'findPodcasts'],
-  media: ['list', 'search', 'add', 'update', 'remove', 'refresh'],
+  media: ['list', 'search', 'add', 'update', 'remove', 'refresh', 'where'],
   discover: ['list'],
   assistant: ['status', 'setup', 'ask'],
   holidays: ['range', 'status', 'configure', 'refresh'],

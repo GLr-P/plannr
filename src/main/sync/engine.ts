@@ -176,7 +176,8 @@ export class SyncEngine {
   }
 
   /** A public web page or feed, downloaded by the sync server for this device (phones can't read other sites themselves) */
-  async fetchText(url: string): Promise<string> {
+  async fetchText(url: string, post?: string): Promise<string> {
+    if (post !== undefined) return JSON.stringify(await this.transport.json('POST', `${this.base()}/fetch?u=${encodeURIComponent(url)}`, JSON.parse(post)))
     const bytes = await this.transport.getBytes(`${this.base()}/fetch?u=${encodeURIComponent(url)}`)
     if (!bytes) throw new Error('Not found')
     return new TextDecoder().decode(bytes)

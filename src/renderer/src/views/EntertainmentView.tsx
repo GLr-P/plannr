@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bookmark, BookmarkCheck, BookOpen, CalendarClock, Check, ExternalLink, Film, Gamepad2, MessageSquare, Play, Plus, Podcast, Radio, RefreshCw, Search, Shuffle, Star, Trash2, Tv, X, MonitorPlay as Youtube, Sparkles } from 'lucide-react'
-import type { DiscoverItem, DiscoverSection, DiscoverTab, EntChannel, EntFeed, EntVideo, MediaItem, MediaKind, MediaPatch, MediaResult, MediaStatus, PodcastResult } from '../../../shared/api'
+import type { DiscoverItem, DiscoverSection, DiscoverTab, WatchOffer, WhereToWatch, EntChannel, EntFeed, EntVideo, MediaItem, MediaKind, MediaPatch, MediaResult, MediaStatus, PodcastResult } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { formatDay, relativeTime, todayISO } from '../lib/format'
@@ -1035,6 +1035,7 @@ function MediaDialog({ item, picked, onChange, onClose, onRemove }: { item: Medi
           </button>
         </div>
         {item.summary && <p className="media-summary">{item.summary}</p>}
+        <WhereToWatchBox item={item} />
 
         {item.kind === 'book' && (
           <div className="media-progress">
@@ -1142,6 +1143,7 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
   const [busy, setBusy] = useState(false)
   const [added, setAdded] = useState<Set<string>>(() => new Set())
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const [preview, setPreview] = useState<DiscoverItem | null>(null)
   const setPref = useUi((s) => s.setPref)
   const load = useCallback(
     async (refresh = false) => {
@@ -1213,10 +1215,17 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
                 const done = added.has(keyOf(i))
                 return (
                   <div key={keyOf(i)} className="disc-card">
-                    <a className="disc-cover" href={i.url} target="_blank" rel="noreferrer" title={i.summary || i.title}>
-                      {i.image ? <img src={i.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="media-cover-empty">{i.title.replace(/^(r\/|@)/, '').slice(0, 1).toUpperCase()}</span>}
-                      {i.badge && <span className="disc-badge">{i.badge}</span>}
-                    </a>
+                    {i.media ? (
+                      <button type="button" className="disc-cover" title={i.summary || i.title} aria-label={`About ${i.title}`} onClick={() => setPreview(i)}>
+                        {i.image ? <img src={i.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="media-cover-empty">{i.title.slice(0, 1).toUpperCase()}</span>}
+                        {i.badge && <span className="disc-badge">{i.badge}</span>}
+                      </button>
+                    ) : (
+                      <a className="disc-cover" href={i.url} target="_blank" rel="noreferrer" title={i.summary || i.title}>
+                        {i.image ? <img src={i.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="media-cover-empty">{i.title.replace(/^(r\/|@)/, '').slice(0, 1).toUpperCase()}</span>}
+                        {i.badge && <span className="disc-badge">{i.badge}</span>}
+                      </a>
+                    )}
                     <b className="ent-clamp" title={i.title}>
                       {i.title}
                     </b>
@@ -1244,6 +1253,49 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
           </section>
         )
       })}
+      {preview?.media && (
+        <div className="dialog-backdrop" onMouseDown={() => setPreview(null)}>
+          <div className="dialog media-dialog" role="dialog" aria-label={preview.title} onMouseDown={(e) => e.stopPropagation()}>
+            <div className="media-dialog-top">
+              {preview.image ? <img src={preview.image} alt="" referrerPolicy="no-referrer" className={preview.media.kind === 'game' ? 'wide' : ''} /> : <span className="media-cover-empty big">{preview.title.slice(0, 1)}</span>}
+              <div className="media-dialog-head">
+                <h2>{preview.title}</h2>
+                {preview.subtitle && <div className="muted small">{preview.subtitle}</div>}
+                {preview.media.genres.length > 0 && (
+                  <div className="media-genres">
+                    {preview.media.genres.map((g) => (
+                      <span key={g}>{g}</span>
+                    ))}
+                  </div>
+                )}
+                <button type="button" className="btn media-preview-add" disabled={added.has(keyOf(preview))} onClick={() => void add(preview)}>
+                  {added.has(keyOf(preview)) ? (
+                    <>
+                      <Check /> On your list
+                    </>
+                  ) : (
+                    <>
+                      <Plus /> Add to my list
+                    </>
+                  )}
+                </button>
+              </div>
+              <button type="button" className="icon-btn media-close" aria-label="Close" onClick={() => setPreview(null)}>
+                <X />
+              </button>
+            </div>
+            {preview.summary && <p className="media-summary">{preview.summary}</p>}
+            <WhereToWatchBox item={preview.media} />
+            {preview.url && (
+              <div className="media-dialog-foot">
+                <a href={preview.url} target="_blank" rel="noreferrer" className="btn sm">
+                  <ExternalLink /> More about it
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {sections && sections.length === 0 && <p className="muted small">Nothing new to suggest right now. You’ve added everything on these lists!</p>}
       {sections && (
         <p className="small muted disc-foot">
@@ -1312,6 +1364,113 @@ function Ideas({ noun, prompt, onFind }: IdeasProps) {
           </button>
         </div>
       ))}
+    </section>
+  )
+}
+
+// ---------- Where to watch ----------
+
+const OFFER_GROUPS: { kind: WatchOffer['kind']; label: string }[] = [
+  { kind: 'stream', label: 'With a subscription' },
+  { kind: 'free', label: 'Free' },
+  { kind: 'ads', label: 'Free with ads' },
+  { kind: 'library', label: 'Borrow' },
+  { kind: 'rent', label: 'Rent' },
+  { kind: 'buy', label: 'Buy' }
+]
+
+/** Where to watch a movie or show, buy a game or read a book; services you have are marked (per device) */
+function WhereToWatchBox({ item }: { item: Pick<MediaResult, 'kind' | 'title' | 'year' | 'extId'> }) {
+  const [where, setWhere] = useState<WhereToWatch | null>(null)
+  const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const mine = new Set((useUi((s) => s.prefs.entServices) ?? '').split(',').filter(Boolean))
+  const setPref = useUi((s) => s.setPref)
+  useEffect(() => {
+    let alive = true
+    setWhere(null)
+    setError('')
+    api.media
+      .where({ kind: item.kind, title: item.title, year: item.year, extId: item.extId })
+      .then((w) => alive && setWhere(w))
+      .catch((e) => alive && setError(errText(e, 'Couldn’t check where it’s available')))
+    return () => {
+      alive = false
+    }
+  }, [item.kind, item.title, item.year, item.extId])
+  const heading = item.kind === 'game' ? 'Where to buy' : item.kind === 'book' ? 'Where to read' : 'Where to watch'
+  const toggle = (id: string): void => {
+    const next = new Set(mine)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setPref('entServices', [...next].join(','))
+  }
+  const subscriptions = where?.offers.filter((o) => o.kind === 'stream') ?? []
+  const yours = subscriptions.filter((o) => mine.has(o.serviceId))
+  return (
+    <section className="watch" aria-label={heading}>
+      <div className="watch-head">
+        <h3>{heading}</h3>
+        {yours.length > 0 && <span className="watch-yours">On {yours.map((o) => o.service).join(', ')}, which you have</span>}
+        {subscriptions.length > 0 && (
+          <button type="button" className="link-btn small watch-edit" onClick={() => setEditing((e) => !e)}>
+            {editing ? 'Done' : 'Which services do you have?'}
+          </button>
+        )}
+      </div>
+      {!where && !error && <p className="small muted">Checking…</p>}
+      {error && <p className="small muted">{error}</p>}
+      {where && !where.found && (
+        <p className="small muted">
+          Couldn’t find {item.kind === 'game' ? 'store prices' : 'where it’s available'} for this.{' '}
+          {where.link && (
+            <a href={where.link} target="_blank" rel="noreferrer">
+              Search {where.source}
+            </a>
+          )}
+        </p>
+      )}
+      {where?.found && where.offers.length === 0 && <p className="small muted">Not available to stream, rent or buy in your country right now.</p>}
+      {where &&
+        OFFER_GROUPS.map((g) => {
+          const offers = where.offers.filter((o) => o.kind === g.kind).sort((a, b) => Number(mine.has(b.serviceId)) - Number(mine.has(a.serviceId)))
+          if (!offers.length) return null
+          return (
+            <div key={g.kind} className="watch-group">
+              <span className="watch-label">{g.label}</span>
+              <div className="watch-offers">
+                {offers.map((o) =>
+                  editing && o.kind === 'stream' ? (
+                    <label key={o.serviceId} className={`watch-offer ${mine.has(o.serviceId) ? 'mine' : ''}`}>
+                      <input type="checkbox" checked={mine.has(o.serviceId)} onChange={() => toggle(o.serviceId)} />
+                      {o.icon && <img src={o.icon} alt="" referrerPolicy="no-referrer" />}
+                      <span>{o.service}</span>
+                    </label>
+                  ) : (
+                    <a key={`${o.serviceId}:${o.kind}`} className={`watch-offer ${mine.has(o.serviceId) ? 'mine' : ''}`} href={o.url} target="_blank" rel="noreferrer" title={o.note || o.service}>
+                      {o.icon && <img src={o.icon} alt="" referrerPolicy="no-referrer" />}
+                      <span>{o.service}</span>
+                      {o.price && <span className="watch-price">{o.price}</span>}
+                      {mine.has(o.serviceId) && <Check className="watch-check" />}
+                    </a>
+                  )
+                )}
+              </div>
+            </div>
+          )
+        })}
+      {where?.found && where.source && (
+        <p className="small muted watch-source">
+          From {where.source}
+          {where.country ? ` (${where.country.toUpperCase()})` : ''}
+          {item.kind === 'game' ? ', prices in US dollars' : ''}.{' '}
+          {where.link && (
+            <a href={where.link} target="_blank" rel="noreferrer">
+              See it there
+            </a>
+          )}
+        </p>
+      )}
     </section>
   )
 }
