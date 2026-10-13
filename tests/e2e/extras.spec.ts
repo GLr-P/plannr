@@ -61,6 +61,8 @@ test('Entertainment: shows with episodes, movies and books with ratings, podcast
   await watch.locator('label.watch-offer', { hasText: 'Apple TV' }).first().locator('input').check()
   await watch.getByRole('button', { name: 'Done' }).click()
   await expect(watch.locator('.watch-yours')).toContainText('Apple TV')
+  await expect(watch.getByRole('button', { name: 'Watch the trailer' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Watch the trailer for Severance' })).toBeVisible()
   await shot(page, 'x1b-show')
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(page.locator('.media-card', { hasText: 'Severance' }).locator('.media-stars')).toHaveText('★★★★')

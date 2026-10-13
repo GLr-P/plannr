@@ -23,7 +23,7 @@ import { listTasks } from '../../src/main/services/tasks'
 // Habits, lists, packages, weather, entertainment, the assistant's tools, warranties and free trials.
 const fixture = (name: string): string => readFileSync(join(__dirname, '../fixtures/news', name), 'utf8')
 const fakeFetch = async (url: string, post?: string): Promise<string> => {
-  if (url.includes('justwatch.com')) return fixture(post?.includes('"SHOW"') ? 'jw-show.json' : 'jw-movie.json')
+  if (url.includes('justwatch.com')) return fixture(post?.includes('"SHOW"') ? 'jw-show.json' : post?.includes('"colony"') ? 'jw-colony.json' : 'jw-movie.json')
   if (url.includes('cheapshark.com/api/1.0/deals?steamAppID')) return fixture('cheapshark-steam.json')
   if (url.includes('cheapshark.com/api/1.0/stores')) return fixture('cheapshark-stores.json')
   if (url.includes('youtube.com/feeds')) return fixture('yt-feed.xml')
@@ -374,6 +374,15 @@ describe('where to watch', () => {
     const byName = await whereToWatch(db, { kind: 'movie', title: 'Dune: Part Two', year: 2024, extId: 'itunes:1' }, fakeFetch)
     expect(byName.link).toBe('https://www.justwatch.com/ca/movie/dune-part-two-2023')
     expect((await whereToWatch(db, { kind: 'movie', title: 'Not a real film', year: 2001, extId: '' }, fakeFetch)).found).toBe(false)
+    // Trailers (official first) and, for anything not found, a YouTube search
+    expect(dune.trailers[0].url).toMatch(/^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/)
+    expect((await whereToWatch(db, { kind: 'movie', title: 'Not a real film', year: 2001, extId: '' }, fakeFetch)).trailerSearch).toBe('https://www.youtube.com/results?search_query=Not%20a%20real%20film%202001%20trailer')
+    // Listed under its original title (Colony → Gunche): the best result from the same year
+    const colony = await whereToWatch(db, { kind: 'movie', title: 'colony', year: 2026, extId: 'itunes:9' }, fakeFetch)
+    expect(colony.link).toContain('/movie/')
+    expect(colony.found).toBe(true)
+    // …but not a different film that happens to be from the same year
+    expect((await whereToWatch(db, { kind: 'movie', title: 'Spider-Man: Brand New Day', year: 2026, extId: 'itunes:5' }, fakeFetch)).found).toBe(false)
     const show = await whereToWatch(db, { kind: 'show', title: 'Severance', year: 2022, extId: '44933' }, fakeFetch)
     expect(show.offers.some((o) => o.kind === 'stream' && o.service === 'Apple TV')).toBe(true)
     const game = await whereToWatch(db, { kind: 'game', title: 'Hollow Knight', year: null, extId: 'steam:367520' }, fakeFetch)

@@ -508,7 +508,7 @@ export async function fetchText(url: string, post?: string): Promise<string> {
   if (holidayFixture && url.includes('calendar.google.com')) return readFileSync(holidayFixture, 'utf8')
   const newsFixtures = process.env.PLANNR_NEWS_FIXTURES
   if (newsFixtures) {
-    if (url.includes('justwatch.com')) return readFileSync(join(newsFixtures, post?.includes('"SHOW"') ? 'jw-show.json' : 'jw-movie.json'), 'utf8')
+    if (url.includes('justwatch.com')) return readFileSync(join(newsFixtures, post?.includes('"SHOW"') ? 'jw-show.json' : post?.includes('"colony"') ? 'jw-colony.json' : 'jw-movie.json'), 'utf8')
     const hit = NEWS_FIXTURES.find(([re]) => re.test(url))
     if (!hit) throw new Error('Offline (test)')
     return readFileSync(join(newsFixtures, hit[1]), 'utf8')

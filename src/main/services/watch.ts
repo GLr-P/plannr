@@ -14,21 +14,36 @@ const KEEP_MS = 12 * 3_600_000
 const kept = new WeakMap<Db, Map<string, { at: number; value: WhereToWatch }>>()
 const storesKept = new WeakMap<Db, Record<string, { name: string; icon: string }>>()
 
+const words = (t: string): string[] => t.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !['the', 'and', 'part', 'movie'].includes(w))
+const sharesWord = (a: string, b: string): boolean => words(a).some((w) => words(b).includes(w))
 const norm = (t: string): string => t.toLowerCase().replace(/[^a-z0-9]+/g, '')
 const ORDER: WatchOffer['kind'][] = ['stream', 'free', 'ads', 'library', 'rent', 'buy']
 
 const JW_QUERY = `query WhereToWatch($country: Country!, $language: Language!, $first: Int!, $filter: TitleFilter) {
   popularTitles(country: $country, first: $first, filter: $filter) { edges { node {
     objectType
-    content(country: $country, language: $language) { title fullPath originalReleaseYear externalIds { imdbId } }
+    content(country: $country, language: $language) { title fullPath originalReleaseYear externalIds { imdbId } clips { externalId provider name } }
     offers(country: $country, platform: WEB) { monetizationType presentationType standardWebURL retailPrice(language: $language) package { clearName technicalName icon(profile: S100) } }
   } } }
 }`
 
 interface JwNode {
   objectType: string
-  content: { title: string; fullPath?: string; originalReleaseYear?: number; externalIds?: { imdbId?: string | null } }
+  content: { title: string; fullPath?: string; originalReleaseYear?: number; externalIds?: { imdbId?: string | null }; clips?: { externalId: string; provider: string; name?: string }[] | null }
   offers?: { monetizationType: string; presentationType?: string; standardWebURL?: string; retailPrice?: string | null; package?: { clearName: string; technicalName: string; icon?: string } }[]
+}
+
+/** A YouTube search for something's trailer */
+const youtubeSearch = (want: Want): string => `https://www.youtube.com/results?search_query=${encodeURIComponent(`${want.title}${want.year ? ` ${want.year}` : ''} ${want.kind === 'game' ? 'game ' : ''}trailer`)}`
+
+/** YouTube trailers and clips, official trailers first */
+function trailersOf(node: JwNode): { name: string; url: string }[] {
+  const clips = (node.content.clips ?? []).filter((c) => /youtube/i.test(c.provider) && /^[\w-]{11}$/.test(c.externalId))
+  const rank = (name = ''): number => (/official trailer/i.test(name) ? 0 : /trailer/i.test(name) ? 1 : /teaser/i.test(name) ? 2 : 3)
+  return [...new Map(clips.map((c) => [c.externalId, c])).values()]
+    .sort((a, b) => rank(a.name) - rank(b.name))
+    .slice(0, 4)
+    .map((c) => ({ name: c.name?.trim() || 'Trailer', url: `https://www.youtube.com/watch?v=${c.externalId}` }))
 }
 
 const JW_KIND: Record<string, WatchOffer['kind']> = { FLATRATE: 'stream', FREE: 'free', ADS: 'ads', RENT: 'rent', BUY: 'buy' }
@@ -44,9 +59,13 @@ export function parseJustWatch(json: string, want: Want, country: string): Where
     (imdb && nodes.find((n) => n.content.externalIds?.imdbId === imdb)) ||
     nodes.find((n) => same(n) && want.year !== null && Math.abs((n.content.originalReleaseYear ?? 0) - want.year) <= 1) ||
     nodes.find((n) => same(n) && want.year === null) ||
+    // Listed under another name (often the original title, e.g. Colony → Gunche): the best result from the same year
+    // (only the top result, or one sharing a word with the name, so a different film from that year isn't picked)
+    (want.year !== null && nodes.find((n, i) => n.content.originalReleaseYear === want.year && (i === 0 || sharesWord(n.content.title, want.title)))) ||
     null
   const search = `https://www.justwatch.com/${country}/search?q=${encodeURIComponent(want.title)}`
-  if (!node) return { found: false, offers: [], link: search, source: 'JustWatch', country }
+  const trailerSearch = youtubeSearch(want)
+  if (!node) return { found: false, offers: [], link: search, source: 'JustWatch', country, trailers: [], trailerSearch }
   const best = new Map<string, { offer: WatchOffer; q: number }>()
   for (const o of node.offers ?? []) {
     const kind = JW_KIND[o.monetizationType]
@@ -69,7 +88,7 @@ export function parseJustWatch(json: string, want: Want, country: string): Where
     })
   }
   const offers = [...best.values()].map((b) => b.offer).sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind) || a.service.localeCompare(b.service))
-  return { found: true, offers, link: node.content.fullPath ? `https://www.justwatch.com${node.content.fullPath}` : search, source: 'JustWatch', country }
+  return { found: true, offers, link: node.content.fullPath ? `https://www.justwatch.com${node.content.fullPath}` : search, source: 'JustWatch', country, trailers: trailersOf(node), trailerSearch }
 }
 
 async function stores(db: Db, fetchText: FetchText): Promise<Record<string, { name: string; icon: string }>> {
@@ -109,7 +128,7 @@ function bookLinks(want: Want, country: string): WhereToWatch {
     { service: 'Amazon', serviceId: 'amazon', icon: '', kind: 'buy', url: `https://www.${amazon}/s?k=${q}&i=stripbooks`, price: '', note: '' },
     { service: 'Google Books', serviceId: 'googlebooks', icon: '', kind: 'buy', url: `https://www.google.com/search?tbm=bks&q=${q}`, price: '', note: '' }
   ]
-  return { found: true, offers, link: '', source: '', country }
+  return { found: true, offers, link: '', source: '', country, trailers: [], trailerSearch: '' }
 }
 
 export async function whereToWatch(db: Db, want: Want, fetchText: FetchText, now = Date.now()): Promise<WhereToWatch> {
@@ -125,7 +144,7 @@ export async function whereToWatch(db: Db, want: Want, fetchText: FetchText, now
     const steam = /^steam:(\d+)$/.exec(want.extId)?.[1]
     const json = await fetchText(steam ? `https://www.cheapshark.com/api/1.0/deals?steamAppID=${steam}` : `https://www.cheapshark.com/api/1.0/deals?title=${encodeURIComponent(want.title)}&exact=1`)
     const offers = parseGameDeals(json, await stores(db, fetchText))
-    value = { found: offers.length > 0, offers, link: steam ? `https://www.cheapshark.com/` : '', source: 'CheapShark', country }
+    value = { found: offers.length > 0, offers, link: steam ? `https://www.cheapshark.com/` : '', source: 'CheapShark', country, trailers: [], trailerSearch: youtubeSearch(want) }
   } else {
     const body = JSON.stringify({ query: JW_QUERY, variables: { country: country.toUpperCase(), language: 'en', first: 6, filter: { searchQuery: want.title, objectTypes: [want.kind === 'show' ? 'SHOW' : 'MOVIE'] } } })
     value = parseJustWatch(await fetchText('https://apis.justwatch.com/graphql', body), want, country)

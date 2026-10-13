@@ -1005,11 +1005,12 @@ function MediaDialog({ item, picked, onChange, onClose, onRemove }: { item: Medi
   const aired = item.kind === 'show' ? airedOf(item, today) : []
   const next = aired[item.progress]
   const pct = item.total > 0 ? Math.min(100, Math.round((item.progress / item.total) * 100)) : 0
+  const where = useWhere(item)
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div className="dialog media-dialog" role="dialog" aria-label={item.title} onMouseDown={(e) => e.stopPropagation()}>
         <div className="media-dialog-top">
-          {item.image ? <img src={item.image} alt="" referrerPolicy="no-referrer" className={item.kind === 'game' ? 'wide' : ''} /> : <span className="media-cover-empty big">{item.title.slice(0, 1)}</span>}
+          <Poster title={item.title} image={item.image} wide={item.kind === 'game'} where={where.where} />
           <div className="media-dialog-head">
             {picked && <div className="media-picked">How about this one?</div>}
             <h2>{item.title}</h2>
@@ -1035,7 +1036,7 @@ function MediaDialog({ item, picked, onChange, onClose, onRemove }: { item: Medi
           </button>
         </div>
         {item.summary && <p className="media-summary">{item.summary}</p>}
-        <WhereToWatchBox item={item} />
+        <WhereToWatchBox item={item} {...where} />
 
         {item.kind === 'book' && (
           <div className="media-progress">
@@ -1144,6 +1145,7 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
   const [added, setAdded] = useState<Set<string>>(() => new Set())
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [preview, setPreview] = useState<DiscoverItem | null>(null)
+  const previewWhere = useWhere(preview?.media ?? null)
   const setPref = useUi((s) => s.setPref)
   const load = useCallback(
     async (refresh = false) => {
@@ -1257,7 +1259,7 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
         <div className="dialog-backdrop" onMouseDown={() => setPreview(null)}>
           <div className="dialog media-dialog" role="dialog" aria-label={preview.title} onMouseDown={(e) => e.stopPropagation()}>
             <div className="media-dialog-top">
-              {preview.image ? <img src={preview.image} alt="" referrerPolicy="no-referrer" className={preview.media.kind === 'game' ? 'wide' : ''} /> : <span className="media-cover-empty big">{preview.title.slice(0, 1)}</span>}
+              <Poster title={preview.title} image={preview.image} wide={preview.media.kind === 'game'} where={previewWhere.where} />
               <div className="media-dialog-head">
                 <h2>{preview.title}</h2>
                 {preview.subtitle && <div className="muted small">{preview.subtitle}</div>}
@@ -1285,7 +1287,7 @@ function Discover({ tab, onMedia, onFeed, ideas }: { tab: DiscoverTab; onMedia?:
               </button>
             </div>
             {preview.summary && <p className="media-summary">{preview.summary}</p>}
-            <WhereToWatchBox item={preview.media} />
+            <WhereToWatchBox item={preview.media} {...previewWhere} />
             {preview.url && (
               <div className="media-dialog-foot">
                 <a href={preview.url} target="_blank" rel="noreferrer" className="btn sm">
@@ -1380,24 +1382,10 @@ const OFFER_GROUPS: { kind: WatchOffer['kind']; label: string }[] = [
 ]
 
 /** Where to watch a movie or show, buy a game or read a book; services you have are marked (per device) */
-function WhereToWatchBox({ item }: { item: Pick<MediaResult, 'kind' | 'title' | 'year' | 'extId'> }) {
-  const [where, setWhere] = useState<WhereToWatch | null>(null)
-  const [error, setError] = useState('')
+function WhereToWatchBox({ item, where, error }: { item: Pick<MediaResult, 'kind' | 'title' | 'year' | 'extId'>; where: WhereToWatch | null; error: string }) {
   const [editing, setEditing] = useState(false)
   const mine = new Set((useUi((s) => s.prefs.entServices) ?? '').split(',').filter(Boolean))
   const setPref = useUi((s) => s.setPref)
-  useEffect(() => {
-    let alive = true
-    setWhere(null)
-    setError('')
-    api.media
-      .where({ kind: item.kind, title: item.title, year: item.year, extId: item.extId })
-      .then((w) => alive && setWhere(w))
-      .catch((e) => alive && setError(errText(e, 'Couldn’t check where it’s available')))
-    return () => {
-      alive = false
-    }
-  }, [item.kind, item.title, item.year, item.extId])
   const heading = item.kind === 'game' ? 'Where to buy' : item.kind === 'book' ? 'Where to read' : 'Where to watch'
   const toggle = (id: string): void => {
     const next = new Set(mine)
@@ -1418,6 +1406,26 @@ function WhereToWatchBox({ item }: { item: Pick<MediaResult, 'kind' | 'title' | 
           </button>
         )}
       </div>
+      {where && (where.trailers.length > 0 || where.trailerSearch) && (
+        <div className="watch-trailers">
+          {where.trailers.length > 0 ? (
+            <>
+              <button type="button" className="btn sm watch-trailer" onClick={() => window.open(where.trailers[0].url, '_blank')}>
+                <Play /> Watch the trailer
+              </button>
+              {where.trailers.slice(1).map((t) => (
+                <a key={t.url} href={t.url} target="_blank" rel="noreferrer" className="small watch-clip" title={t.name}>
+                  {t.name.length > 48 ? `${t.name.slice(0, 46)}…` : t.name}
+                </a>
+              ))}
+            </>
+          ) : (
+            <button type="button" className="btn sm" onClick={() => window.open(where.trailerSearch, '_blank')}>
+              <Play /> Find the trailer on YouTube
+            </button>
+          )}
+        </div>
+      )}
       {!where && !error && <p className="small muted">Checking…</p>}
       {error && <p className="small muted">{error}</p>}
       {where && !where.found && (
@@ -1472,5 +1480,40 @@ function WhereToWatchBox({ item }: { item: Pick<MediaResult, 'kind' | 'title' | 
         </p>
       )}
     </section>
+  )
+}
+
+/** Where to watch (and the trailers), loaded once for a dialog */
+function useWhere(item: Pick<MediaResult, 'kind' | 'title' | 'year' | 'extId'> | null): { where: WhereToWatch | null; error: string } {
+  const [state, setState] = useState<{ where: WhereToWatch | null; error: string }>({ where: null, error: '' })
+  const key = item ? `${item.kind}|${item.title}|${item.year}|${item.extId}` : ''
+  useEffect(() => {
+    if (!item) return
+    let alive = true
+    setState({ where: null, error: '' })
+    api.media
+      .where({ kind: item.kind, title: item.title, year: item.year, extId: item.extId })
+      .then((w) => alive && setState({ where: w, error: '' }))
+      .catch((e) => alive && setState({ where: null, error: errText(e, 'Couldn’t check where it’s available') }))
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+  return state
+}
+
+/** A dialog's poster; with a trailer, clicking it plays the trailer (on YouTube) */
+function Poster({ title, image, wide, where }: { title: string; image: string; wide?: boolean; where: WhereToWatch | null }) {
+  const trailer = where?.trailers[0]?.url || where?.trailerSearch || ''
+  const picture = image ? <img src={image} alt="" referrerPolicy="no-referrer" className={wide ? 'wide' : ''} /> : <span className="media-cover-empty big">{title.slice(0, 1)}</span>
+  if (!trailer) return picture
+  return (
+    <button type="button" className={`media-poster ${wide ? 'wide' : ''}`} aria-label={`Watch the trailer for ${title}`} title="Watch the trailer" onClick={() => window.open(trailer, '_blank')}>
+      {picture}
+      <span className="media-poster-play">
+        <Play />
+      </span>
+    </button>
   )
 }

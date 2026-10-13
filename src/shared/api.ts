@@ -1023,6 +1023,10 @@ export interface WhereToWatch {
   /** Where the information comes from (shown with it) */
   source: string
   country: string
+  /** Official trailers and clips (YouTube links), best first */
+  trailers: { name: string; url: string }[]
+  /** A YouTube search for the trailer, when there's no trailer link (blank for books) */
+  trailerSearch: string
 }
 
 /** Which Entertainment tab a Discover list is for */
