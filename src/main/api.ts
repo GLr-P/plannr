@@ -460,6 +460,14 @@ export function registerIpc(api: PlannrApi): void {
 
 /** Saved copies of real news sources, for tests (PLANNR_NEWS_FIXTURES = the folder) */
 const NEWS_FIXTURES: [RegExp, string][] = [
+  [/api\.tvmaze\.com\/search/, 'tvmaze-search.json'],
+  [/api\.tvmaze\.com\/shows/, 'tvmaze-show.json'],
+  [/media-imdb\.com/, 'imdb.json'],
+  [/openlibrary\.org/, 'openlibrary.json'],
+  [/cheapshark\.com\/api\/1\.0\/games/, 'cheapshark-games.json'],
+  [/itunes\.apple\.com/, 'itunes-podcasts.json'],
+  [/darknetdiaries/, 'podcast.xml'],
+  [/reddit\.com\/r\/pcmasterrace/, 'reddit.xml'],
   [/castanet.net/, 'castanet.xml'],
   [/news.google.com/, 'google.xml'],
   [/open511/, 'roads.json'],

@@ -494,5 +494,30 @@ export const migrations: string[] = [
     created_at INTEGER NOT NULL
   );
   CREATE INDEX note_versions_note ON note_versions(note_id, created_at);
+  `,
+
+  /* 27: movies, shows, books and games (synced); podcast episodes' sound files */ `
+  CREATE TABLE media (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    subtitle TEXT NOT NULL DEFAULT '',
+    image TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    ext_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'want',
+    rating INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    progress INTEGER NOT NULL DEFAULT 0,
+    total INTEGER NOT NULL DEFAULT 0,
+    info TEXT NOT NULL DEFAULT '{}',
+    started_on TEXT,
+    finished_on TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
+  );
+  ${tableTriggersSql(['media'])}
+  ALTER TABLE news_items ADD COLUMN audio TEXT NOT NULL DEFAULT '';
   `
 ]

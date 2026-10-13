@@ -4,7 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2 } from 'lucide-react'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2, Tv } from 'lucide-react'
 import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type WeatherForecast, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
@@ -61,6 +61,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [newsItems, setNewsItems] = useState<NewsItem[]>([])
   const [addNews, setAddNews] = useState<NewsItem | null>(null)
   const [packages, setPackages] = useState<PackageInfo[]>([])
+  const [episodes, setEpisodes] = useState<{ id: string; title: string; date: string }[]>([])
   const [forecast, setForecast] = useState<WeatherForecast | null>(null)
   useEffect(() => {
     void api.weather.forecast().then(setForecast)
@@ -84,6 +85,15 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
     setBills(due)
     setGoogleEvents(gev)
     setPackages((await api.packages.list()).filter((p) => p.status !== 'delivered' && p.expected && p.expected >= range.from && p.expected <= range.to))
+    // New episodes of your shows (from a week ago on, so old seasons don't fill past months)
+    const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000))
+    setEpisodes(
+      (await api.media.list()).flatMap((m) =>
+        m.kind === 'show' && m.status !== 'dropped'
+          ? m.episodes.filter((e) => e.date && e.date >= weekAgo && e.date >= range.from && e.date <= range.to).map((e) => ({ id: `${m.id}:${e.s}x${e.e}`, title: `${m.title} S${e.s}E${e.e}`, date: e.date }))
+          : []
+      )
+    )
     const news = await api.news.feed()
     setNewsSetUp(news.sources.some((s) => !s.page))
     setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
@@ -163,6 +173,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-package'],
         extendedProps: { package: p }
       })),
+      // New episodes of your shows (click opens Entertainment → Shows)
+      ...episodes.map((e) => ({
+        id: `episode:${e.id}`,
+        title: e.title,
+        start: e.date,
+        allDay: true,
+        editable: false,
+        order: 0,
+        classNames: ['ev-episode'],
+        extendedProps: { episode: true }
+      })),
       // Local news with a date (read-only; click to put it on your calendar)
       ...(showNews ? newsItems : []).map((n) => ({
         id: `news:${n.id}`,
@@ -187,7 +208,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -272,6 +293,13 @@ ${google.calendarName} (Google)`}>
       return (
         <div className="ev-chip" title={`Package arriving: ${pkg.label || pkg.number}`}>
           <Package2 className="ev-icon" />
+          <span className="ev-title">{arg.event.title}</span>
+        </div>
+      )
+    if (arg.event.extendedProps.episode)
+      return (
+        <div className="ev-chip" title={`New episode: ${arg.event.title}`}>
+          <Tv className="ev-icon" />
           <span className="ev-title">{arg.event.title}</span>
         </div>
       )
@@ -434,6 +462,10 @@ ${google.calendarName} (Google)`}>
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
               if (info.event.extendedProps.task) return go({ view: 'tasks' })
               if (info.event.extendedProps.package) return go({ view: 'packages' })
+              if (info.event.extendedProps.episode) {
+                useUi.getState().setPref('entTab', 'show')
+                return go({ view: 'entertainment' })
+              }
               const news = info.event.extendedProps.news as NewsItem | undefined
               if (news) return setAddNews(news)
               const r = info.el.getBoundingClientRect()

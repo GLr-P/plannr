@@ -104,7 +104,7 @@ export interface StoredFile {
 }
 
 /** Asks the window to show something (notifications, switching profile) */
-export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true; page?: string } | { packages: true }
+export type NavigateTarget = { type: EntityType; id: string } | { calendarDate: string } | { money: string } | { tasks: true } | { news: true; page?: string } | { packages: true } | { entertainment: string }
 
 /** One profile on this PC (e.g. work and personal): its own data folder, so everything in it is separate from the others */
 export interface Profile {
@@ -894,11 +894,13 @@ export interface WeatherForecast {
 
 export interface EntChannel {
   id: string
-  kind: 'youtube' | 'twitch'
+  kind: 'youtube' | 'twitch' | 'reddit' | 'podcast'
   name: string
-  /** YouTube channel id (UC…) or Twitch login */
+  /** YouTube channel id (UC…), Twitch login, subreddit, or a podcast's feed address */
   handle: string
   url: string
+  /** A podcast's cover */
+  image?: string
 }
 export interface EntVideo {
   id: string
@@ -910,6 +912,13 @@ export interface EntVideo {
   publishedAt: number
   short: boolean
   watched: boolean
+  /** Where it's from: a YouTube video, a Reddit post or a podcast episode */
+  kind: 'youtube' | 'reddit' | 'podcast'
+  summary: string
+  /** A podcast episode's sound file */
+  audio: string
+  /** Watch later */
+  saved: boolean
 }
 export interface EntLive {
   channelId: string
@@ -926,6 +935,70 @@ export interface EntFeed {
   live: EntLive[]
   refreshedAt: number | null
   errors: { channelId: string; message: string }[]
+}
+
+/** A podcast found by name (to follow) */
+export interface PodcastResult {
+  name: string
+  author: string
+  image: string
+  feedUrl: string
+}
+
+// ---------- Movies, shows, books and games ----------
+
+export type MediaKind = 'movie' | 'show' | 'book' | 'game'
+/** want = on your list; doing = watching / reading / playing; done = finished; dropped = gave up */
+export type MediaStatus = 'want' | 'doing' | 'done' | 'dropped'
+export interface MediaEpisode {
+  s: number
+  e: number
+  /** YYYY-MM-DD it comes out (blank when not announced) */
+  date: string
+  name: string
+}
+export interface MediaItem {
+  id: string
+  kind: MediaKind
+  title: string
+  /** Year and stars, author, platform… */
+  subtitle: string
+  image: string
+  url: string
+  extId: string
+  status: MediaStatus
+  /** 0 (not rated) to 5 stars */
+  rating: number
+  notes: string
+  /** Pages read (books) or episodes watched, in order (shows) */
+  progress: number
+  /** Pages (books) or episodes out so far (shows) */
+  total: number
+  year: number | null
+  genres: string[]
+  summary: string
+  /** A show's episodes in order */
+  episodes: MediaEpisode[]
+  /** A show's next episode still to come out */
+  nextEpisode: MediaEpisode | null
+  startedOn: string | null
+  finishedOn: string | null
+  createdAt: number
+  updatedAt: number
+}
+export type MediaPatch = Partial<Pick<MediaItem, 'title' | 'subtitle' | 'status' | 'rating' | 'notes' | 'progress' | 'total' | 'startedOn' | 'finishedOn'>>
+/** A movie, show, book or game found by name */
+export interface MediaResult {
+  kind: MediaKind
+  extId: string
+  title: string
+  subtitle: string
+  image: string
+  url: string
+  year: number | null
+  summary: string
+  total: number
+  genres: string[]
 }
 
 // ---------- Assistant ----------
@@ -1611,10 +1684,24 @@ export interface PlannrApi {
   entertainment: {
     feed(): Promise<EntFeed>
     refresh(): Promise<EntFeed>
-    /** A YouTube channel or Twitch streamer: a link, @handle or name */
-    add(input: string, kind?: 'youtube' | 'twitch'): Promise<EntFeed>
+    /** A YouTube channel, Twitch streamer, subreddit or podcast feed: a link, @handle or name */
+    add(input: string, kind?: EntChannel['kind']): Promise<EntFeed>
     remove(id: string): Promise<EntFeed>
     markWatched(videoId: string, watched: boolean): Promise<void>
+    /** Watch later */
+    save(videoId: string, saved: boolean): Promise<void>
+    findPodcasts(query: string): Promise<PodcastResult[]>
+  }
+  /** Movies, shows, books and games: your lists, ratings and progress */
+  media: {
+    list(): Promise<MediaItem[]>
+    search(kind: MediaKind, query: string): Promise<MediaResult[]>
+    /** A search result, or just a name */
+    add(item: MediaResult | { kind: MediaKind; title: string }, status?: MediaStatus): Promise<MediaItem>
+    update(id: string, patch: MediaPatch): Promise<MediaItem>
+    remove(id: string): Promise<void>
+    /** Checks your shows for new episodes (at most once a day each) */
+    refresh(): Promise<MediaItem[]>
   }
   assistant: {
     status(): Promise<AssistantStatus>
@@ -1826,7 +1913,8 @@ export const API_SHAPE = {
   lists: ['items', 'add', 'update', 'remove', 'clearDone', 'renameList', 'removeList'],
   packages: ['list', 'add', 'update', 'remove', 'refresh', 'trackingStatus', 'setTrackingKey'],
   weather: ['forecast'],
-  entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched'],
+  entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched', 'save', 'findPodcasts'],
+  media: ['list', 'search', 'add', 'update', 'remove', 'refresh'],
   assistant: ['status', 'setup', 'ask'],
   holidays: ['range', 'status', 'configure', 'refresh'],
   news: ['feed', 'refresh', 'configure', 'addPage', 'findPlace', 'suggest', 'detect', 'mark', 'read'],

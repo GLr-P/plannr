@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:media="http://search.yahoo.com/mrss/" xmlns:sy="http://purl.org/rss/1.0/modules/syndication/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+  <channel>
+    <title>Darknet Diaries</title>
+    <link>https://darknetdiaries.com/</link>
+    <pubDate>Tue, 06 Oct 2026 07:00:00 -0000</pubDate>
+    <lastBuildDate>Mon, 05 Oct 2026 14:53:43 -0000</lastBuildDate>
+    <ttl>60</ttl>
+    <language>en-us</language>
+    <copyright>Jack Rhysider</copyright>
+    <webMaster>help@prx.org (PRX)</webMaster>
+    <description>
+      <![CDATA[<p>Explore true stories of the dark side of the Internet with host Jack Rhysider as he takes you on a journey through the chilling world of hacking, data breaches, and cyber crime.</p><p>¿Hablas español? Escucha en español aquí ➔ <a href="https://darknetdiaries.com/es/">https://darknetdiaries.com/es/</a></p>]]>
+    </description>
+    <generator>PRX Feeder v1.0.0</generator>
+    <docs>http://blogs.law.harvard.edu/tech/rss</docs>
+    <image>
+      <url>https://f.prxu.org/7057/images/18744d5d-8091-4bb8-b41a-1ed06efcd508/uploads_2F1562951997273-pdd2keiryql-99f75240ab90a579e25720d85d3057b2_2Fdarknet-diaries-rss.jpg</url>
+      <title>Darknet Diaries</title>
+      <link>https://darknetdiaries.com/</link>
+      <width>1400</width>
+      <height>1400</height>
+      <description>True stories from the dark side of the Internet</description>
+    </image>
+    <atom:link href="https://podcast.darknetdiaries.com" rel="self" type="application/rss+xml"/>
+    <itunes:new-feed-url>https://podcast.darknetdiaries.com</itunes:new-feed-url>
+    <itunes:author>Jack Rhysider</itunes:author>
+    <itunes:type>episodic</itunes:type>
+    <itunes:category text="Technology"/>
+    <itunes:image href="https://f.prxu.org/7057/images/68ff605a-20f3-437f-9ba9-2d17316724b1/uploads_2F1562951997273-pdd2keiryql-99f75240ab90a579e25720d85d3057b2_2Fdarknet-diaries-rss.jpg"/>
+    <itunes:explicit>false</itunes:explicit>
+    <itunes:owner>
+      <itunes:email>podcast@darknetdiaries.com</itunes:email>
+      <itunes:name>Jack Rhysider</itunes:name>
+    </itunes:owner>
+    <itunes:subtitle>True stories from the dark side of the Internet</itunes:subtitle>
+    <itunes:summary>
+      <![CDATA[Explore true stories of the dark side of the Internet with host Jack Rhysider as he takes you on a journey through the chilling world of hacking, data breaches, and cyber crime.
+
+¿Hablas español? Escucha en español aquí ➔ <a href="https://darknetdiaries.com/es/">https://darknetdiaries.com/es/</a>]]>
+    </itunes:summary>
+    <media:copyright>Jack Rhysider</media:copyright>
+    <media:thumbnail url="https://f.prxu.org/7057/images/18744d5d-8091-4bb8-b41a-1ed06efcd508/uploads_2F1562951997273-pdd2keiryql-99f75240ab90a579e25720d85d3057b2_2Fdarknet-diaries-rss.jpg"/>
+    <media:category scheme="http://www.itunes.com/dtds/podcast-1.0.dtd">Technology</media:category>
+    <podcast:guid>ac631a54-a629-5367-a1a5-c2e2f7c25054</podcast:guid>
+    <podcast:podping usesPodping="true"/>
+    <podcast:locked>yes</podcast:locked>
+    <item>
+      <guid isPermaLink="false">prx_7057_141e0c43-f935-41de-be94-708448052c4d</guid>
+      <title>180: Conti</title>
+      <pubDate>Tue, 06 Oct 2026 07:00:00 -0000</pubDate>
+      <link>https://darknetdiaries.com/episode/180/</link>
+      <description>
+        <![CDATA[<p>The word Conti struck fear in IT departments across the world. It's a type of ransomware that you hope to never come across. Like most ransomware gangs, the Conti group fell apart. But what's special about this story is how it fell apart. Because it fell apart in a very public, messy, scandalous way. Featuring investigative journalist Geoff White and cyber threat researcher Alex Holden.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://doppel.com/"><strong>Doppel</strong></a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform. <a href="http://doppel.com/"><strong>doppel.com</strong></a><br><br>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/180/"><strong>https://darknetdiaries.com/episode/180/</strong></a></p>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/141e0c43-f935-41de-be94-708448052c4d/darknet-diaries-ep180-conti.mp3" type="audio/mpeg" length="62376266"/>
+      <itunes:title>Conti</itunes:title>
+      <itunes:explicit>false</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:season>1</itunes:season>
+      <itunes:episode>180</itunes:episode>
+      <itunes:duration>59:17</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[The word Conti struck fear in IT departments across the world. It's a type of ransomware that you hope to never come across. Like most ransomware gangs, the Conti group fell apart. But what's special about this story is how it fell apart. Because it fell apart in a very public, messy, scandalous way. Featuring investigative journalist Geoff White and cyber threat researcher Alex Holden.
+Sponsors
+This show is brought to you by <a href="https://doppel.com/">Doppel</a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform. <a href="http://doppel.com/">doppel.com</a>
+
+This show is sponsored by <a href="http://mazehq.com/darknet">Maze</a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet">MazeHQ.com/darknet</a> for more information.
+
+Support for this show comes from <a href="https://threatlocker.com/Darknet">ThreatLocker</a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet">threatlocker.com/Darknet</a>.
+
+<a href="https://darknetdiaries.com/sponsors/">View all active sponsors.</a>
+Sources
+Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/180/">https://darknetdiaries.com/episode/180/</a>]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/141e0c43-f935-41de-be94-708448052c4d/images/dee6cb5f-8beb-4bdd-bf46-f52bed0c6034/Ep180_Square.jpg"/>
+      <media:content fileSize="62376266" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/141e0c43-f935-41de-be94-708448052c4d/darknet-diaries-ep180-conti.mp3"/>
+      <podcast:transcript type="text/vtt" url="https://f.prxu.org/7057/141e0c43-f935-41de-be94-708448052c4d/transcripts/e9268cb5-f129-4548-9316-c2aa1d40d7ec/darknet-diaries-ep180-conti.vtt"/>
+      <content:encoded>
+        <![CDATA[<p>The word Conti struck fear in IT departments across the world. It's a type of ransomware that you hope to never come across. Like most ransomware gangs, the Conti group fell apart. But what's special about this story is how it fell apart. Because it fell apart in a very public, messy, scandalous way. Featuring investigative journalist Geoff White and cyber threat researcher Alex Holden.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://doppel.com/"><strong>Doppel</strong></a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform. <a href="http://doppel.com/"><strong>doppel.com</strong></a><br><br>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/180/"><strong>https://darknetdiaries.com/episode/180/</strong></a></p>]]>
+      </content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">prx_7057_4148b4aa-8576-4a4a-b936-b39ed087e1eb</guid>
+      <title>LOW - Now Available</title>
+      <pubDate>Tue, 22 Sep 2026 14:00:00 -0000</pubDate>
+      <link>https://play.prx.org/listen?ge=prx_7057_4148b4aa-8576-4a4a-b936-b39ed087e1eb&amp;uf=https%3A%2F%2Fpodcast.darknetdiaries.com</link>
+      <description>
+        <![CDATA[<p>After 8 years, LOW is finally here. A story about the weight of being and the wreckage of waking up. Five episodes. Five descents. LOW is an audio journey into the unlit corners of human experience. Choices we made in the dark, the silences we carry, and what remains when we stop running from ourselves.</p><p>LOW a new Limited Series from the Jack Rhysider is now available for everyone to hear, where ever you get your podcasts.</p>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/4148b4aa-8576-4a4a-b936-b39ed087e1eb/low_trailer.mp3" type="audio/mpeg" length="3990156"/>
+      <itunes:explicit>true</itunes:explicit>
+      <itunes:episodeType>trailer</itunes:episodeType>
+      <itunes:duration>03:39</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[After 8 years, LOW is finally here. A story about the weight of being and the wreckage of waking up. Five episodes. Five descents. LOW is an audio journey into the unlit corners of human experience. Choices we made in the dark, the silences we carry, and what remains when we stop running from ourselves.
+
+LOW a new Limited Series from the Jack Rhysider is now available for everyone to hear, where ever you get your podcasts.]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/4148b4aa-8576-4a4a-b936-b39ed087e1eb/images/d0ca5b4f-6195-4281-9ae8-5a73be922217/lowlogolg.jpg"/>
+      <media:content fileSize="3990156" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/4148b4aa-8576-4a4a-b936-b39ed087e1eb/low_trailer.mp3"/>
+      <content:encoded>
+        <![CDATA[<p>After 8 years, LOW is finally here. A story about the weight of being and the wreckage of waking up. Five episodes. Five descents. LOW is an audio journey into the unlit corners of human experience. Choices we made in the dark, the silences we carry, and what remains when we stop running from ourselves.</p><p>LOW a new Limited Series from the Jack Rhysider is now available for everyone to hear, where ever you get your podcasts.</p>]]>
+      </content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">prx_7057_82aaba05-80c9-4d2e-8069-3c20f2b7dbc8</guid>
+      <title>179: The Courthouse - Revisited</title>
+      <pubDate>Tue, 01 Sep 2026 07:00:00 -0000</pubDate>
+      <link>https://darknetdiaries.com/episode/179/</link>
+      <description>
+        <![CDATA[<p>In this episode we follow up with Gabby and Justin from Episode 59 - two seasoned penetration testers who tell us a story about the time when they tried to break into a courthouse but it went all wrong, and what happened in the aftermath.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://doppel.com/"><strong>Doppel</strong></a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform.<br><a href="http://doppel.com/"><strong>doppel.com</strong></a><br><br>This show is brought to you by <a href="https://s.sinch.com/4xc8dnz"><strong>Sinch</strong></a>. Sinch is the cloud communications platform businesses build on to send SMS, make calls, and verify identity at scale — including the one-time codes and two-factor prompts that stand between an account and whoever's trying to get into it. Learn more at <a href="https://s.sinch.com/4xc8dnz"><strong>https://s.sinch.com/4xc8dnz</strong></a></p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/179/"><strong>https://darknetdiaries.com/episode/179/</strong></a></p>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/82aaba05-80c9-4d2e-8069-3c20f2b7dbc8/darknet-diaries-ep179-the-courthouse-revisited.mp3" type="audio/mpeg" length="104809129"/>
+      <itunes:title>The Courthouse - Revisited</itunes:title>
+      <itunes:explicit>true</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:season>1</itunes:season>
+      <itunes:episode>179</itunes:episode>
+      <itunes:duration>01:35:02</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[In this episode we follow up with Gabby and Justin from Episode 59 - two seasoned penetration testers who tell us a story about the time when they tried to break into a courthouse but it went all wrong, and what happened in the aftermath.
+Sponsors
+This show is brought to you by <a href="https://doppel.com/">Doppel</a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform.
+<a href="http://doppel.com/">doppel.com</a>
+
+This show is brought to you by <a href="https://s.sinch.com/4xc8dnz">Sinch</a>. Sinch is the cloud communications platform businesses build on to send SMS, make calls, and verify identity at scale — including the one-time codes and two-factor prompts that stand between an account and whoever's trying to get into it. Learn more at <a href="https://s.sinch.com/4xc8dnz">https://s.sinch.com/4xc8dnz</a>
+
+Support for this show comes from <a href="https://threatlocker.com/Darknet">ThreatLocker</a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet">threatlocker.com/Darknet</a>.
+
+<a href="https://darknetdiaries.com/sponsors/">View all active sponsors.</a>
+Sources
+Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/179/">https://darknetdiaries.com/episode/179/</a>]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/82aaba05-80c9-4d2e-8069-3c20f2b7dbc8/images/29b7e54a-1b96-44f2-9a6e-cebaa8fbe789/Ep179_Square.jpg"/>
+      <media:content fileSize="104809129" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/82aaba05-80c9-4d2e-8069-3c20f2b7dbc8/darknet-diaries-ep179-the-courthouse-revisited.mp3"/>
+      <podcast:transcript type="text/vtt" url="https://f.prxu.org/7057/82aaba05-80c9-4d2e-8069-3c20f2b7dbc8/transcripts/3d50625f-d569-442e-97a5-77d719419b71/DD_Ep_179.vtt"/>
+      <content:encoded>
+        <![CDATA[<p>In this episode we follow up with Gabby and Justin from Episode 59 - two seasoned penetration testers who tell us a story about the time when they tried to break into a courthouse but it went all wrong, and what happened in the aftermath.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://doppel.com/"><strong>Doppel</strong></a>. Doppel stops AI attacks with digital risk protection, human risk management, and email security on a unified social engineering defense platform.<br><a href="http://doppel.com/"><strong>doppel.com</strong></a><br><br>This show is brought to you by <a href="https://s.sinch.com/4xc8dnz"><strong>Sinch</strong></a>. Sinch is the cloud communications platform businesses build on to send SMS, make calls, and verify identity at scale — including the one-time codes and two-factor prompts that stand between an account and whoever's trying to get into it. Learn more at <a href="https://s.sinch.com/4xc8dnz"><strong>https://s.sinch.com/4xc8dnz</strong></a></p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/179/"><strong>https://darknetdiaries.com/episode/179/</strong></a></p>]]>
+      </content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">prx_7057_e5c784a5-d775-435a-bbb4-cdb885fbf87a</guid>
+      <title>178: Ubiquiti</title>
+      <pubDate>Tue, 04 Aug 2026 07:00:00 -0000</pubDate>
+      <link>https://darknetdiaries.com/episode/178/</link>
+      <description>
+        <![CDATA[<p>Nickolas Sharp worked for Ubiquiti, a company that makes networking equipment. He noticed that there were some security problems at work. He tried to point them out, but didn't feel like he was being listened to enough. What do you do when the company you work for isn't securing their software up to your standards? Well, he thought he needed to teach them a lesson, but in the end, he learned an even bigger lesson.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://drata.com/darknetdiaries"><strong>Drata</strong></a>. Drata is the trust management platform that uses AI-driven automation to modernize governance, risk, and compliance, helping thousands of businesses stay audit-ready and scale securely. Learn more at <a href="https://drata.com/darknetdiaries"><strong>drata.com/darknetdiaries</strong></a>.<br><br>This show is sponsored by <a href="https://material.security"><strong>Material Security</strong></a>. Your cloud office (think Google Workspace or Microsoft 365) is the core of your business, but it’s often protected by scattered tools and manual fixes. Material is a purpose-built detection and response platform that closes the gaps those point solutions leave behind. From email threats to misconfigurations and account takeovers, Material monitors everything and steps in with real-time fixes to keep your data flowing where it should. Learn more at <a href="https://material.security"><strong>https://material.security</strong></a>.</p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/178/"><strong>https://darknetdiaries.com/episode/178/</strong></a></p><p><br></p>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/e5c784a5-d775-435a-bbb4-cdb885fbf87a/darknet-diaries-ep178-ubiquiti.mp3" type="audio/mpeg" length="43798987"/>
+      <itunes:title>Ubiquiti</itunes:title>
+      <itunes:explicit>false</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:season>1</itunes:season>
+      <itunes:episode>178</itunes:episode>
+      <itunes:duration>36:12</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[Nickolas Sharp worked for Ubiquiti, a company that makes networking equipment. He noticed that there were some security problems at work. He tried to point them out, but didn't feel like he was being listened to enough. What do you do when the company you work for isn't securing their software up to your standards? Well, he thought he needed to teach them a lesson, but in the end, he learned an even bigger lesson.
+Sponsors
+This show is brought to you by <a href="https://drata.com/darknetdiaries">Drata</a>. Drata is the trust management platform that uses AI-driven automation to modernize governance, risk, and compliance, helping thousands of businesses stay audit-ready and scale securely. Learn more at <a href="https://drata.com/darknetdiaries">drata.com/darknetdiaries</a>.
+
+This show is sponsored by <a href="https://material.security">Material Security</a>. Your cloud office (think Google Workspace or Microsoft 365) is the core of your business, but it’s often protected by scattered tools and manual fixes. Material is a purpose-built detection and response platform that closes the gaps those point solutions leave behind. From email threats to misconfigurations and account takeovers, Material monitors everything and steps in with real-time fixes to keep your data flowing where it should. Learn more at <a href="https://material.security">https://material.security</a>.
+
+Support for this show comes from <a href="https://threatlocker.com/Darknet">ThreatLocker</a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet">threatlocker.com/Darknet</a>.
+
+<a href="https://darknetdiaries.com/sponsors/">View all active sponsors.</a>
+Sources
+Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/178/">https://darknetdiaries.com/episode/178/</a>]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/e5c784a5-d775-435a-bbb4-cdb885fbf87a/images/70961159-7e87-45f8-9815-750384854b41/Ep178_Square.jpg"/>
+      <media:content fileSize="43798987" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/e5c784a5-d775-435a-bbb4-cdb885fbf87a/darknet-diaries-ep178-ubiquiti.mp3"/>
+      <content:encoded>
+        <![CDATA[<p>Nickolas Sharp worked for Ubiquiti, a company that makes networking equipment. He noticed that there were some security problems at work. He tried to point them out, but didn't feel like he was being listened to enough. What do you do when the company you work for isn't securing their software up to your standards? Well, he thought he needed to teach them a lesson, but in the end, he learned an even bigger lesson.</p><h3>Sponsors</h3><p>This show is brought to you by <a href="https://drata.com/darknetdiaries"><strong>Drata</strong></a>. Drata is the trust management platform that uses AI-driven automation to modernize governance, risk, and compliance, helping thousands of businesses stay audit-ready and scale securely. Learn more at <a href="https://drata.com/darknetdiaries"><strong>drata.com/darknetdiaries</strong></a>.<br><br>This show is sponsored by <a href="https://material.security"><strong>Material Security</strong></a>. Your cloud office (think Google Workspace or Microsoft 365) is the core of your business, but it’s often protected by scattered tools and manual fixes. Material is a purpose-built detection and response platform that closes the gaps those point solutions leave behind. From email threats to misconfigurations and account takeovers, Material monitors everything and steps in with real-time fixes to keep your data flowing where it should. Learn more at <a href="https://material.security"><strong>https://material.security</strong></a>.</p><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/178/"><strong>https://darknetdiaries.com/episode/178/</strong></a></p><p><br></p>]]>
+      </content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">prx_7057_791c66f0-0bfc-420d-96a3-816c78a17f4c</guid>
+      <title>177: National Public Data</title>
+      <pubDate>Tue, 21 Jul 2026 07:00:00 -0000</pubDate>
+      <link>https://darknetdiaries.com/episode/177/</link>
+      <description>
+        <![CDATA[<p>This is the story of the hacker known as "USDoD". When he was young he had a vengeance on the US, and this lead him down a road of continual data breaches, until he hacked into National Public Data, which is when his spree went one step too far.</p><h3>Sponsors</h3><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p>This show is sponsored by <a href="https://sentry.io/"><strong>Sentry.IO</strong></a>. Sentry wants to help you monitor your environment for problems. They do error tracking, stack tracing, debugging, all so that your developers can diagnose, fix, and optimize the performance of their code. This makes it so developers ship more reliable code faster. Learn more at <a href="https://sentry.io/"><strong>sentry.io</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/177/"><strong>https://darknetdiaries.com/episode/177/</strong></a></p>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/791c66f0-0bfc-420d-96a3-816c78a17f4c/darknet-diaries-ep177-national-public-data.mp3" type="audio/mpeg" length="53401336"/>
+      <itunes:title>National Public Data</itunes:title>
+      <itunes:explicit>false</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:season>1</itunes:season>
+      <itunes:episode>177</itunes:episode>
+      <itunes:duration>47:49</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[This is the story of the hacker known as "USDoD". When he was young he had a vengeance on the US, and this lead him down a road of continual data breaches, until he hacked into National Public Data, which is when his spree went one step too far.
+Sponsors
+Support for this show comes from <a href="https://threatlocker.com/Darknet">ThreatLocker</a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet">threatlocker.com/Darknet</a>.
+
+This show is sponsored by <a href="http://mazehq.com/darknet">Maze</a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet">MazeHQ.com/darknet</a> for more information.
+
+This show is sponsored by <a href="https://sentry.io/">Sentry.IO</a>. Sentry wants to help you monitor your environment for problems. They do error tracking, stack tracing, debugging, all so that your developers can diagnose, fix, and optimize the performance of their code. This makes it so developers ship more reliable code faster. Learn more at <a href="https://sentry.io/">sentry.io</a>.
+
+<a href="https://darknetdiaries.com/sponsors/">View all active sponsors.</a>
+Sources
+Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/177/">https://darknetdiaries.com/episode/177/</a>]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/791c66f0-0bfc-420d-96a3-816c78a17f4c/images/ac12dc33-ea86-47ef-a6a8-01b70d3f3cd9/Ep177_Square.jpg"/>
+      <media:content fileSize="53401336" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/791c66f0-0bfc-420d-96a3-816c78a17f4c/darknet-diaries-ep177-national-public-data.mp3"/>
+      <content:encoded>
+        <![CDATA[<p>This is the story of the hacker known as "USDoD". When he was young he had a vengeance on the US, and this lead him down a road of continual data breaches, until he hacked into National Public Data, which is when his spree went one step too far.</p><h3>Sponsors</h3><p>Support for this show comes from <a href="https://threatlocker.com/Darknet"><strong>ThreatLocker</strong></a>. ThreatLocker is a Zero Trust Platform that gives organizations control over what can run and what users and devices can access. It combines prevention with real time detection and automated response, helping security teams stop unauthorized activity and quickly contain compromised machines. Learn how ThreatLocker can strengthen your defenses at <a href="https://threatlocker.com/Darknet"><strong>threatlocker.com/Darknet</strong></a>.</p><p>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p>This show is sponsored by <a href="https://sentry.io/"><strong>Sentry.IO</strong></a>. Sentry wants to help you monitor your environment for problems. They do error tracking, stack tracing, debugging, all so that your developers can diagnose, fix, and optimize the performance of their code. This makes it so developers ship more reliable code faster. Learn more at <a href="https://sentry.io/"><strong>sentry.io</strong></a>.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><p>Full list of sources on the show page: <a href="https://darknetdiaries.com/episode/177/"><strong>https://darknetdiaries.com/episode/177/</strong></a></p>]]>
+      </content:encoded>
+    </item>
+    <item>
+      <guid isPermaLink="false">prx_7057_84de1d2b-0222-4815-88f6-ead9afcf4d08</guid>
+      <title>176: NSL</title>
+      <pubDate>Tue, 07 Jul 2026 07:00:00 -0000</pubDate>
+      <link>https://darknetdiaries.com/episode/176/</link>
+      <description>
+        <![CDATA[<p>One day Nick got a visit from the FBI demanding he give them data on one of his customers. They asked for it in the form of a National Security Letter or NSL. Something wasn’t right about this letter. It seemed to violate the constitution. So he set out to change the law.</p><p>Learn more about Nicks work at <a href="https://calyxinstitute.org/"><strong>calyxinstitute.org</strong></a> and <a href="https://www.phreeli.com/"><strong>phreeli.com</strong></a>.</p><p>Check out Cindy’s book <a href="https://amzn.to/4gXuK2J"><strong>Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</strong></a> (https://amzn.to/4gXuK2J).</p><h3>Sponsors</h3><p>Support for this show comes from <a href="https://www.threatlocker.com/"><strong>ThreatLocker®</strong></a>. ThreatLocker® is a Zero Trust Endpoint Protection Platform that strengthens your infrastructure from the ground up. With ThreatLocker® Allowlisting and Ringfencing™, you gain a more secure approach to blocking exploits of known and unknown vulnerabilities. ThreatLocker® provides Zero Trust control at the kernel level that enables you to allow everything you need and block everything else, including ransomware! Learn more at <a href="https://www.threatlocker.com/"><strong>www.threatlocker.com</strong></a>.</p><p>Support for this episode comes from <a href="https://www.netsuite.com/darknet"><strong>NetSuite</strong></a>. NetSuite gives you visibility and control of your financials, planning, budgeting, and of course - inventory - so you can manage risk, get reliable forecasts, and improve margins. NetSuite helps you identify rising costs, automate your manual business processes, and see where to save money. KNOW your numbers. KNOW your business. And get to KNOW how NetSuite can be the source of truth for your entire company. Visit <a href="https://www.netsuite.com/darknet"><strong>www.netsuite.com/darknet</strong></a> to learn more.</p><p>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><ul>
+<li><a href="https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill"><strong>https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill</strong></a></li>
+<li><a href="https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/"><strong>https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/</strong></a></li>
+<li><a href="https://clearinghouse.net/case/12966/"><strong>https://clearinghouse.net/case/12966/</strong></a></li>
+<li><a href="https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill"><strong>https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill</strong></a></li>
+<li><a href="https://www.aclu.org/documents/national-security-letters"><strong>https://www.aclu.org/documents/national-security-letters</strong></a></li>
+<li><a href="https://www.eff.org/cases/re-matter-2011-national-security-letter"><strong>https://www.eff.org/cases/re-matter-2011-national-security-letter</strong></a></li>
+<li>Cindy’s Book: <a href="https://amzn.to/4gXuK2J"><strong>Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</strong></a>
+</li>
+</ul>]]>
+      </description>
+      <enclosure url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/darknet-diaries-ep176-nsl.mp3" type="audio/mpeg" length="67634516"/>
+      <itunes:title>NSL</itunes:title>
+      <itunes:explicit>false</itunes:explicit>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:season>1</itunes:season>
+      <itunes:episode>176</itunes:episode>
+      <itunes:duration>01:06:27</itunes:duration>
+      <itunes:author>Jack Rhysider</itunes:author>
+      <itunes:summary>
+        <![CDATA[One day Nick got a visit from the FBI demanding he give them data on one of his customers. They asked for it in the form of a National Security Letter or NSL. Something wasn’t right about this letter. It seemed to violate the constitution. So he set out to change the law.
+
+Learn more about Nicks work at <a href="https://calyxinstitute.org/">calyxinstitute.org</a> and <a href="https://www.phreeli.com/">phreeli.com</a>.
+
+Check out Cindy’s book <a href="https://amzn.to/4gXuK2J">Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</a> (https://amzn.to/4gXuK2J).
+Sponsors
+Support for this show comes from <a href="https://www.threatlocker.com/">ThreatLocker®</a>. ThreatLocker® is a Zero Trust Endpoint Protection Platform that strengthens your infrastructure from the ground up. With ThreatLocker® Allowlisting and Ringfencing™, you gain a more secure approach to blocking exploits of known and unknown vulnerabilities. ThreatLocker® provides Zero Trust control at the kernel level that enables you to allow everything you need and block everything else, including ransomware! Learn more at <a href="https://www.threatlocker.com/">www.threatlocker.com</a>.
+
+Support for this episode comes from <a href="https://www.netsuite.com/darknet">NetSuite</a>. NetSuite gives you visibility and control of your financials, planning, budgeting, and of course - inventory - so you can manage risk, get reliable forecasts, and improve margins. NetSuite helps you identify rising costs, automate your manual business processes, and see where to save money. KNOW your numbers. KNOW your business. And get to KNOW how NetSuite can be the source of truth for your entire company. Visit <a href="https://www.netsuite.com/darknet">www.netsuite.com/darknet</a> to learn more.
+
+This show is sponsored by <a href="http://mazehq.com/darknet">Maze</a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet">MazeHQ.com/darknet</a> for more information.
+
+<a href="https://darknetdiaries.com/sponsors/">View all active sponsors.</a>
+Sources
+<a href="https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill">https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill</a>
+<a href="https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/">https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/</a>
+<a href="https://clearinghouse.net/case/12966/">https://clearinghouse.net/case/12966/</a>
+<a href="https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill">https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill</a>
+<a href="https://www.aclu.org/documents/national-security-letters">https://www.aclu.org/documents/national-security-letters</a>
+<a href="https://www.eff.org/cases/re-matter-2011-national-security-letter">https://www.eff.org/cases/re-matter-2011-national-security-letter</a>
+Cindy’s Book: <a href="https://amzn.to/4gXuK2J">Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</a>]]>
+      </itunes:summary>
+      <itunes:image href="https://f.prxu.org/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/images/0c35343e-4694-4a1f-b504-b1c3c0bb225a/Ep176_Square.jpg"/>
+      <media:content fileSize="67634516" type="audio/mpeg" url="https://www.podtrac.com/pts/redirect.mp3/dovetail.prxu.org/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/darknet-diaries-ep176-nsl.mp3"/>
+      <podcast:transcript type="text/vtt" url="https://f.prxu.org/7057/84de1d2b-0222-4815-88f6-ead9afcf4d08/transcripts/7393207e-0c73-4100-b478-1fb615518232/176.vtt"/>
+      <content:encoded>
+        <![CDATA[<p>One day Nick got a visit from the FBI demanding he give them data on one of his customers. They asked for it in the form of a National Security Letter or NSL. Something wasn’t right about this letter. It seemed to violate the constitution. So he set out to change the law.</p><p>Learn more about Nicks work at <a href="https://calyxinstitute.org/"><strong>calyxinstitute.org</strong></a> and <a href="https://www.phreeli.com/"><strong>phreeli.com</strong></a>.</p><p>Check out Cindy’s book <a href="https://amzn.to/4gXuK2J"><strong>Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</strong></a> (https://amzn.to/4gXuK2J).</p><h3>Sponsors</h3><p>Support for this show comes from <a href="https://www.threatlocker.com/"><strong>ThreatLocker®</strong></a>. ThreatLocker® is a Zero Trust Endpoint Protection Platform that strengthens your infrastructure from the ground up. With ThreatLocker® Allowlisting and Ringfencing™, you gain a more secure approach to blocking exploits of known and unknown vulnerabilities. ThreatLocker® provides Zero Trust control at the kernel level that enables you to allow everything you need and block everything else, including ransomware! Learn more at <a href="https://www.threatlocker.com/"><strong>www.threatlocker.com</strong></a>.</p><p>Support for this episode comes from <a href="https://www.netsuite.com/darknet"><strong>NetSuite</strong></a>. NetSuite gives you visibility and control of your financials, planning, budgeting, and of course - inventory - so you can manage risk, get reliable forecasts, and improve margins. NetSuite helps you identify rising costs, automate your manual business processes, and see where to save money. KNOW your numbers. KNOW your business. And get to KNOW how NetSuite can be the source of truth for your entire company. Visit <a href="https://www.netsuite.com/darknet"><strong>www.netsuite.com/darknet</strong></a> to learn more.</p><p>This show is sponsored by <a href="http://mazehq.com/darknet"><strong>Maze</strong></a>. Maze uses AI agents to triage and remediate cloud vulnerabilities by figuring out what’s actually exploitable, not just what’s theoretically risky. They remove the noise, prioritize vulns that matter, and manage remediation, so your team stops wasting time on meaningless vulns. Visit <a href="http://mazehq.com/darknet"><strong>MazeHQ.com/darknet</strong></a> for more information.</p><p><a href="https://darknetdiaries.com/sponsors/"><strong>View all active sponsors.</strong></a></p><h3>Sources</h3><ul>
+<li><a href="https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill"><strong>https://www.democracynow.org/2010/8/11/gagged_for_6_years_nick_merrill</strong></a></li>
+<li><a href="https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/"><strong>https://globalfreedomofexpression.columbia.edu/cases/u-s-nicholas-merrill-v-loretta-e-lynch-14-cv-9763-vm/</strong></a></li>
+<li><a href="https://clearinghouse.net/case/12966/"><strong>https://clearinghouse.net/case/12966/</strong></a></li>
+<li><a href="https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill"><strong>https://www.theguardian.com/law/2015/dec/06/fbi-national-security-letter-gag-order-nick-merrill</strong></a></li>
+<li><a href="https://www.aclu.org/documents/national-security-letters"><strong>https://www.aclu.org/documents/national-security-letters</strong></a></li>
+<li><a href="https://www.eff.org/cases/re-matter-2011-national-security-letter"><strong>https://www.eff.org/cases/re-matter-2011-national-security-letter</strong></a></li>
+<li>Cindy’s Book: <a href="https://amzn.to/4gXuK2J"><strong>Privacy’s Defender: My Thirty-Year Fight Against Digital Surveillance</strong></a>
+</li>
+</ul>]]>
+      </content:encoded>
+    </item></channel></rss>

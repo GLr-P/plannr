@@ -20,6 +20,7 @@ import * as lists from './services/lists'
 import * as packages from './services/packages'
 import * as weather from './services/weather'
 import * as ent from './services/entertainment'
+import * as media from './services/media'
 import * as money from './services/money'
 import { search } from './services/search'
 import { saveFile } from './services/files'
@@ -46,6 +47,7 @@ export type CoreApi = Pick<
   | 'packages'
   | 'weather'
   | 'entertainment'
+  | 'media'
   | 'folders'
   | 'search'
   | 'settings'
@@ -201,7 +203,17 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
         ent.removeChannel(db, id)
         return ent.entFeed(db)
       },
-      markWatched: async (id, watched) => news.markNews(db, id, { read: watched })
+      markWatched: async (id, watched) => news.markNews(db, id, { read: watched }),
+      save: async (id, saved) => news.markNews(db, id, { saved }),
+      findPodcasts: async (query) => ent.findPodcasts(query, hooks.fetchText)
+    },
+    media: {
+      list: async () => media.listMedia(db),
+      search: async (kind, query) => media.searchMedia(kind, query, hooks.fetchText),
+      add: async (item, status) => media.addMedia(db, item, status, hooks.fetchText),
+      update: async (id, patch) => media.updateMedia(db, id, patch),
+      remove: async (id) => media.removeMedia(db, id),
+      refresh: async () => media.refreshMedia(db, hooks.fetchText)
     },
     news: {
       feed: async () => news.newsFeed(db),

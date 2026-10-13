@@ -8,11 +8,12 @@ import * as lists from '../../src/main/services/lists'
 import * as packages from '../../src/main/services/packages'
 import * as weather from '../../src/main/services/weather'
 import * as ent from '../../src/main/services/entertainment'
+import * as media from '../../src/main/services/media'
 import * as assistant from '../../src/main/services/assistant'
 import * as money from '../../src/main/services/money'
 import { createTicket, getTicket, updateTicket } from '../../src/main/services/tickets'
 import { dueOtherReminders } from '../../src/main/services/reminders'
-import { configureNews } from '../../src/main/services/news'
+import { configureNews, markNews } from '../../src/main/services/news'
 import { parseInbox } from '../../src/main/services/zoho'
 import { listTasks } from '../../src/main/services/tasks'
 
@@ -24,6 +25,14 @@ const fakeFetch = async (url: string): Promise<string> => {
   if (url.includes('twitch.tv/shroud')) return fixture('twitch-live.html')
   if (url.includes('twitch.tv')) return fixture('twitch-offline.html')
   if (url.includes('open-meteo')) return fixture('forecast.json')
+  if (url.includes('tvmaze.com/search')) return fixture('tvmaze-search.json')
+  if (url.includes('tvmaze.com/shows')) return fixture('tvmaze-show.json')
+  if (url.includes('media-imdb')) return fixture('imdb.json')
+  if (url.includes('openlibrary')) return fixture('openlibrary.json')
+  if (url.includes('cheapshark.com/api/1.0/games')) return fixture('cheapshark-games.json')
+  if (url.includes('itunes.apple.com')) return fixture('itunes-podcasts.json')
+  if (url.includes('darknetdiaries')) return fixture('podcast.xml')
+  if (url.includes('reddit.com/r/pcmasterrace')) return fixture('reddit.xml')
   throw new Error(`offline: ${url}`)
 }
 
@@ -226,5 +235,63 @@ describe('warranty, free trials and the assistant', () => {
       'https://mail.zoho.com'
     )
     expect(inbox.map((m) => m.subject)).toEqual(['Invoice', 'Screen repair?'])
+  })
+})
+
+describe('movies, shows, books, games, podcasts and Reddit', () => {
+  it('finds each kind by name', async () => {
+    const movies = await media.searchMedia('movie', 'dune', fakeFetch)
+    expect(movies[0]).toMatchObject({ kind: 'movie', title: 'Dune', extId: 'tt1160419', year: 2021 })
+    expect(movies[0].image).toMatch(/_V1_QL75_UX300_\.jpg$/)
+    expect((await media.searchMedia('show', 'severance', fakeFetch))[0]).toMatchObject({ kind: 'show', title: 'Severance', extId: '44933' })
+    expect((await media.searchMedia('book', 'project hail mary', fakeFetch))[0]).toMatchObject({ title: 'Project Hail Mary', subtitle: 'Andy Weir · 2021', total: 496 })
+    expect((await media.searchMedia('game', 'hollow knight', fakeFetch))[0]).toMatchObject({ title: 'Hollow Knight', extId: 'steam:367520', url: 'https://store.steampowered.com/app/367520' })
+  })
+
+  it('a show: episodes in order, the next one, progress and finishing', async () => {
+    const [found] = await media.searchMedia('show', 'severance', fakeFetch)
+    const now = Date.parse('2026-10-12T12:00:00')
+    const show = await media.addMedia(db, found, 'want', fakeFetch, now)
+    expect(show.episodes.length).toBe(20)
+    expect(show.total).toBe(19) // out so far
+    expect(show.nextEpisode).toMatchObject({ s: 3, e: 1, date: '2030-01-18' })
+    await expect(media.addMedia(db, found, 'want', fakeFetch, now)).rejects.toThrow(/Already on your list/)
+    let s = media.updateMedia(db, show.id, { progress: 1 }, now)
+    expect(s).toMatchObject({ status: 'doing', startedOn: '2026-10-12', progress: 1 })
+    s = media.updateMedia(db, show.id, { progress: 19, rating: 7 }, now)
+    expect(s.status).toBe('doing') // a new season is coming, so not finished
+    expect(s.rating).toBe(5)
+    expect(media.episodesOn([s], '2030-01-18')).toHaveLength(1)
+  })
+
+  it('books: pages read, finishing, notes; removing', async () => {
+    const [found] = await media.searchMedia('book', 'project hail mary', fakeFetch)
+    const now = Date.parse('2026-10-12T12:00:00')
+    const book = await media.addMedia(db, found, 'doing', undefined, now)
+    expect(book.startedOn).toBe('2026-10-12')
+    const done = media.updateMedia(db, book.id, { progress: 496, notes: 'Loved it' }, now)
+    expect(done).toMatchObject({ status: 'done', finishedOn: '2026-10-12', notes: 'Loved it' })
+    const manual = await media.addMedia(db, { kind: 'movie', title: '  Home movie ' })
+    expect(manual).toMatchObject({ title: 'Home movie', extId: '', status: 'want' })
+    media.removeMedia(db, manual.id)
+    expect(media.listMedia(db).map((m) => m.title)).toEqual(['Project Hail Mary'])
+  })
+
+  it('podcasts and subreddits: follow, episodes with sound files, posts with pictures, watch later', async () => {
+    const [pod] = await ent.findPodcasts('darknet diaries', fakeFetch)
+    expect(pod).toMatchObject({ name: 'Darknet Diaries', author: 'Jack Rhysider' })
+    await ent.addChannel(db, pod.feedUrl, 'podcast', fakeFetch)
+    await ent.addChannel(db, 'r/pcmasterrace', undefined, fakeFetch)
+    await expect(ent.addChannel(db, 'https://www.reddit.com/r/pcmasterrace/', undefined, fakeFetch)).rejects.toThrow(/Already added/)
+    const feed = ent.entFeed(db)
+    const episode = feed.videos.find((v) => v.kind === 'podcast')!
+    expect(episode.audio).toMatch(/\.mp3/)
+    expect(episode.image).toMatch(/^https:/) // the podcast's cover
+    const post = feed.videos.find((v) => v.kind === 'reddit')!
+    expect(post).toMatchObject({ channelName: 'r/pcmasterrace' })
+    expect(post.summary).not.toMatch(/submitted by/)
+    expect(feed.videos.filter((v) => v.kind === 'reddit' && v.image).length).toBeGreaterThan(3)
+    markNews(db, post.id, { saved: true })
+    expect(ent.entFeed(db).videos.find((v) => v.id === post.id)?.saved).toBe(true)
   })
 })

@@ -10,6 +10,7 @@ import { createApi, fetchText, registerIpc, themeColors, TITLEBAR_HEIGHT } from 
 import { holidaysStale, refreshHolidays } from './services/holidays'
 import { briefingText, newsFeed, newsPrefs, newsStale, refreshNews } from './services/news'
 import { entStale, refreshEntertainment } from './services/entertainment'
+import { episodesOn, refreshMedia } from './services/media'
 import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
@@ -349,6 +350,26 @@ if (!app.requestSingleInstanceLock()) {
       }
       setTimeout(updateEnt, 12_000)
       setInterval(updateEnt, 60 * 1000)
+      // Your shows' episode dates (each checked at most once a day); a notification the day a new one comes out
+      const updateShows = (): void => {
+        void refreshMedia(db, fetchText)
+          .then((items) => {
+            if (!background || !Notification.isSupported() || getSetting(db, 'ent.notifyEpisodes') === false) return
+            const sent = new Set((getSetting(db, 'media.notified') as string[] | null) ?? [])
+            const fresh = episodesOn(items).filter(({ item, episode }) => !sent.has(`${item.id}:${episode.s}x${episode.e}`))
+            if (!fresh.length) return
+            for (const { item, episode } of fresh) sent.add(`${item.id}:${episode.s}x${episode.e}`)
+            setSetting(db, 'media.notified', [...sent].slice(-300))
+            for (const { item, episode } of fresh.slice(0, 3)) {
+              const n = new Notification({ title: `New episode today: ${item.title}`, body: `Season ${episode.s}, episode ${episode.e}${episode.name ? ` · ${episode.name}` : ''}`, icon: resourcePath('icon.png') })
+              n.on('click', () => showWindow(getWindow, { entertainment: 'show' }))
+              n.show()
+            }
+          })
+          .catch(() => undefined)
+      }
+      setTimeout(updateShows, 20_000)
+      setInterval(updateShows, 30 * 60 * 1000)
     }
     if (background) {
       refreshTray = createTray(getWindow, quit, effectiveTheme, {

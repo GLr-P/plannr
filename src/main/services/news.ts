@@ -100,6 +100,8 @@ export interface RawItem {
   image: string
   publishedAt: number
   category: string
+  /** A podcast episode's sound file */
+  audio?: string
 }
 
 const cleanSummary = (summary: string, title: string): string => {
@@ -124,6 +126,7 @@ export function parseFeed(xml: string, now = Date.now()): RawItem[] {
       tagAttr(b, 'media:content', 'url', /medium=["']image|type=["']image/) ||
       tagAttr(b, 'media:thumbnail', 'url') ||
       tagAttr(summaryHtml, 'img', 'src') ||
+      tagAttr(b, 'itunes:image', 'href') ||
       ''
     const date = tagText(b, 'pubDate') || tagText(b, 'published') || tagText(b, 'updated') || tagText(b, 'dc:date')
     const parsed = Date.parse(date)
@@ -134,7 +137,8 @@ export function parseFeed(xml: string, now = Date.now()): RawItem[] {
       url,
       image: /^https?:\/\//.test(image) ? image : '',
       publishedAt: Number.isFinite(parsed) ? parsed : now,
-      category: tagAttr(b, 'category', 'term') || tagText(b, 'category')
+      category: tagAttr(b, 'category', 'term') || tagText(b, 'category'),
+      audio: tagAttr(b, 'enclosure', 'url', /type=["']audio/) || ''
     })
   }
   return out
@@ -612,11 +616,11 @@ export function storyId(sourceId: string, guid: string): string {
 export function storeItems(db: Db, sourceId: string, items: (RawItem & { severe?: boolean })[], now = Date.now(), replace = false): void {
   tx(db, () => {
     if (replace) db.prepare('DELETE FROM news_items WHERE source_id = ? AND saved = 0 AND event_id IS NULL').run(sourceId)
-    const upsert = db.prepare(`INSERT INTO news_items (id, source_id, title, summary, url, image, published_at, fetched_at, severe)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    const upsert = db.prepare(`INSERT INTO news_items (id, source_id, title, summary, url, image, published_at, fetched_at, severe, audio)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET title = excluded.title, summary = excluded.summary, url = excluded.url, image = excluded.image,
-        published_at = excluded.published_at, fetched_at = excluded.fetched_at, severe = excluded.severe, hidden = news_items.hidden`)
-    for (const it of items) upsert.run(storyId(sourceId, it.guid), sourceId, it.title, it.summary, it.url, it.image, it.publishedAt, now, it.severe ? 1 : 0)
+        published_at = excluded.published_at, fetched_at = excluded.fetched_at, severe = excluded.severe, audio = excluded.audio, hidden = news_items.hidden`)
+    for (const it of items) upsert.run(storyId(sourceId, it.guid), sourceId, it.title, it.summary, it.url, it.image, it.publishedAt, now, it.severe ? 1 : 0, it.audio ?? '')
   })
 }
 

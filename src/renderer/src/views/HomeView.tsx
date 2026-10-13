@@ -97,7 +97,7 @@ export function HomeView() {
   const deals = news ? news.items.filter((i) => i.page !== 'local' && i.important && !i.filtered).slice(0, 5) : []
   const shopping = listItems.filter((i) => !i.done)
   const liveNow = ent?.live.filter((l) => l.live) ?? []
-  const newVideos = ent?.videos.filter((v) => !v.watched && !v.short).slice(0, 4) ?? []
+  const newVideos = ent?.videos.filter((v) => v.kind === 'youtube' && !v.watched && !v.short).slice(0, 4) ?? []
 
   const blocks: Record<HomeSection, ReactNode> = {
     weather: forecast && forecast.days.length > 0 && (

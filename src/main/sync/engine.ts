@@ -56,7 +56,8 @@ export const SYNCED_TABLES = [
   'habits',
   'habit_log',
   'list_items',
-  'packages'
+  'packages',
+  'media'
 ] as const
 
 /** Settings shared by every device (the rest — window size, theme, integrations, backups — stay per device). */

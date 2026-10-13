@@ -45,6 +45,10 @@ function navigateTo(target: NavigateTarget): void {
   else if ('tasks' in target) useNav.getState().go({ view: 'tasks' })
   else if ('news' in target) useNav.getState().go({ view: 'news', page: target.page })
   else if ('packages' in target) useNav.getState().go({ view: 'packages' })
+  else if ('entertainment' in target) {
+    useUi.getState().setPref('entTab', target.entertainment)
+    useNav.getState().go({ view: 'entertainment' })
+  }
   else openEntity(target.type, target.id)
 }
 
