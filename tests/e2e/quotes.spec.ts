@@ -73,6 +73,7 @@ test('print a quote and an invoice', async () => {
     await page.getByRole('button', { name: 'Print', exact: true }).click()
     await page.getByRole('menuitem', { name: kind, exact: true }).click()
     await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(marker)
+    await page.getByRole('button', { name: 'Close preview' }).click()
     return readFileSync(out, 'utf8')
   }
   const quote = await printed('Quote', '<h1>Quote</h1>')

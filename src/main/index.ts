@@ -61,6 +61,17 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 let db: Db
+
+/** A background check that skips a turn instead of crashing (the database closes while quitting, restoring or switching profile) */
+const guarded =
+  (fn: () => void) =>
+  (): void => {
+    try {
+      fn()
+    } catch {
+      // try again next time
+    }
+  }
 let mainWindow: BrowserWindow | null = null
 let quitting = false
 let vaultSession: VaultSession | null = null
@@ -288,8 +299,8 @@ if (!app.requestSingleInstanceLock()) {
         }
         void runBackup(db, dataDir, backupDir()).catch(() => undefined)
       }
-      setTimeout(autoBackup, 30_000) // shortly after start, so opening Plannr stays fast
-      setInterval(autoBackup, 60 * 60 * 1000)
+      setTimeout(guarded(autoBackup), 30_000) // shortly after start, so opening Plannr stays fast
+      setInterval(guarded(autoBackup), 60 * 60 * 1000)
     }
     createWindow()
     // Keep holidays fresh (weekly). Tests only do this when given a saved feed (no internet in tests).
@@ -298,7 +309,7 @@ if (!app.requestSingleInstanceLock()) {
         if (holidaysStale(db)) void refreshHolidays(db, fetchText)
       }
       updateHolidays()
-      setInterval(updateHolidays, 6 * 60 * 60 * 1000)
+      setInterval(guarded(updateHolidays), 6 * 60 * 60 * 1000)
     }
     // Local news every 30 minutes; urgent alerts (weather warnings, closures, advisories) can show a notification.
     if (!isTest || process.env.PLANNR_NEWS_FIXTURES) {
@@ -316,8 +327,8 @@ if (!app.requestSingleInstanceLock()) {
           })
           .catch(() => undefined)
       }
-      setTimeout(updateNews, 8_000)
-      setInterval(updateNews, 10 * 60 * 1000)
+      setTimeout(guarded(updateNews), 8_000)
+      setInterval(guarded(updateNews), 10 * 60 * 1000)
       // The morning briefing, once a day at the time chosen in News → Sources & topics
       const briefing = (): void => {
         const at = newsPrefs(db).briefing
@@ -333,7 +344,7 @@ if (!app.requestSingleInstanceLock()) {
         n.on('click', () => showWindow(getWindow, { news: true }))
         n.show()
       }
-      setInterval(briefing, 60 * 1000)
+      setInterval(guarded(briefing), 60 * 1000)
       // New videos and who's live; a notification when a streamer goes live only if turned on (Entertainment → Channels)
       const updateEnt = (): void => {
         if (!entStale(db, Date.now(), 5)) return
@@ -348,8 +359,8 @@ if (!app.requestSingleInstanceLock()) {
           })
           .catch(() => undefined)
       }
-      setTimeout(updateEnt, 12_000)
-      setInterval(updateEnt, 60 * 1000)
+      setTimeout(guarded(updateEnt), 12_000)
+      setInterval(guarded(updateEnt), 60 * 1000)
       // Your shows' episode dates (each checked at most once a day); a notification the day a new one comes out
       const updateShows = (): void => {
         void refreshMedia(db, fetchText)
@@ -368,8 +379,8 @@ if (!app.requestSingleInstanceLock()) {
           })
           .catch(() => undefined)
       }
-      setTimeout(updateShows, 20_000)
-      setInterval(updateShows, 30 * 60 * 1000)
+      setTimeout(guarded(updateShows), 20_000)
+      setInterval(guarded(updateShows), 30 * 60 * 1000)
     }
     if (background) {
       refreshTray = createTray(getWindow, quit, effectiveTheme, {

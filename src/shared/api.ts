@@ -1516,6 +1516,21 @@ export interface BusinessInfo {
 
 export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice' | 'form'
 
+/** Paper, orientation and margins chosen in the print preview */
+export interface PrintSetup {
+  paper: 'letter' | 'legal' | 'a4'
+  landscape: boolean
+  margins: 'normal' | 'narrow' | 'none'
+}
+export const DEFAULT_PRINT_SETUP: PrintSetup = { paper: 'letter', landscape: false, margins: 'normal' }
+/** Page margin for each choice, in mm */
+export const PRINT_MARGIN_MM: Record<PrintSetup['margins'], number> = { normal: 12, narrow: 6, none: 0 }
+
+/** What to print: a ticket printout, or (no ticket) what's on screen, e.g. the open note */
+export interface PrintJob extends PrintSetup {
+  ticket?: { id: string; kind: PrintKind }
+}
+
 // ---------- Updates ----------
 
 export interface SyncStatus {
@@ -1890,8 +1905,14 @@ export interface PlannrApi {
     set(patch: Partial<BusinessInfo>): Promise<BusinessInfo>
   }
   print: {
-    /** Opens the Windows print dialog for a ticket printout */
+    /** Opens the Windows print dialog for a ticket printout (the phone; the PC shows the preview first) */
     ticket(id: string, kind: PrintKind): Promise<void>
+    /** The printout as a PDF, for the print preview (PC) */
+    pdf(job: PrintJob): Promise<Uint8Array>
+    /** Opens the Windows print dialog for the printout (PC) */
+    send(job: PrintJob): Promise<void>
+    /** Saves the printout as a PDF; asks where unless a file is given (tests). False if cancelled. (PC) */
+    savePdf(job: PrintJob, name: string, file?: string): Promise<boolean>
   }
   data: {
     /** Pick a folder (or give one, in tests); writes notes as Markdown and the rest as CSV. Null if cancelled. */
@@ -1933,8 +1954,8 @@ export interface PlannrApi {
     info(): Promise<AppInfo>
     openDataFolder(): Promise<void>
     /** Recolours the window (title bar and background); the colours come from the colour theme when given */
-    /** Prints what's on screen (the open note), or saves it as a PDF from the print window */
-    printPage(): Promise<void>
+    /** Puts formatted text on the clipboard, with pictures saved in Plannr (plannr://file/…) included as the pictures themselves */
+    copyRich(html: string, text: string): Promise<void>
     setTheme(theme: Theme, colors?: { bg: string; titlebar: string; symbol: string }): Promise<void>
     /** Quick capture box */
     openCapture(): Promise<void>
@@ -2028,11 +2049,11 @@ export const API_SHAPE = {
   sidebar: ['sections', 'createSection', 'renameSection', 'removeSection', 'reorderSections', 'move'],
   display: ['get', 'set'],
   business: ['get', 'set'],
-  print: ['ticket'],
+  print: ['ticket', 'pdf', 'send', 'savePdf'],
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
   updates: ['status', 'check', 'install'],
-  app: ['info', 'openDataFolder', 'printPage', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
+  app: ['info', 'openDataFolder', 'copyRich', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

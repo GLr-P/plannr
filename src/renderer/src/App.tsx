@@ -34,6 +34,7 @@ import { useAppearance } from './lib/appearance'
 import { maybeStartOnboarding, Onboarding } from './components/Onboarding'
 import { initUpdates } from './store/update'
 import { MessageDialog } from './components/MessageDialog'
+import { PrintPreview } from './components/PrintPreview'
 import { MobileNav, useDrawer } from './components/MobileNav'
 import { AddProfileDialog } from './components/Profiles'
 import type { NavigateTarget } from './api'
@@ -199,6 +200,7 @@ export function App() {
       <ShortcutsDialog />
       <Onboarding />
       <MessageDialog />
+      <PrintPreview />
       <AddProfileDialog />
     </div>
   )

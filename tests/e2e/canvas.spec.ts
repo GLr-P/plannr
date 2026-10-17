@@ -187,6 +187,9 @@ test('a ticket from the canvas: fill it in; linked fields fill the customer', as
   await page.getByRole('button', { name: 'Print', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Form (everything, as designed)' }).click()
   await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain('Leave at the side door')
+  await expect(page.locator('.pp-page canvas').first()).toBeVisible()
+  await shot(page, 'cv-print-preview')
+  await page.getByRole('button', { name: 'Close preview' }).click()
   const printed = readFileSync(out, 'utf8')
   for (const text of ['Rosa Lima', '555-0123', '$150.00', 'Thank you for your order!', 'Special instructions']) expect(printed).toContain(text)
   expect(printed).toMatch(/bare">Leave at the side door/) // printed without its line or box

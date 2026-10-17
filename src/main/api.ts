@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, Notification, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, net, Notification, shell } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import type { VaultSession } from './vault-session'
 import type { Db } from './db'
@@ -23,7 +23,7 @@ import type { SyncService } from './sync/service'
 import { DEFAULT_CAPTURE_SHORTCUT, hideCapture, openCapture, registerCaptureShortcut } from './capture'
 import { resolveFilePath } from './services/files'
 import { getSetting, setSetting } from './services/settings'
-import { printTicket } from './print-window'
+import { printPdf, printSavePdf, printSend, printTicket } from './print-window'
 import { createCoreApi } from './api-core'
 import { pacedForReddit } from './services/reddit-gate'
 import { join } from 'node:path'
@@ -57,6 +57,8 @@ const OPENAI_STYLE: Partial<Record<AssistantProvider, { url: string; tokens: 'ma
 }
 
 export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindow | null, vaultSession: VaultSession, hooks: ApiHooks): PlannrApi {
+  // Tests write ticket printouts to a file instead of opening the print dialog.
+  const testPrint = process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined
   const assistantStatus = (): AssistantStatus => {
     const saved = getSetting(db, 'assistant.provider') as AssistantProvider | null
     // Chosen, else whichever paid key was set up first, else free Gemini
@@ -350,7 +352,10 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
     },
     print: {
       // Tests write the page to a file instead of opening the print dialog.
-      ticket: async (id, kind) => printTicket(db, dataDir, id, kind, process.env.PLANNR_DATA_DIR ? join(dataDir, 'last-print.html') : undefined)
+      ticket: async (id, kind) => printTicket(db, dataDir, id, kind, testPrint),
+      pdf: async (job) => printPdf(db, dataDir, getWindow(), job, testPrint),
+      send: async (job) => printSend(db, dataDir, getWindow(), job, testPrint),
+      savePdf: async (job, name, file) => printSavePdf(db, dataDir, getWindow(), job, name, file ?? (testPrint && join(dataDir, 'last-print.pdf')))
     },
     data: {
       exportAll: async (folder) => {
@@ -407,8 +412,15 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       openDataFolder: async () => {
         await shell.openPath(dataDir)
       },
-      printPage: async () => {
-        await new Promise<void>((resolve) => getWindow()?.webContents.print({ silent: false, printBackground: true }, () => resolve()) ?? resolve())
+      copyRich: async (html, text) => {
+        // Pictures saved in Plannr only open inside Plannr: put the pictures themselves in (Word, Outlook and Gmail take these).
+        const withPictures = html.replace(/src="plannr:\/\/file\/([0-9a-f-]{36})"/g, (whole, id: string) => {
+          const file = resolveFilePath(db, dataDir, id)
+          if (!file || !file.mime.startsWith('image/')) return whole
+          const data = readFileSync(file.path)
+          return data.length > 15_000_000 ? whole : `src="data:${file.mime};base64,${data.toString('base64')}"`
+        })
+        await clipboard.write([new ClipboardItem({ 'text/html': withPictures, 'text/plain': text })])
       },
       setTheme: async (theme, colors) => {
         const win = getWindow()

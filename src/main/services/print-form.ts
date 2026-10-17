@@ -1,4 +1,4 @@
-import { formatCurrency, formatTicketNumber, type BusinessInfo, type Customer, type DocJSON, type Ticket } from '../../shared/api'
+import { formatCurrency, formatTicketNumber, PRINT_MARGIN_MM, type BusinessInfo, type Customer, type DocJSON, type PrintSetup, type Ticket } from '../../shared/api'
 import { drawingSvg, parseStrokes } from '../../shared/drawing'
 import { CANVAS_WIDTH, boxOf, fittedHeight, isCanvas, DEFAULT_TEXT_STYLE, type TextStyle } from '../../shared/canvas'
 import { fieldText } from './doc'
@@ -26,6 +26,12 @@ export interface FormPrintData {
   /** Price, paid and owing */
   payments: { priceCents: number | null; paidCents: number }
 }
+
+/** Paper and margins of full-page printouts; the print preview swaps it for the chosen ones (withPageSetup) */
+export const PAGE_RULE = '@page { size: letter; margin: 12mm; }'
+
+export const withPageSetup = (html: string, setup: PrintSetup): string =>
+  html.replace(PAGE_RULE, `@page { size: ${setup.paper} ${setup.landscape ? 'landscape' : 'portrait'}; margin: ${PRINT_MARGIN_MM[setup.margins]}mm; }`)
 
 const esc = (s: string): string => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 const lines = (s: string): string => esc(s).replace(/\n/g, '<br>')
@@ -231,6 +237,13 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
   return `<div class="docform">${block(doc)}</div>`
 }
 
+/**
+ * Ruled lines for long answers, one every `every` px. A tiled picture rather than a CSS gradient: gradients become PDF
+ * shadings, which the print preview (pdf.js) draws as a grey smear.
+ */
+const rules = (every: number, at: number, thick: number): string =>
+  `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='100' height='${every}' viewBox='0 0 100 ${every}' preserveAspectRatio='none'><rect y='${at}' width='100' height='${thick}'/></svg>`)}") 0 0 / 100% ${every}px repeat-y`
+
 const STYLE = `
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -251,13 +264,13 @@ const STYLE = `
   .s-modern .fl { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--accent); }
   .s-modern .ff { gap: 4px; }
   .s-modern .fv { flex: 0 0 auto; border: 0; border-bottom: 1.25px solid #000; border-radius: 0; padding: 2px 1px 3px; background: none; font-size: 15px; }
-  .s-modern .fv.area { flex: 1; border: 0; line-height: 27px; padding: 0 1px; background: repeating-linear-gradient(to bottom, transparent 0 24.5px, #000 24.5px 25.75px, transparent 25.75px 27px); }
+  .s-modern .fv.area { flex: 1; border: 0; line-height: 27px; padding: 0 1px; background: ${rules(27, 24.5, 1.25)}; }
   .s-modern .fv.calc { align-self: flex-start; border: 0; background: var(--accent); color: #fff; padding: 4px 14px; border-radius: 4px; font-size: 17px; font-weight: 700; }
   .s-modern .fv.tick { border: 0; }
   /* Lines: like a paper order form. Values on an underline; long answers on ruled lines. */
   .s-lines .fl { color: var(--accent); }
   .s-lines .fv { border: 0; border-bottom: 1.5px solid #000; border-radius: 0; padding: 2px 2px 3px; background: none; }
-  .s-lines .fv.area { border: 0; line-height: 24px; padding: 0 2px; background: repeating-linear-gradient(to bottom, transparent 0 21px, #000 21px 22px, transparent 22px 24px); }
+  .s-lines .fv.area { border: 0; line-height: 24px; padding: 0 2px; background: ${rules(24, 21, 1)}; }
   .s-lines .fv.calc { border-bottom: 4px double #000; }
   /* One-line answers: the underline sits right under the writing, not at the bottom of the space */
   .s-lines .fv:not(.area):not(.tick), .s-elegant .fv:not(.area):not(.tick) { flex: 0 0 auto; }
@@ -310,7 +323,7 @@ export function formHtml(d: FormPrintData): string {
   const body = t.content ? (isCanvas(t.content) ? canvasHtml(t.content, d) : docHtml(t.content, d)) : '<p class="muted">This ticket has no form.</p>'
   const scale = t.content && isCanvas(t.content) ? fitScale(t.content) : 1
   const zoom = scale < 1 ? `zoom:${scale};` : ''
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body class="s-${printStyleOf(d)}" style="${zoom}--accent:${accentOf(d)}">
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${PAGE_RULE}${STYLE}</style></head><body class="s-${printStyleOf(d)}" style="${zoom}--accent:${accentOf(d)}">
     <div class="date">${esc(printed)}</div>
     ${body}
   </body></html>`

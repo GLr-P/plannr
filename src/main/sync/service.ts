@@ -157,7 +157,13 @@ export class SyncService {
 
   private tick(): void {
     if (!this.engine || this.running || Date.now() < this.retryAt) return
-    if (this.engine.pendingCount() > 0 || Date.now() - this.lastPullAt > 60_000) void this.run()
+    let pending = 0
+    try {
+      pending = this.engine.pendingCount()
+    } catch {
+      return // the database closed (quitting, restoring, switching profile)
+    }
+    if (pending > 0 || Date.now() - this.lastPullAt > 60_000) void this.run()
   }
 
   /** The window got focus: catch up with the other devices. */

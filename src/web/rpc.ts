@@ -121,6 +121,22 @@ export function installApi(): void {
     return true
   }
   p.print.ticket = async (id, kind) => printHtml(await web.printHtml(id, kind))
+  p.app.copyRich = async (html, text) => {
+    // Pictures saved in Plannr: put the pictures themselves in, so they paste into mail and other apps.
+    const ids = [...new Set([...html.matchAll(/src="plannr:\/\/file\/([0-9a-f-]{36})"/g)].map((m) => m[1]))]
+    let out = html
+    for (const id of ids) {
+      const blob = await fetch(`/plannr-file/${id}`).then((r) => (r.ok ? r.blob() : null)).catch(() => null)
+      if (!blob?.type.startsWith('image/')) continue
+      const url = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.readAsDataURL(blob)
+      })
+      out = out.replaceAll(`src="plannr://file/${id}"`, `src="${url}"`)
+    }
+    await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([out], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })])
+  }
   // Profiles are kept by the page (see profiles.ts); a profile is added by opening its join link from the PC.
   p.profiles = {
     list: async () => profilesState(),

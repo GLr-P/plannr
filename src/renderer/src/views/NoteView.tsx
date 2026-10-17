@@ -20,6 +20,7 @@ import type { NoteVersion } from '../../../shared/api'
 import { IconPicker, openPanel } from '../components/ContextMenu'
 import { ItemIcon } from '../lib/icons'
 import { styleNote } from '../menus'
+import { openPrint } from '../components/PrintPreview'
 
 export function NoteView({ id }: { id: string }) {
   const [note, setNote] = useState<Note | null | undefined>(undefined)
@@ -171,7 +172,7 @@ function NotePage({ note, reload }: { note: Note; reload: () => Promise<void> })
               <button type="button" className="icon-btn" title="Duplicate this note" aria-label="Duplicate note" onClick={() => void duplicateNote(note.id)}>
                 <Copy />
               </button>
-              <button type="button" className="icon-btn" title="Print, or save as PDF" aria-label="Print note" onClick={() => printNote()}>
+              <button type="button" className="icon-btn" title="Print, or save as PDF" aria-label="Print note" onClick={() => void openPrint({ title: title || 'Untitled', bodyClass: 'printing-note' })}>
                 <Printer />
               </button>
               <button type="button" className="icon-btn" title="Move to trash" aria-label="Move to trash" onClick={() => void trashNote(note.id)}>
@@ -328,18 +329,6 @@ function countWords(doc: DocJSON | null | undefined): number {
   }
   if (doc) walk(doc)
   return n
-}
-
-/** Prints the open note (the page's print styles hide everything else), or saves it as a PDF */
-function printNote(): void {
-  document.body.classList.add('printing-note')
-  const done = (): void => document.body.classList.remove('printing-note')
-  void api.app.info().then((info) => {
-    if (info.web) {
-      window.print()
-      done()
-    } else void api.app.printPage().finally(done)
-  })
 }
 
 /** Earlier versions of the note: pick one to see it, and bring it back */

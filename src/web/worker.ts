@@ -161,7 +161,14 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       openFolder: offline,
       restore: offline
     },
-    print: { ticket: async () => undefined /* the page prints (printHtml) */ },
+    print: {
+      ticket: async () => undefined, // the page prints (printHtml); the phone's print sheet has its own preview
+      pdf: async () => {
+        throw new Error('Not on the phone')
+      },
+      send: async () => undefined,
+      savePdf: async () => false
+    },
     data: { exportAll: async () => null, importContacts: async () => null, openFolder: async () => undefined },
     sync: {
       status: async () => sync.status(),
@@ -185,7 +192,7 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       copyNote: offline
     },
     app: {
-      printPage: async () => undefined, // the phone page prints itself (see the renderer)
+      copyRich: async () => undefined, // the page writes the clipboard (rpc.ts)
       info: async () => ({ version: __APP_VERSION__, dataDir: DATA, tests: false, web: true }),
       openDataFolder: async () => undefined,
       setTheme: async () => undefined,

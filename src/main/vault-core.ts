@@ -21,7 +21,12 @@ export class VaultCore {
     private onLocked: () => void
   ) {
     setInterval(() => {
-      if (this.dek && Date.now() - this.lastActive > this.autoLockMinutes() * 60_000) this.lock()
+      if (!this.dek) return
+      try {
+        if (Date.now() - this.lastActive > this.autoLockMinutes() * 60_000) this.lock()
+      } catch {
+        this.lock() // the database closed (quitting, restoring a backup, switching profile): lock rather than crash
+      }
     }, 15_000).unref?.()
   }
 

@@ -9,7 +9,7 @@ import { listTransactions } from './money'
 import { getTicket } from './tickets'
 import { listItems } from './items'
 import { fieldText } from './doc'
-import { formHtml } from './print-form'
+import { formHtml, PAGE_RULE } from './print-form'
 import { listPhotos } from './photos'
 
 /*
@@ -240,7 +240,7 @@ export function labelHtml({ ticket: t, customer, business: b }: PrintData): stri
 }
 
 function page(title: string, body: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page { size: letter; margin: 12mm; }${STYLE}</style></head><body><div class="sheet">${body}</div></body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${PAGE_RULE}${STYLE}</style></head><body><div class="sheet">${body}</div></body></html>`
 }
 
 const KIND_LABEL: Record<LineItem['kind'], string> = { part: 'Part', labour: 'Labour', other: '', discount: 'Discount' }

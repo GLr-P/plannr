@@ -1,8 +1,10 @@
 import { api } from './api'
 import { useData } from './store/data'
 import { go, useNav, type Route } from './store/nav'
-import type { EntityType } from '../../shared/api'
-import { undoToast } from './lib/toast'
+import type { DocJSON, EntityType } from '../../shared/api'
+import { showToast, undoToast } from './lib/toast'
+import { boxOf, isCanvas } from '../../shared/canvas'
+import { copyHtml, copyText } from '../../shared/rich-copy'
 
 export async function newNote(folderId: string | null = null, title?: string, templateId?: string, canvas?: boolean): Promise<void> {
   // Leave the current note right away so keys typed while the new one opens can't land in it.
@@ -16,6 +18,26 @@ export async function duplicateNote(id: string): Promise<void> {
   const copy = await api.notes.duplicate(id)
   await useData.getState().refresh()
   go({ view: 'note', id: copy.id })
+}
+
+/** Copies a whole note (title and text, with its formatting and pictures) to paste into an email, Word or anywhere */
+export async function copyNote(id: string): Promise<void> {
+  const note = await api.notes.get(id)
+  if (!note) return
+  const title: DocJSON[] = note.title ? [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: note.title }] }] : []
+  const body = isCanvas(note.content)
+    ? [...(note.content?.content ?? [])]
+        .sort((a, b) => boxOf(a).y - boxOf(b).y || boxOf(a).x - boxOf(b).x) // top to bottom, left to right
+        .flatMap((item): DocJSON[] => {
+        const text = String(item.attrs?.text ?? '').trim()
+        if (item.type === 'canvasText') return text ? [{ type: 'paragraph', content: [{ type: 'text', text }] }] : []
+        if (item.type === 'formField') return [{ type: 'paragraph', content: [item] }]
+        return item.type === 'image' ? [item] : []
+      })
+    : (note.content?.content ?? [])
+  const slice = { content: [...title, ...body] }
+  await api.app.copyRich(copyHtml(slice), copyText(slice))
+  showToast('Copied. Paste it into an email, Word or anywhere.')
 }
 
 export async function trashNote(id: string): Promise<void> {

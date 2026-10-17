@@ -1,7 +1,7 @@
 {
   "name": "plannr",
   "productName": "Plannr",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "A free, open-source organizer for Windows: notes, calendar, customers, tickets, money and a locked vault",
   "license": "GPL-3.0-or-later",
   "homepage": "https://glr-p.github.io/plannr/",
@@ -58,6 +58,7 @@
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "lucide-react": "^1.51.0",
+    "pdfjs-dist": "^6.3.289",
     "qrcode-generator": "^2.0.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

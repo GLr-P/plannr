@@ -26,6 +26,9 @@ import { MessageSquare } from 'lucide-react'
 import { loadTemplates } from '../lib/messages'
 import { useMessageDialog } from '../components/MessageDialog'
 import type { PrintKind } from '../../../shared/api'
+import { openPrint } from '../components/PrintPreview'
+
+const PRINT_NAME: Record<PrintKind, string> = { form: 'Form', intake: 'Intake slip', quote: 'Quote', invoice: 'Invoice', receipt: 'Receipt', label: 'Label' }
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
@@ -306,7 +309,9 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   const r = e.currentTarget.getBoundingClientRect()
                   const print = async (kind: PrintKind): Promise<void> => {
                     await saver.flush()
-                    await api.print.ticket(ticket.id, kind).catch((err: Error) => showToast(err.message))
+                    await openPrint({ title: `${formatTicketNumber(ticket.number)} ${PRINT_NAME[kind]}`, ticket: { id: ticket.id, kind }, fixedSize: kind === 'label' }).catch((err: Error) =>
+                      showToast(err.message)
+                    )
                   }
                   openMenu({ clientX: r.left, clientY: r.bottom + 4 }, [
                     { label: 'Form (everything, as designed)', icon: <LayoutTemplate />, onSelect: () => print('form') },

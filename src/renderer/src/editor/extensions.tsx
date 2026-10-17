@@ -49,6 +49,7 @@ import { noteTitle } from '../lib/format'
 import type { EntityType } from '../../../shared/api'
 import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
 import { FormField } from './FormField'
+import { RichClipboard } from './clipboard'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
 import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type ImageUploader } from './upload'
 
@@ -295,6 +296,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     FormField,
     Callout,
     FileAttachment,
+    RichClipboard,
     TableKit.configure({ table: { resizable: true } }),
     SlashCommands,
     Uploader.configure({ upload: options.upload ?? defaultUploader, ticket: Boolean(options.ticket) }),

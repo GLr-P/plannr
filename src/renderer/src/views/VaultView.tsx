@@ -38,6 +38,7 @@ import {
   type VaultStatus
 } from '../../../shared/api'
 import { api } from '../api'
+import { openPrint } from '../components/PrintPreview'
 import { useData } from '../store/data'
 import { useAutosave } from '../lib/useAutosave'
 import { ConfirmButton, SaveIndicator } from '../components/common'
@@ -185,7 +186,7 @@ function RecoveryKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDon
           <button type="button" className="btn" onClick={() => void api.vault.saveRecoveryKey(recoveryKey)}>
             <Save /> Save as file
           </button>
-          <button type="button" className="btn" onClick={() => window.print()}>
+          <button type="button" className="btn" onClick={() => void openPrint({ title: 'Plannr vault recovery key' })}>
             <Printer /> Print
           </button>
         </div>

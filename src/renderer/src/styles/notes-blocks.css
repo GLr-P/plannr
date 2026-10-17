@@ -564,6 +564,7 @@
   body.printing-note .draw-toolbar,
   body.printing-note .draw-resize,
   body.printing-note .mobile-tabs,
+  body.printing-note .note-words,
   body.printing-note .backlinks,
   body.printing-note .linked-events {
     display: none !important;
