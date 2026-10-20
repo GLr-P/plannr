@@ -54,6 +54,43 @@ const data = (content: DocJSON) => ({
   payments: { priceCents: 10864, paidCents: 5000 }
 })
 
+describe('long answers fit their box on a canvas form', () => {
+  const desc =
+    'Large arrangement for the front counter: 2 dozen red roses, white lilies and baby breath, eucalyptus around the edge. ' +
+    'Tall glass vase (customer bringing their own on Friday). Card to say "Happy 40th Anniversary Mom and Dad, love always from all of us". ' +
+    'Deliver to the side door after 2pm, call ahead, the dog barks. Extra ribbon in gold and a second small posy for the grandmother.'
+  const html = (value: string, style = 'modern') => {
+    const d = data({ type: 'canvas', attrs: { height: 400 }, content: [field('Description', { kind: 'textarea', value }, { x: 24, y: 24, w: 420, h: 140 })] })
+    d.ticket.layout = ticketLayout({ printStyle: style })
+    return formHtml(d)
+  }
+  const valueDiv = (h: string) => /<div style="([^"]*)" class="fv area/.exec(h)?.[1] ?? ''
+
+  it('shrinks a long description so all of it prints (it used to be cut off)', () => {
+    const style = valueDiv(html(desc))
+    const size = Number(/font-size:([\d.]+)px/.exec(style)?.[1])
+    const lh = Number(/line-height:([\d.]+)px/.exec(style)?.[1])
+    expect(size).toBeGreaterThanOrEqual(7)
+    expect(size).toBeLessThan(15)
+    expect(style).toContain(`background-size:100% ${lh}px`) // ruled lines follow the smaller writing
+    // Estimated lines at that size fit in the value area (box 140 * 727/780, minus the label)
+    const k = 727 / 780
+    const cpl = Math.floor((420 * k - 4) / (size * 0.58))
+    const linesNeeded = desc.split('\n').reduce((n, p) => n + Math.max(1, Math.ceil(p.length / cpl)), 0)
+    expect(linesNeeded * lh).toBeLessThanOrEqual(140 * k)
+  })
+
+  it('leaves short answers exactly as before', () => {
+    expect(html('Roses and lilies')).toContain('<div class="fv area')
+    expect(valueDiv(html('Roses and lilies'))).toBe('')
+  })
+
+  it('never goes below a readable size', () => {
+    const size = Number(/font-size:([\d.]+)px/.exec(valueDiv(html(desc.repeat(8))))?.[1])
+    expect(size).toBe(7)
+  })
+})
+
 describe('the Form printout', () => {
   it('uses the template’s print style and colour', () => {
     const d = data(canvas)
@@ -85,7 +122,10 @@ describe('the Form printout', () => {
     expect(html).toContain('Oct 24, 2026')
     expect(html).toContain('$112.00') // worked out at print time, even if never shown on screen
     expect(html).toMatch(/class="fv area[^"]*bare">Happy anniversary/) // printed without its line or box (older setting)
-    expect(html).toMatch(/class="ff top lb0 li vb"><div class="fl" style="font-size:13px">Flowers<\/div><div style="font-size:20px" class="fv area[^"]*last">Roses<br>Lilies/) // italic plain label, bold answer, one line under the last line
+    // italic plain label, bold answer, one line under the last line; the chosen 20px, or a bit less when two lines don't fit the box
+    const flowers = /class="ff top lb0 li vb"><div class="fl" style="font-size:13px">Flowers<\/div><div style="font-size:([\d.]+)px[^"]*" class="fv area[^"]*last">Roses<br>Lilies/.exec(html)
+    expect(Number(flowers?.[1])).toBeGreaterThanOrEqual(15)
+    expect(Number(flowers?.[1])).toBeLessThanOrEqual(20)
     expect(html).toContain('Owing') // payments part: $108.64 − $50.00
     expect(html).toMatch(/left:22.4px;top:93.2px;width:279.6px;height:55.9px/) // at its place, at printed size
     expect(html).not.toContain('class="head"') // no bar at the top: just the date

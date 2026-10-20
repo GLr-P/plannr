@@ -108,20 +108,67 @@ const accentOf = (d: FormPrintData): string => (/^#[0-9a-f]{6}$/i.test(d.ticket.
 /** Clean keeps labels small (the values carry the page); the others grow them to fill the space */
 const LABEL_MAX: Record<string, number> = { modern: 11.5, boxes: 18, lines: 16, clean: 11, elegant: 16 }
 
+/** Each style's answer size and line height (px), matching STYLE below; long answers on ruled lines are spaced wider */
+const VALUE_BASE: Record<string, { size: number; area: number }> = {
+  modern: { size: 15, area: 27 },
+  lines: { size: 14, area: 24 },
+  boxes: { size: 14, area: 14 * 1.35 },
+  clean: { size: 15.5, area: 15.5 * 1.35 },
+  elegant: { size: 15, area: 15 * 1.35 }
+}
+/** Space each style puts around an answer (padding plus border, px): [left+right, top+bottom], matching STYLE */
+const VALUE_PAD: Record<string, [number, number]> = { modern: [4, 2], lines: [6, 5], boxes: [18, 10], clean: [2, 8], elegant: [18, 14] }
+const MIN_VALUE_SIZE = 7
+
+/**
+ * The answer size (px) at which `text` fits a w×h space, stepping down from `base` to 7 px; null when it already fits
+ * at `base`. Like labelSize it estimates from character counts, since the print window runs no scripts to measure.
+ * A long answer used to be clipped by its fixed-size box on canvas forms (reported 2026-10-20, a flower-shop order).
+ */
+export function valueFit(text: string, w: number, h: number, base: number, lineFactor: number): number | null {
+  const fits = (s: number): boolean => {
+    const perLine = Math.max(1, Math.floor(w / (s * 0.5)))
+    const rows = text.split('\n').reduce((n, p) => n + Math.max(1, Math.ceil(p.length / perLine)), 0)
+    return rows * s * lineFactor <= h
+  }
+  if (fits(base)) return null
+  for (let s = base - 0.5; s > MIN_VALUE_SIZE; s -= 0.5) if (fits(s)) return s
+  return MIN_VALUE_SIZE
+}
+
 function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false, box?: { w: number; h: number }): string {
   const label = String(attrs.label ?? '')
   const value = printedValue(attrs, d.ticket, d.customer, fieldsOf(d))
   const pos = String(attrs.labelPos ?? (inline ? 'left' : 'top'))
   const isBox = attrs.kind === 'checkbox'
+  const isArea = attrs.kind === 'textarea'
   const linesMode = attrs.printLines === 'last' || attrs.printLines === 'none' ? attrs.printLines : attrs.noLines === true ? 'none' : ''
-  const valueStyle = Number(attrs.valueSize) > 0 ? ` style="font-size:${Number(attrs.valueSize)}px"` : ''
-  const valueHtml = `<div${valueStyle} class="fv ${attrs.kind === 'textarea' ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''} ${linesMode === 'none' ? 'bare' : linesMode === 'last' ? 'last' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
+  const style = printStyleOf(d)
+  // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
+  const fit = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
+  const size = Number(attrs.labelSize) > 0 ? Number(attrs.labelSize) : Math.min(fit, LABEL_MAX[style])
+
+  // On a canvas the box has a fixed size: shrink a long answer until it fits instead of cutting it off
+  const css: string[] = []
+  const base = Number(attrs.valueSize) > 0 ? Number(attrs.valueSize) : VALUE_BASE[style].size
+  if (Number(attrs.valueSize) > 0) css.push(`font-size:${base}px`)
+  if (box && value && !isBox && attrs.kind !== 'calc') {
+    const ruled = isArea && linesMode === '' && (style === 'modern' || style === 'lines')
+    const factor = ruled ? VALUE_BASE[style].area / VALUE_BASE[style].size : 1.35
+    const [padX, padY] = VALUE_PAD[style]
+    const w = (pos === 'left' ? box.w * 0.55 - 10 : box.w) - padX - 6
+    const h = (pos === 'left' || pos === 'hidden' ? box.h : box.h - size * 1.15 - 4) - padY - 2
+    const shrunk = valueFit(value, w, h, base, factor)
+    if (shrunk !== null) {
+      const lh = Math.round(shrunk * factor * 2) / 2
+      css.splice(0, css.length, `font-size:${shrunk}px`, `line-height:${lh}px`)
+      if (ruled) css.push(`background-size:100% ${lh}px`) // keep the ruled lines under the smaller writing
+    }
+  }
+  const valueStyle = css.length ? ` style="${css.join(';')}"` : ''
+  const valueHtml = `<div${valueStyle} class="fv ${isArea ? 'area' : ''} ${isBox ? 'tick' : ''} ${attrs.kind === 'calc' ? 'calc' : ''} ${linesMode === 'none' ? 'bare' : linesMode === 'last' ? 'last' : ''}">${value ? lines(value) : '&nbsp;'}</div>`
   const styles = [attrs.labelBold === false ? 'lb0' : '', attrs.labelItalic === true ? 'li' : '', attrs.valueBold === true ? 'vb' : '', attrs.valueItalic === true ? 'vi' : ''].filter(Boolean).join(' ')
   if (pos === 'hidden') return `<div class="ff ${styles}">${valueHtml}</div>`
-  // Room for the label: beside the box it gets up to 45% of the width; above it, what the box leaves over
-  const max = LABEL_MAX[printStyleOf(d)]
-  const fit = box ? (pos === 'left' ? labelSize(label, box.w * 0.45 - 10, box.h) : labelSize(label, box.w, isBox ? box.h - 22 : box.h - 32)) : 13
-  const size = Number(attrs.labelSize) > 0 ? Number(attrs.labelSize) : Math.min(fit, max)
   return `<div class="ff ${pos === 'left' ? 'left' : 'top'} ${styles}"><div class="fl" style="font-size:${size}px">${esc(label)}</div>${valueHtml}</div>`
 }
 

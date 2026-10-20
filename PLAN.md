@@ -75,6 +75,7 @@ One line per build phase (1–7) and owner request (8 onwards). How each was bui
 37. Where to watch (2026-10-12)
 38. Fix: Reddit kept saying busy (2026-10-12)
 39. Copy to other programs, print preview (2026-10-17)
+40. Fix: long answers cut off on printed canvas forms (2026-10-20)
 
 ## Quality rules Claude follows
 - Plan each feature before coding, and keep changes small and complete.
