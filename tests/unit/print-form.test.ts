@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fitScale, formHtml, labelSize, printedValue } from '../../src/main/services/print-form'
+import { fitScale, formHtml, labelSize, printedValue, valueFit } from '../../src/main/services/print-form'
 import { intakeHtml, DEFAULT_BUSINESS } from '../../src/main/services/print'
 import { ticketLayout, type DocJSON, type Ticket } from '../../src/shared/api'
 
@@ -88,6 +88,10 @@ describe('long answers fit their box on a canvas form', () => {
   it('never goes below a readable size', () => {
     const size = Number(/font-size:([\d.]+)px/.exec(valueDiv(html(desc.repeat(8))))?.[1])
     expect(size).toBe(7)
+  })
+
+  it('does not enlarge an explicitly smaller answer size', () => {
+    expect(valueFit(desc.repeat(8), 120, 30, 5, 1.35)).toBe(5)
   })
 })
 

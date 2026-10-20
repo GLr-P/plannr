@@ -126,14 +126,17 @@ const MIN_VALUE_SIZE = 7
  * A long answer used to be clipped by its fixed-size box on canvas forms (reported 2026-10-20, a flower-shop order).
  */
 export function valueFit(text: string, w: number, h: number, base: number, lineFactor: number): number | null {
+  // A template may deliberately choose a size below the normal 7 px floor. Never make that
+  // explicit choice larger again when fitting a long answer.
+  const min = Math.min(MIN_VALUE_SIZE, base)
   const fits = (s: number): boolean => {
     const perLine = Math.max(1, Math.floor(w / (s * 0.5)))
     const rows = text.split('\n').reduce((n, p) => n + Math.max(1, Math.ceil(p.length / perLine)), 0)
     return rows * s * lineFactor <= h
   }
   if (fits(base)) return null
-  for (let s = base - 0.5; s > MIN_VALUE_SIZE; s -= 0.5) if (fits(s)) return s
-  return MIN_VALUE_SIZE
+  for (let s = base - 0.5; s > min; s -= 0.5) if (fits(s)) return s
+  return min
 }
 
 function fieldHtml(attrs: Record<string, unknown>, d: FormPrintData, inline = false, box?: { w: number; h: number }): string {

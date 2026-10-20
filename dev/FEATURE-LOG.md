@@ -181,6 +181,7 @@ Each phase ends with Claude running the app, testing it automatically, taking sc
     - **Fix:** `fieldHtml` now shrinks an answer just enough to fit (`valueFit` in `print-form.ts`, from the style's size down to 7 px). Ruled lines follow the smaller line height through `background-size`.
     - **Estimation:** like `labelSize`, it estimates from character counts, since the print window runs no scripts. It uses 0.5 × size per character and each style's padding (`VALUE_BASE`, `VALUE_PAD`).
     - **Calibration:** checked against real Electron rendering on a grid of box heights and text lengths in all 5 styles. Nothing overflows except impossible cases at the 7 px minimum. Answers that already fit print exactly as before.
+41. **Print-fit maintenance (Codex audit, 2026-10-20):** `valueFit` normally stops at 7 px for readability. It now honours an explicitly configured value size below 7 px instead of enlarging a long answer back to 7 px, which could make it fit worse. Regression test plus TypeScript typecheck pass. This is a maintenance commit, not a release.
 
 **Later:**
 - A built-in AI helper (summarize a ticket, draft customer emails, ask questions about your notes).
