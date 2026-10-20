@@ -45,7 +45,7 @@ E2E tests run serially in one app session with an isolated temp data dir (`PLANN
 ## Releasing (public repo GLr-P/plannr)
 
 - Commit emails use `241555371+GLr-P@users.noreply.github.com` (set in this repo's git config); never commit the owner's personal email or real customer data. Website screenshots come from the demo-data script (tests/marketing).
-- To release: bump `version` in package.json, run `npm run check`, run `npm run dist` (with `CSC_IDENTITY_AUTO_DISCOVERY=false` and `ELECTRON_RUN_AS_NODE` unset), push, then `"C:Program FilesGitHub CLIgh.exe" release create vX.Y.Z release/Plannr-Setup-X.Y.Z.exe --title ... --notes-file ...`.
+- To release: bump `version` in package.json, run `npm run check`, run `npm run dist` (with `CSC_IDENTITY_AUTO_DISCOVERY=false` and `ELECTRON_RUN_AS_NODE` unset), push, then `"C:\Program Files\GitHub CLI\gh.exe" release create vX.Y.Z release/Plannr-Setup-X.Y.Z.exe --title ... --notes-file ...`.
 - **Releases are unsigned, by the owner's choice (2026-10-09).** SignPath declined the project; the owner turned Smart App Control off on this PC, so unsigned builds run here. The README and website tell other users to click past SmartScreen, or that Smart App Control blocks Plannr. Don't reintroduce signing without asking.
 - VS Code sets ELECTRON_RUN_AS_NODE in PowerShell too: remove it before Start-Process on Plannr.exe, or it runs as plain Node ("bad option" errors).
 - Don't mark releases as pre-release: the Download buttons link to `/releases/latest`, which skips pre-releases.
