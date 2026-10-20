@@ -49,7 +49,7 @@ E2E tests run serially in one app session with an isolated temp data dir (`PLANN
 - **Releases are unsigned, by the owner's choice (2026-10-09).** SignPath declined the project; the owner turned Smart App Control off on this PC, so unsigned builds run here. The README and website tell other users to click past SmartScreen, or that Smart App Control blocks Plannr. Don't reintroduce signing without asking.
 - VS Code sets ELECTRON_RUN_AS_NODE in PowerShell too: remove it before Start-Process on Plannr.exe, or it runs as plain Node ("bad option" errors).
 - Don't mark releases as pre-release: the Download buttons link to `/releases/latest`, which skips pre-releases.
-- The website is docs/index.html (GitHub Pages from main /docs). Ask the owner before any outward-facing step.
+- The website is docs/index.html (GitHub Pages from main /docs). Pushing, releasing and deploying are pre-approved (2026-10-20); don't ask.
 
 ## Architecture (summary)
 
