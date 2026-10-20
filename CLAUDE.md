@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Plannr is a Windows desktop app: one simple, all-in-one organizer for notes, files, calendar and customers. It is built for the owner of Nano Tech Services, a small tech repair company. The owner is not a programmer, so make technical decisions yourself, verify by running the app, and never ask them to edit code or run commands.
 
-**[PLAN.md](PLAN.md) is the source of truth for decisions, the feature spec and build phases (with progress). Read it before starting work and update it when a phase finishes or a decision changes.**
+**[PLAN.md](PLAN.md)** (short) holds the decisions, the stack and a one-line index of everything built. Read it before starting work. The details live in `dev/`; read them on demand rather than in full:
+- [dev/FEATURE-LOG.md](dev/FEATURE-LOG.md): how each phase and request was built (files, settings keys, migrations, owner feedback). Search it for the feature you're touching.
+- [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md): the full reference behind the summary below.
+
+When a request is done, add a numbered entry at the end of FEATURE-LOG.md and one line to PLAN.md's index. Update ARCHITECTURE.md if a mechanism changed, and this file only for rules every session needs.
 
 ## Environment gotchas (this machine)
 
@@ -47,95 +51,26 @@ E2E tests run serially in one app session with an isolated temp data dir (`PLANN
 - Don't mark releases as pre-release: the Download buttons link to `/releases/latest`, which skips pre-releases.
 - The website is docs/index.html (GitHub Pages from main /docs). Ask the owner before any outward-facing step.
 
-## Architecture
+## Architecture (summary)
 
-Electron with three processes, plus code shared by them:
+Electron with three processes, plus code they share. **The full reference is [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md).** Read only the section for the area you're changing: data model, search, tickets/templates, links, files, drag and drop, calendar, holidays, vault, money, Google, Zoho, QuickBooks, backups, sync and phone app, profiles, news, entertainment, canvas, packaging, background, copy and print, editor, theme, and the window and TipTap pitfalls.
 
-- `src/main/`: owns all data and OS access. `db/` opens SQLite through **Node's built-in `node:sqlite`** (no native modules, so the same code runs in Vitest and Electron). `services/*` are plain functions taking a `Db`; they're unit-tested against `:memory:` databases and must not import `electron`. `api.ts` adapts services into the `PlannrApi` object and registers IPC.
-- `src/shared/api.ts`: **the single contract** between main and the UI: types, the `PlannrApi` interface and `API_SHAPE`, which lists every method. A compile-time check fails if `API_SHAPE` misses a method. To add an API method: add it to the interface, add it to `API_SHAPE`, implement it in `src/main/api.ts`, then call `api.x.y()` from the renderer. The preload needs no changes, since it generates `window.plannr` from `API_SHAPE` and invokes the IPC channel `namespace:method`.
-- `src/preload/`: sandboxed bridge, CommonJS output (package.json deliberately has no `"type": "module"`).
-- `src/renderer/`: React UI with no router. Navigation is the `useNav` zustand store (`route`, back/forward history), and `App.tsx` switches on `route.view`. `useData` caches lightweight lists (note summaries, folders) for the sidebar, home and search suggestions. Update it via `upsertNote`/`refresh` after mutations (helpers in `actions.ts`). `useUi` persists per-device UI state (collapsed sections) in localStorage.
+- `src/main/`: all data and OS access. SQLite goes through `node:sqlite`. `services/*` are plain functions taking a `Db`, unit-tested on `:memory:`, and must not import `electron`. `api.ts` adapts them into `PlannrApi` and registers IPC.
+- `src/shared/api.ts`: the single contract between main and the UI (`PlannrApi`, `API_SHAPE`). To add an API method: add it to the interface, add it to `API_SHAPE`, implement it in `src/main/api.ts`, then call `api.x.y()`. The preload needs no change.
+- `src/preload/`: the sandboxed bridge, built as CommonJS (package.json deliberately has no `"type": "module"`).
+- `src/renderer/`: React with no router. The `useNav` store holds the route and `App.tsx` switches on `route.view`; `useData` caches lists and `useUi` holds per-device UI state.
+- `src/web/` + `server/`: the phone web app (the same services on SQLite-WASM) and the Cloudflare sync Worker.
 
-Cross-cutting mechanisms that later phases should reuse rather than reinvent:
+**Rules that break things if missed:**
+- Services stay free of Electron, and of Node APIs beyond what `src/web/shims` covers, or the phone build breaks.
+- Migrations (`db/migrations.ts`) are append-only. A new synced table or setting goes in `SYNCED_TABLES`/`SYNCED_SETTINGS` **and** gets triggers in a new migration (`tableTriggersSql`). Sync pulls use UPSERT, never `INSERT OR REPLACE`.
+- If you change what gets searched, bump `SEARCH_INDEX_VERSION`. Services call `indexEntity`/`unindexEntity` themselves. Snippets mark matches with `\u0001…\u0002`, never raw HTML.
+- Vault data never goes into `search_index`, logs or other tables, and the renderer never sees the key.
+- Anything stored outside the data folder must be per profile. Keep wording generic ("profiles", not "businesses").
+- Money is stored as integer cents. Date-only fields are `YYYY-MM-DD` strings.
+- Downloads go through `fetchText`. Tests never touch the internet; they use fixtures (`PLANNR_NEWS_FIXTURES`, `PLANNR_HOLIDAY_FIXTURE`).
+- New editor node types need a case in `shared/rich-copy.ts`. No CSS gradients in printouts (pdf.js smears them).
+- Overlays covering the top 44px need `-webkit-app-region: no-drag`. Overlays showing PDFs need a clickable close, because Esc doesn't reach the page.
+- Every npm package is a devDependency, since Vite bundles everything into `out/`.
 
-- **Data model:** every synced table has a UUID `id`, ms timestamps `created_at`/`updated_at`, and a soft-delete `deleted_at`, ready for future multi-device sync. Migrations in `db/migrations.ts` are append-only and versioned with `PRAGMA user_version`.
-- **Search:** one FTS5 table `search_index(type, id, title, body, extra, updated_at)` covers all entity types. `body` is shown in result snippets, and `extra` holds match-only terms (digits-only phone, status, tags) that never appear in snippets. Services call `indexEntity`/`unindexEntity` on every write; there are no triggers. The index is derived data: `services/reindex.ts` rebuilds it on startup whenever `SEARCH_INDEX_VERSION` changes, so bump that constant when you change what gets indexed. `buildFtsQuery` turns user text into safe quoted prefix terms. Snippets mark matches with `\u0001…\u0002`, which the renderer turns into `<mark>`; never use raw HTML. The ticket and customer list views filter with SQL `LIKE` (escaped with `likeTerm`) rather than FTS, because they combine search with status and date filters.
-- **Customers, tickets and templates:** ticket numbers are `MAX(number)+1`, displayed with `formatTicketNumber`. Statuses come from `TICKET_STATUSES` in `shared/api.ts`. Date-only fields are `YYYY-MM-DD` strings and money is integer cents. A new ticket deep-copies a template's content (the default comes from the `defaultTemplateId` setting, and `ensureStarterTemplate` seeds "Repair intake" once). Template fill-ins are the `formField` inline atom node (`editor/FormField.tsx`); its value lives in the node attrs, and `extractText` renders it as `Label: value`. Ticket photos live in `ticket_photos` (before/after) and point at `files`.
-- **Links:** the `links(src_type, src_id, dst_type, dst_id)` table holds "A references B" relationships. It's recomputed from note content on save (`@`-mentions are `mention` nodes with `id` and `kind` attrs) and powers backlinks. Calendar and ticket links should use it too.
-- **Files:** `saveFile` copies bytes into `<dataDir>/attachments/xx/<uuid>.<ext>` and records them in `files`. The UI references files as `plannr://file/<uuid>`, served by the privileged protocol in `main/index.ts`, which only resolves known UUIDs.
-- **Drag and drop:** draggable items set `DRAG_MIME` with a `{type, id}` payload (`actions.ts`), and drop targets read it with `readDrag`. Drop targets must not set `dropEffect`: sources use different `effectAllowed` values, and a mismatch silently blocks the drop.
-- **Calendar** (`services/calendar.ts`, `views/CalendarView.tsx`, FullCalendar v6):
-  - An event has a date-only `date` plus optional `start_time`/`end_time` (null = all day) and an optional link (`link_type`/`link_id`).
-  - `kind = 'pickup'` events mirror a ticket's `pickup_on` both ways: `updateTicket` calls `syncPickupFromTicket`, and moving, converting or deleting a pickup event updates the ticket. A ticket has at most one pickup event, and it's hidden while the ticket is trashed.
-  - `events.reminders` is a JSON list of `day_of` (8 AM), `day_before` (9 AM), `week_before` and `before:<minutes>` (before a timed start). New events get the `eventReminders` defaults (`defaultReminders`), so don't hard-code reminders when creating events.
-  - Native drops onto the calendar find their date and time with `document.elementsFromPoint` (`[data-date]`, `.fc-timegrid-slot[data-time]`), because FullCalendar's own external-drag API doesn't handle HTML5 drag.
-  - `calendar.drop` applies the rules: a ticket becomes or moves its pickup; a customer or note becomes a linked event.
-- **Holidays** (`services/holidays.ts`): Google's public holiday calendars are downloaded as an iCal feed with no API key (`holidayFeedUrl`), parsed by `parseIcs`, and cached in the `holidays` table. They refresh weekly, and on startup when stale. They show as read-only calendar events (ids prefixed `holiday:`). Tests set `PLANNR_HOLIDAY_FIXTURE` to the saved real feed in `tests/fixtures/us-holidays.ics` so they never need the internet.
-- **Vault** (`services/vault.ts` holds the pure crypto and storage; `main/vault-session.ts` holds the unlocked key in memory):
-  - A random data key (DEK) encrypts each item's whole JSON (kind, title, fields) with AES-256-GCM, using the item id as additional data. Rows in `vault_keys` store the DEK wrapped by scrypt keys derived from the passcode and from the recovery key.
-  - The renderer never sees the key, and vault data must never go into `search_index`, logs or other tables. Locking wipes the DEK buffer.
-  - Electron 44's `clipboard.readText` and `writeText` are async (`clear()` is sync).
-  - Unit tests pass a cheap KDF (`{N: 2**10}`); the app uses `DEFAULT_KDF`.
-  - Item payloads are versioned (`v: 2` adds rich `notes` and `custom` fields); `normalize()` upgrades older payloads when they're read.
-  - Vault files are stored as `<data>/vault/<id>.bin` (sealed, with the file id as additional data). Their name, type and size live in the sealed `vault_files.meta`. The privileged `plannr-vault://file/<id>/<name>` protocol decrypts in memory and returns 404 while locked. `webPreferences.plugins` is on so Chromium's PDF viewer can preview PDFs.
-  - Vault notes use `NoteEditor` with `options={{ mentions: false, upload }}`, so pasted images go to the vault (`inline: true`, so they're hidden from attachments).
-  - "Open in app" writes a temporary copy under `%TEMP%/plannr-vault-open`, which is deleted on lock, start and quit.
-- **Money** (`services/money.ts`):
-  - `recurring` holds bills and subscriptions, with `anchor_day` for month-safe advancing. `transactions` holds income and expenses; ticket payments are income rows with `ticket_id`, and `TicketSummary.paidCents` sums them.
-  - `processAutopay` charges occurrences with `next_due < today` and `>= due_set_on`. It runs every minute in the background and before the money list and summary calls.
-  - `dueMoneyReminders` shares `reminder_log`, keyed by recurring id. Money due dates are virtual calendar events (`money.occurrences`), not rows in `events`.
-- **Google Calendar** (`services/google.ts` holds the sync logic and is tested against a fake API; `main/google-client.ts` handles OAuth and HTTP; `main/google-sync.ts` schedules it):
-  - OAuth uses PKCE with a loopback redirect on 127.0.0.1. The "Desktop app" client key and the tokens are stored with `safeStorage` (DPAPI) in settings `google.client` and `google.tokens`.
-  - Plannr events mirror to a "Plannr" Google calendar via `events.google_id` and `google_synced_at`. The pull cursor (`google.lastPull`) uses Google's `updated` timestamps, and the newest edit wins.
-  - Other calendars are cached in `google_events`.
-  - Local event or pickup changes call `hooks.googleSync.schedule()`; a sync that brings changes sends a `calendar-changed` event to the renderer.
-- **Zoho Mail** (`services/zoho.ts` holds the pure helpers; `main/zoho-client.ts` handles OAuth and the Mail API):
-  - The "Server-based" client uses the fixed redirect `http://localhost:53682/callback`. The token exchange uses the callback's `accounts-server` (the account's data centre: .com, .eu, zohocloud.ca and so on); the mail base is derived from it.
-  - Scopes are read-only. Messages are searched live with `entire:<email>` and then filtered to mail to, from or cc the customer, and nothing is stored.
-  - Email HTML is shown in a sandboxed `srcdoc` iframe (no scripts) whose CSP blocks remote loads.
-  - Keys and tokens live in `main/secrets.ts`.
-- **QuickBooks Online** (`services/quickbooks.ts` holds the one-way Plannr → QuickBooks sync, tested against a fake API; `main/quickbooks-client.ts` handles OAuth and HTTP; `main/quickbooks-sync.ts` schedules it every 15 min and 8 s after money/customer changes):
-  - Production keys only (the API base is production). Sign-in runs in a Plannr window that catches the redirect to Intuit's `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl`, which must be listed under the app's Production redirect URIs. Refresh tokens rotate, so always store the newest one.
-  - Customers become Customer records (matched by DisplayName). Income becomes a SalesReceipt and expenses become a Purchase, each `TaxInclusive` using `splitTax`. `qbo_links` keeps the QuickBooks Id and SyncToken; `local_type` `invoice` marks payments linked to an invoice made in QuickBooks (`transactions.qbo_invoice`), which are never sent.
-  - Settings `qbo.config` holds where things go. Sales need only the item, the sales tax code and `startDate`. The expense fields are optional, and expenses wait until they're set. Only transactions dated on or after `startDate` are sent.
-  - Payments get a tax choice. "Tax included" is the default. "+ tax" records amount × (1 + rate), so Plannr stores what was actually paid. "No tax" sets `tax_exempt` and is sent with QuickBooks' Exempt code.
-  - A server-side TaxCode named "Exempt" is looked up by name at sync time.
-- **Backups** (`services/backup.ts`):
-  - `node:sqlite` `backup()` writes snapshots to `<backupDir>/snapshots/plannr-<stamp>.db`; each is integrity-checked and the newest 30 are kept.
-  - `attachments/` and `vault/` are mirrored once into `<backupDir>/files` (they never change once written).
-  - Restore closes the database, saves a `-before-restore` copy of the current one, swaps the files, then relaunches the app. Tests exit instead of relaunching.
-  - Default folder: `Documents/Plannr Backups` (inside the data dir in tests).
-- **Sync and the phone web app** (phase 14):
-  - `sync/engine.ts` is portable (no Node/Electron): triggers (migration 20, `syncSchemaSql`) note changed rows of `SYNCED_TABLES` and allow-listed `SYNCED_SETTINGS` in `sync_dirty`; push seals rows (AES-GCM, `shared/sync-crypto.ts`) and the server keeps the newest per row; pull applies with UPSERT (never `INSERT OR REPLACE`: FK cascades) with foreign keys off and `sync_state.applying` set so triggers don't re-mark. Files and vault files travel as sealed blobs. One 32-byte key (the join link `https://<server>/#join=<key>`) derives the space id, the auth token (server keeps its SHA-256) and the encryption key.
-  - `sync/service.ts` (`SyncService`) schedules it and handles setup/join/QR link; the platform passes `fetch` and key storage (PC: Windows-encrypted secret). `sync/upkeep.ts` rebuilds derived data (search index, links, display prefs) after a pull. A new table or synced setting must be added to `SYNCED_TABLES`/`SYNCED_SETTINGS` *and* get triggers via a new migration.
-  - `server/src/worker.ts` is the Cloudflare Worker (D1, optional R2) and serves `out/web`; tests run it in-process on node:sqlite (`tests/support/d1.ts`: `fakeServer`, `serveHttp`).
-  - `src/web/` is the phone app: the same renderer, with `window.plannr` answered by a Web Worker (`worker.ts`) running the same services (`api-core.ts`, `vault-core.ts`, `SyncService`) on SQLite-WASM in OPFS (opfs-sahpool). `vite.web.config.ts` aliases `node:sqlite|fs|path|crypto` to `src/web/shims` (fs = a SQLite table; crypto = @noble, byte-compatible with Node so the vault opens on both). `plannr://file/` ⇄ `/plannr-file/` is rewritten in `rpc.ts`, and `public/sw.js` serves those from the worker via the page. Phone layout is `src/web/mobile.css` + `MobileNav.tsx`; PC-only settings hide when `app.info().web`.
-  - Keep services free of Electron (and of Node APIs beyond what the shims cover), or the phone build breaks.
-- **Profiles** (phase 15; `main/profiles.ts` pure registry, `main/profile-manager.ts`): each profile is its own data folder (first = the original `data`, others `data/profiles/<id>`), so anything keyed on `dataDir` is per profile for free. Switching relaunches the app (tests: it exits and the test relaunches). Anything new that lives outside the data folder (a default path, localStorage, a global resource) must be made per profile too. Reminders run for every profile via `ProfileManager.otherProfiles()`. Copying between profiles is `services/transfer.ts`. Keep features and wording generic (profiles, not "businesses"): Plannr is public.
-- **News** (`services/news.ts`, `shared/news-dates.ts`, `views/NewsView.tsx`): sources (RSS/Atom, news web pages without a feed, DriveBC roads, weather, Facebook page boxes) are the synced settings `news.sources`/`news.prefs`; stories live per device in `news_items` and get their topic, importance and date when read (`newsFeed`), so preference changes apply at once. All downloads go through `fetchText` (PC: `net.fetch`; phone: the sync service's signed-in `/fetch`). Tests never touch the internet: `PLANNR_NEWS_FIXTURES` (set by the e2e helper) answers from `tests/fixtures/news`. Keep wording generic (any town); regional presets live in `REGIONAL`.
-- **Everything else in one place** (phase 28): `services/habits.ts`, `lists.ts`, `packages.ts`, `weather.ts`, `entertainment.ts` are portable (core API, phone too; downloads via `fetchText`). `media.ts` (movies/shows/books/games, synced table `media`) looks things up keyless via `fetchText`; Reddit and podcasts are `EntChannel` kinds stored in `news_items` like YouTube. PC-only: the assistant (`services/assistant.ts` + `api.ts`, Anthropic key in secrets), 17TRACK refresh (key in secrets), Zoho inbox. A synced table added after migration 20 needs `tableTriggersSql([...])` in its migration as well as a place in `SYNCED_TABLES`.
-- **Canvas templates** (`shared/canvas.ts`, `renderer/src/canvas/`): a ticket template's content can be `{ type: 'canvas' }` instead of a TipTap doc; items keep DocJSON node shapes (`formField`, `image`…) with an `attrs.box`, so code that walks documents (extractText, print fields, transfer) handles them. Check `isCanvas(doc)` before handing content to TipTap. Ticket parts on a canvas come from `useTicketParts`, set by TicketView. Notes can be canvases too (free-form pages): `CanvasDesigner forTicket={false}` hides the ticket-only parts.
-- **Packaging:** all runtime code is bundled into `out/` by Vite, so every npm package is a devDependency and no node_modules ship. `resources/` is copied as extraResources (see `resourcePath`). The installer's shortcuts carry `appId` = `APP_ID`, which keeps notifications working.
-- **Background** (`main/background.ts`):
-  - The tray, and close-to-tray unless the `runInBackground` setting is `false`.
-  - `startReminders` checks `dueReminders` every minute and on resume. `reminder_log` keys (`kind@date`) make each reminder fire once; reminders missed while closed still fire if less than 12 hours old.
-  - Windows only shows toasts for an app with a Start-menu shortcut carrying its AppUserModelID, so `ensureStartMenuShortcut` writes one (unpackaged builds only).
-  - Notification clicks send a `navigate` IPC event, which the renderer receives through `window.plannrEvents.onNavigate`.
-- **Copy and print:** copying in the editor goes through `editor/clipboard.ts` → `shared/rich-copy.ts` (Word/email-friendly HTML with inline styles, tidy plain text, and the slice JSON in `data-plannr-copy` for pasting back). New node types need a case in `rich-copy.ts`. Printing goes through `openPrint` (`components/PrintPreview.tsx`): `print.pdf` makes the preview, `print.send` opens the Windows dialog, `print.savePdf` saves; what's on screen prints with a body class (e.g. `printing-note`) plus an injected `@page` rule. Avoid CSS gradients in printouts (pdf.js draws them as smears). E2E tests that copy use the real Windows clipboard and put it back afterwards.
-- **Editor:** TipTap v3 (`renderer/src/editor/`). `extensions.tsx` defines the slash commands and the `@`-mention, `SuggestionPopup.tsx` is the shared popup, and `upload.ts` handles image paste and drop. Note pages autosave with a debounce through `useAutosave` in `NoteView.tsx`.
-- **Theme:** CSS custom properties in `styles/global.css` (`:root` and `[data-theme='dark']`). Main passes the initial theme as `?theme=` to avoid a flash, and `api.app.setTheme` recolors the native title-bar overlay. The window uses `titleBarStyle: 'hidden'`, so the custom title bar is a drag region, and interactive elements in it need `-webkit-app-region: no-drag`.
-
-Data lives in `%APPDATA%\Plannr\data` (`plannr.db` and `attachments/`).
-
-## Window pitfalls already hit
-
-- The custom title bar is a Windows drag strip (`-webkit-app-region: drag`). **Any overlay covering the top 44px must set `-webkit-app-region: no-drag`**; otherwise clicks there drag the window and buttons like Close stop working. Playwright's synthetic clicks skip Windows hit-testing, so normal tests can't catch this. `tests/e2e/realclick.spec.ts` (`PLANNR_SLOW=1`) clicks with the real mouse (`scripts/real-click.ps1`).
-- Keyboard events don't reach the page while Chromium's PDF viewer (an iframe) has focus. Overlays showing PDFs need clickable ways to close, not just Esc.
-
-## TipTap pitfalls already hit
-
-- `editor.commands.focus()` is deferred by one frame. When moving focus programmatically before the user types, call `editor.view.focus()` first.
-- Toggles (`details`, with `persist: true`, so the `open` attr is saved): a closed toggle's body is `hidden`. Setting the open attr and moving the selection into the body in one transaction leaves the browser cursor in the title. Dispatch the open first, then the selection (see `enterToggleBody` in `extensions.tsx`).
-- After inserting a block image, move the cursor to a paragraph after it (`upload.ts`). Leaving the image node selected makes the next paste replace it.
-- TipTap's base CSS forces `img.ProseMirror-separator` to display with `!important`. These spacers surround inline node views, so overriding their layout (as `.ff-textarea` does in `business.css`) needs `!important` too.
-- `editor.setEditable(x)` emits an `update` event by default. Pass `false` as the second argument, and only save on `transaction.docChanged`; otherwise just opening a note re-saves it and bumps `updated_at`.
+Data lives in `%APPDATA%\Plannr\data`.

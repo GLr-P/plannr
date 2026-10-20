@@ -87,7 +87,7 @@ npm run check      # typecheck + unit tests (Vitest) + end-to-end tests (Playwri
 npm run dist       # build the Windows installer into release/
 ```
 
-See [CLAUDE.md](CLAUDE.md) for the architecture and [PLAN.md](PLAN.md) for the roadmap. Issues and pull requests are welcome.
+See [CLAUDE.md](CLAUDE.md) and [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md) for the architecture and [PLAN.md](PLAN.md) for the roadmap. Issues and pull requests are welcome.
 
 ## License
 
