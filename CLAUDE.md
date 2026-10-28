@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Plannr is a Windows desktop app: one simple, all-in-one organizer for notes, files, calendar and customers. It is built for the owner of Nano Tech Services, a small tech repair company. The owner is not a programmer, so make technical decisions yourself, verify by running the app, and never ask them to edit code or run commands.
 
-**[PLAN.md](PLAN.md)** (short) holds the decisions, the stack and a one-line index of everything built. Read it before starting work. The details live in `dev/`; read them on demand rather than in full:
+This folder is the code repo (public). The private project files sit one level up in the hub: `../ABOUTME.md` (status, decisions), `../Information/PLAN.md`, `../Handoff/` (handoff log, past chats), `../Research/`, `../Thoughts/` (ideas).
+
+**[PLAN.md](../Information/PLAN.md)** (short) holds the decisions, the stack and a one-line index of everything built. Read it before starting work. The details live in `dev/`; read them on demand rather than in full:
 - [dev/FEATURE-LOG.md](dev/FEATURE-LOG.md): how each phase and request was built (files, settings keys, migrations, owner feedback). Search it for the feature you're touching.
 - [dev/ARCHITECTURE.md](dev/ARCHITECTURE.md): the full reference behind the summary below.
 
