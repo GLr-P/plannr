@@ -776,6 +776,14 @@ a.history-row {
 .fc .ev-episode .ev-chip {
   color: #db2777;
 }
+.fc .ev-game,
+.fc .ev-game.fc-daygrid-block-event {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: transparent;
+}
+.fc .ev-game .ev-chip {
+  color: #15803d;
+}
 .ent-tabs {
   display: flex;
   gap: 6px;
@@ -1654,4 +1662,202 @@ button.disc-cover {
 .ent-waiting svg {
   width: 14px;
   height: 14px;
+}
+
+/* ---------- Sports ---------- */
+.sports-bar {
+  align-items: center;
+}
+.sports-bar svg {
+  width: 14px;
+  height: 14px;
+}
+.sports-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .sports-columns {
+    grid-template-columns: 1fr;
+  }
+}
+.sports-day h3 {
+  margin: 10px 0 6px;
+  font-weight: 600;
+}
+.sports-games {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sports-game {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: inherit;
+  text-decoration: none;
+}
+.sports-game:hover {
+  border-color: var(--border-strong);
+}
+.sports-game.mine {
+  border-left: 3px solid var(--accent);
+}
+.sports-when {
+  color: var(--text-muted);
+}
+.sports-game.in .sports-when {
+  color: var(--text);
+  font-weight: 600;
+}
+.sports-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sports-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sports-side.lost {
+  color: var(--text-muted);
+}
+.sports-side img,
+.sports-logo-empty {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.sports-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sports-score {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.sports-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.sports-star {
+  width: 13px;
+  height: 13px;
+  color: var(--accent);
+  fill: currentColor;
+  vertical-align: -2px;
+  margin-right: 3px;
+}
+.sports-news {
+  text-decoration: none;
+}
+.sports-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sports-setup-sport h3 {
+  margin: 6px 0 4px;
+  font-weight: 600;
+}
+.sports-league {
+  border-bottom: 1px solid var(--border);
+}
+.sports-league-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.sports-league-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sports-league-name svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.sports-league-name .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sports-team-pick {
+  padding: 4px 0 12px 24px;
+}
+.sports-team-pick input {
+  height: 30px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: inherit;
+}
+.sports-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+}
+.sports-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sports-team img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.sports-team span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sports-team.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+@media (max-width: 640px) {
+  .sports-game {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .sports-league-row {
+    flex-wrap: wrap;
+  }
 }

@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2, Tv } from 'lucide-react'
-import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type WeatherForecast, type TicketSummary } from '../../../shared/api'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2, Trophy, Tv } from 'lucide-react'
+import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type SportsGame, type WeatherForecast, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -62,6 +62,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [addNews, setAddNews] = useState<NewsItem | null>(null)
   const [packages, setPackages] = useState<PackageInfo[]>([])
   const [episodes, setEpisodes] = useState<{ id: string; title: string; date: string }[]>([])
+  const [games, setGames] = useState<SportsGame[]>([])
   const [forecast, setForecast] = useState<WeatherForecast | null>(null)
   useEffect(() => {
     void api.weather.forecast().then(setForecast)
@@ -94,6 +95,10 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
           : []
       )
     )
+    // Your favourite teams' games (Entertainment → Sports)
+    const fromMs = new Date(range.from + 'T00:00').getTime()
+    const toMs = new Date(range.to + 'T23:59').getTime()
+    setGames((await api.sports.feed()).games.filter((g) => g.mine && g.at >= fromMs && g.at <= toMs))
     const news = await api.news.feed()
     setNewsSetUp(news.sources.some((s) => !s.page))
     setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
@@ -184,6 +189,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-episode'],
         extendedProps: { episode: true }
       })),
+      // Your teams' games (click opens Entertainment → Sports)
+      ...games.map((g) => ({
+        id: `game:${g.id}`,
+        title: g.state === 'pre' ? `${g.away.short} @ ${g.home.short}` : `${g.away.short} ${g.away.score} @ ${g.home.short} ${g.home.score}`,
+        start: new Date(g.at),
+        allDay: false,
+        editable: false,
+        order: 0,
+        classNames: ['ev-game'],
+        extendedProps: { game: g }
+      })),
       // Local news with a date (read-only; click to put it on your calendar)
       ...(showNews ? newsItems : []).map((n) => ({
         id: `news:${n.id}`,
@@ -208,7 +224,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes, games]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -300,6 +316,15 @@ ${google.calendarName} (Google)`}>
       return (
         <div className="ev-chip" title={`New episode: ${arg.event.title}`}>
           <Tv className="ev-icon" />
+          <span className="ev-title">{arg.event.title}</span>
+        </div>
+      )
+    const game = arg.event.extendedProps.game as SportsGame | undefined
+    if (game)
+      return (
+        <div className="ev-chip" title={`${game.away.name} at ${game.home.name} (${game.leagueName}${game.tv ? `, ${game.tv}` : ''})`}>
+          <Trophy className="ev-icon" />
+          {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
           <span className="ev-title">{arg.event.title}</span>
         </div>
       )
@@ -462,6 +487,10 @@ ${google.calendarName} (Google)`}>
               if (bill) return go({ view: 'money', itemId: bill.recurringId })
               if (info.event.extendedProps.task) return go({ view: 'tasks' })
               if (info.event.extendedProps.package) return go({ view: 'packages' })
+              if (info.event.extendedProps.game) {
+                useUi.getState().setPref('entTab', 'sports')
+                return go({ view: 'entertainment' })
+              }
               if (info.event.extendedProps.episode) {
                 useUi.getState().setPref('entTab', 'show')
                 return go({ view: 'entertainment' })

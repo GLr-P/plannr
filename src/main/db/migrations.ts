@@ -519,5 +519,11 @@ export const migrations: string[] = [
   );
   ${tableTriggersSql(['media'])}
   ALTER TABLE news_items ADD COLUMN audio TEXT NOT NULL DEFAULT '';
+  `,
+
+  /* 28: the sports you follow sync (settings key sports.prefs) */ `
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
   `
 ]

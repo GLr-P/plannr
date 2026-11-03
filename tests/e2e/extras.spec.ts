@@ -119,6 +119,29 @@ test('Entertainment: shows with episodes, movies and books with ratings, podcast
   await page.getByRole('tab', { name: 'Videos & live' }).click()
 })
 
+test('Sports: a favourite team in a league you don’t follow, then every game of it', async () => {
+  await page.getByRole('tab', { name: 'Sports' }).click()
+  // Nothing followed yet: the leagues are listed straight away
+  const nhl = page.locator('.sports-league', { hasText: 'NHL' })
+  await expect(nhl.getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
+  await nhl.locator('.sports-league-name').click()
+  await nhl.getByRole('button', { name: 'Florida Panthers' }).click()
+  await expect(nhl.getByRole('button', { name: 'Florida Panthers' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(nhl.getByRole('radio', { name: 'My teams' })).toHaveAttribute('aria-checked', 'true')
+  await expect(nhl.locator('.sports-league-name')).toContainText('Panthers')
+  // Only the Panthers' games (the saved answers are from November 2026, so later runs may have none left)
+  await expect(page.getByRole('heading', { name: 'Coming up' })).toBeVisible()
+  const games = page.locator('.sports-game')
+  if (await games.count()) await expect(games.filter({ hasNotText: 'Panthers' })).toHaveCount(0)
+  await shot(page, 'x1j-sports-team')
+  await nhl.getByRole('radio', { name: 'Every game' }).click()
+  await expect(nhl.getByRole('radio', { name: 'Every game' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('button', { name: 'Leagues & teams' }).click()
+  await expect(page.locator('.sports-setup')).toHaveCount(0)
+  await shot(page, 'x1k-sports')
+  await page.getByRole('tab', { name: 'Videos & live' }).click()
+})
+
 test('Discover: top picks, picks for you, and adding from them', async () => {
   await page.getByRole('tab', { name: 'Shows' }).click()
   await page.getByRole('radio', { name: 'Discover' }).click()

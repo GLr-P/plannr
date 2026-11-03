@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bookmark, BookmarkCheck, BookOpen, CalendarClock, Check, ExternalLink, Film, Gamepad2, MessageSquare, Play, Plus, Podcast, Radio, RefreshCw, Search, Shuffle, Star, Trash2, Tv, X, MonitorPlay as Youtube, Sparkles } from 'lucide-react'
+import { Bookmark, BookmarkCheck, BookOpen, CalendarClock, Check, ExternalLink, Film, Gamepad2, MessageSquare, Play, Plus, Podcast, Radio, RefreshCw, Search, Shuffle, Star, Trash2, Trophy, Tv, X, MonitorPlay as Youtube, Sparkles } from 'lucide-react'
 import type { DiscoverItem, DiscoverSection, DiscoverTab, WatchOffer, WhereToWatch, EntChannel, EntFeed, EntVideo, MediaItem, MediaKind, MediaPatch, MediaResult, MediaStatus, PodcastResult } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
@@ -7,14 +7,16 @@ import { formatDay, relativeTime, todayISO } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { go } from '../store/nav'
 import { parseIdeas, type Idea } from '../../../shared/ideas'
+import { SportsTab } from '../components/SportsTab'
 
-type Tab = 'watch' | MediaKind | 'podcast' | 'reddit' | 'saved'
+type Tab = 'watch' | MediaKind | 'sports' | 'podcast' | 'reddit' | 'saved'
 const TABS: { id: Tab; label: string; icon: typeof Film }[] = [
   { id: 'watch', label: 'Videos & live', icon: Youtube },
   { id: 'show', label: 'Shows', icon: Tv },
   { id: 'movie', label: 'Movies', icon: Film },
   { id: 'book', label: 'Books', icon: BookOpen },
   { id: 'game', label: 'Games', icon: Gamepad2 },
+  { id: 'sports', label: 'Sports', icon: Trophy },
   { id: 'podcast', label: 'Podcasts', icon: Podcast },
   { id: 'reddit', label: 'Reddit', icon: MessageSquare },
   { id: 'saved', label: 'Watch later', icon: Bookmark }
@@ -118,15 +120,17 @@ export function EntertainmentView() {
     <div className={`page ent-page ${playing ? 'with-player' : ''}`}>
       <div className="list-header">
         <h1>Entertainment</h1>
-        <span className="muted small">{busy ? 'Checking…' : feed.refreshedAt ? `Updated ${relativeTime(feed.refreshedAt).toLowerCase()}` : ''}</span>
+        <span className="muted small">{tab === 'sports' ? '' : busy ? 'Checking…' : feed.refreshedAt ? `Updated ${relativeTime(feed.refreshedAt).toLowerCase()}` : ''}</span>
         <div className="news-header-actions">
           <label className="news-search">
             <Search />
             <input value={query} placeholder="Search" aria-label="Search entertainment" onChange={(e) => setQuery(e.target.value)} />
           </label>
-          <button type="button" className="icon-btn" aria-label="Check now" title="Check now" disabled={busy} onClick={() => void refresh()}>
-            <RefreshCw className={busy ? 'spin' : ''} />
-          </button>
+          {tab !== 'sports' && (
+            <button type="button" className="icon-btn" aria-label="Check now" title="Check now" disabled={busy} onClick={() => void refresh()}>
+              <RefreshCw className={busy ? 'spin' : ''} />
+            </button>
+          )}
           {tabChannels.length > 0 && (
             <button type="button" className={`btn sm ${manage ? 'active-btn' : ''}`} onClick={() => setManage((m) => !m)}>
               {tab === 'reddit' ? 'Subreddits' : tab === 'podcast' ? 'Following' : 'Channels'}
@@ -166,6 +170,7 @@ export function EntertainmentView() {
 
       {tab === 'watch' && <WatchTab feed={feed} setFeed={setFeed} busy={busy} q={query} actions={actions} />}
       {(tab === 'show' || tab === 'movie' || tab === 'book' || tab === 'game') && <MediaShelf key={tab} kind={tab} items={media} setItems={(f) => setMedia((m) => (m ? f(m) : m))} q={query} web={web} />}
+      {tab === 'sports' && <SportsTab q={query} />}
       {tab === 'podcast' && <PodcastTab feed={feed} setFeed={setFeed} q={query} actions={actions} />}
       {tab === 'reddit' && <RedditTab feed={feed} setFeed={setFeed} q={query} actions={actions} />}
       {tab === 'saved' && (

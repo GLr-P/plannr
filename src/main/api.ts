@@ -473,6 +473,12 @@ export function registerIpc(api: PlannrApi): void {
 
 /** Saved copies of real news sources, for tests (PLANNR_NEWS_FIXTURES = the folder) */
 const NEWS_FIXTURES: [RegExp, string][] = [
+  [/espn\.com.*\/teams\/\d+\/schedule/, 'espn-schedule.json'],
+  [/espn\.com.*\/mlb\/teams/, 'espn-mlb-teams.json'],
+  [/espn\.com.*\/teams/, 'espn-nhl-teams.json'],
+  [/espn\.com.*\/scoreboard/, 'espn-scoreboard.json'],
+  [/espn\.com.*\/news\?team/, 'espn-team-news.json'],
+  [/espn\.com.*\/news/, 'espn-news.json'],
   [/cheapshark\.com\/api\/1\.0\/deals\?steamAppID/, 'cheapshark-steam.json'],
   [/cheapshark\.com\/api\/1\.0\/stores/, 'cheapshark-stores.json'],
   [/api\.tvmaze\.com\/schedule\/web/, 'tv-web.json'],

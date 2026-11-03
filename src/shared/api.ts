@@ -945,6 +945,88 @@ export interface PodcastResult {
   feedUrl: string
 }
 
+// ---------- Sports (games, scores and headlines) ----------
+
+/** Leagues Plannr can follow (ESPN's public data; key = its sport/league path) */
+export const SPORTS_LEAGUES: { key: string; name: string; sport: string }[] = [
+  { key: 'football/nfl', name: 'NFL', sport: 'Football' },
+  { key: 'football/college-football', name: 'College football', sport: 'Football' },
+  { key: 'basketball/nba', name: 'NBA', sport: 'Basketball' },
+  { key: 'basketball/wnba', name: 'WNBA', sport: 'Basketball' },
+  { key: 'basketball/mens-college-basketball', name: 'College basketball', sport: 'Basketball' },
+  { key: 'baseball/mlb', name: 'MLB', sport: 'Baseball' },
+  { key: 'hockey/nhl', name: 'NHL', sport: 'Hockey' },
+  { key: 'soccer/usa.1', name: 'MLS', sport: 'Soccer' },
+  { key: 'soccer/eng.1', name: 'Premier League', sport: 'Soccer' },
+  { key: 'soccer/esp.1', name: 'La Liga', sport: 'Soccer' },
+  { key: 'soccer/ger.1', name: 'Bundesliga', sport: 'Soccer' },
+  { key: 'soccer/ita.1', name: 'Serie A', sport: 'Soccer' },
+  { key: 'soccer/fra.1', name: 'Ligue 1', sport: 'Soccer' },
+  { key: 'soccer/uefa.champions', name: 'Champions League', sport: 'Soccer' }
+]
+
+export interface SportsTeam {
+  /** SPORTS_LEAGUES key */
+  league: string
+  id: string
+  name: string
+  short: string
+  abbr: string
+  logo: string
+}
+/** What you follow (synced): every game of `leagues`, plus your `teams`' games in any league */
+export interface SportsPrefs {
+  leagues: string[]
+  teams: SportsTeam[]
+}
+export interface SportsSide {
+  id: string
+  name: string
+  short: string
+  abbr: string
+  logo: string
+  score: string
+  winner: boolean
+}
+export interface SportsGame {
+  id: string
+  league: string
+  leagueName: string
+  /** Start time (ms) */
+  at: number
+  /** Not started, on now, or over */
+  state: 'pre' | 'in' | 'post'
+  /** "Final", "3rd 12:31", "Postponed"… ('' before the start) */
+  detail: string
+  home: SportsSide
+  away: SportsSide
+  url: string
+  /** TV channels */
+  tv: string
+  /** One of your teams plays */
+  mine: boolean
+}
+export interface SportsNews {
+  id: string
+  league: string
+  leagueName: string
+  title: string
+  summary: string
+  url: string
+  image: string
+  publishedAt: number
+  /** About one of your teams */
+  mine: boolean
+}
+export interface SportsFeed {
+  prefs: SportsPrefs
+  games: SportsGame[]
+  news: SportsNews[]
+  refreshedAt: number | null
+  /** Leagues or teams that couldn't be downloaded last time */
+  errors: string[]
+}
+
 // ---------- Movies, shows, books and games ----------
 
 export type MediaKind = 'movie' | 'show' | 'book' | 'game'
@@ -1757,6 +1839,15 @@ export interface PlannrApi {
     save(videoId: string, saved: boolean): Promise<void>
     findPodcasts(query: string): Promise<PodcastResult[]>
   }
+  /** Games, scores and headlines for the leagues and teams you follow */
+  sports: {
+    feed(): Promise<SportsFeed>
+    /** Downloads now if due (`force` = always) */
+    refresh(force?: boolean): Promise<SportsFeed>
+    /** A league's teams, to pick favourites from */
+    teams(league: string): Promise<SportsTeam[]>
+    setPrefs(prefs: SportsPrefs): Promise<SportsFeed>
+  }
   /** Top picks, popular lists and picks for you, for each Entertainment tab (kept 6 hours) */
   discover: {
     list(tab: DiscoverTab, refresh?: boolean): Promise<DiscoverSection[]>
@@ -1991,6 +2082,7 @@ export const API_SHAPE = {
   packages: ['list', 'add', 'update', 'remove', 'refresh', 'trackingStatus', 'setTrackingKey'],
   weather: ['forecast'],
   entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched', 'save', 'findPodcasts'],
+  sports: ['feed', 'refresh', 'teams', 'setPrefs'],
   media: ['list', 'search', 'add', 'update', 'remove', 'refresh', 'where'],
   discover: ['list'],
   assistant: ['status', 'setup', 'ask'],
