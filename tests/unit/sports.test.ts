@@ -74,6 +74,10 @@ describe('sports', () => {
     // The same game from the scoreboard and the team's schedule is listed once
     expect(new Set(feed.games.map((g) => g.id)).size).toBe(feed.games.length)
     expect(feed.games.every((g) => g.leagueName === 'NHL')).toBe(true)
+    // Scoreboards add records and the arena
+    const tor = feed.games.find((g) => g.home.abbr === 'TOR')!
+    expect(tor.home.record).toMatch(/^\d+-\d+/)
+    expect(tor.venue).toBe('Scotiabank Arena, Toronto')
   })
 
   it('a favourite team in an unfollowed sport: only its own headlines', async () => {
@@ -85,7 +89,9 @@ describe('sports', () => {
     expect(titles).toContain('Dodgers executive Bob Wolfe shifting to advisory role')
     // League-wide roundups tag every team: left out
     expect(titles.some((t) => /Top 50 2026-27 MLB free agents/.test(t))).toBe(false)
-    expect(after.news.every((n) => n.mine)).toBe(true)
+    expect(after.news.every((n) => n.mine && n.teamIds.includes('19'))).toBe(true)
+    // Unstarring the team updates the cached stories at once
+    expect(sports.setSportsPrefs(db, { leagues: ['baseball/mlb'], teams: [] }).news.every((n) => !n.mine)).toBe(true)
     expect(urls.some((u) => /mlb\/news\?limit/.test(u))).toBe(false)
   })
 

@@ -987,6 +987,8 @@ export interface SportsSide {
   logo: string
   score: string
   winner: boolean
+  /** Win-loss record, e.g. "8-6-2" ('' when not known) */
+  record: string
 }
 export interface SportsGame {
   id: string
@@ -1003,6 +1005,8 @@ export interface SportsGame {
   url: string
   /** TV channels */
   tv: string
+  /** Arena or stadium, and city */
+  venue: string
   /** One of your teams plays */
   mine: boolean
 }
@@ -1017,6 +1021,8 @@ export interface SportsNews {
   publishedAt: number
   /** About one of your teams */
   mine: boolean
+  /** Teams the story is about (ESPN team ids) */
+  teamIds: string[]
 }
 export interface SportsFeed {
   prefs: SportsPrefs

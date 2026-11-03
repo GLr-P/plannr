@@ -61,6 +61,8 @@ export function parseGames(json: string, league: string, mine: Set<string>): Spo
       abbr: String(x.team?.abbreviation ?? ''),
       logo: String(x.team?.logo ?? x.team?.logos?.[0]?.href ?? ''),
       score: score(x.score),
+      // Win-loss record (scoreboards have it; team schedules don't)
+      record: String(x.records?.[0]?.summary ?? ''),
       winner: x.winner === true
     })
     const home = side(sides.find((x) => x.homeAway === 'home') ?? sides[0])
@@ -81,6 +83,7 @@ export function parseGames(json: string, league: string, mine: Set<string>): Spo
         away,
         url: String((e.links as Json[] | undefined)?.find((l) => (l.rel as string[] | undefined)?.includes('summary'))?.href ?? e.links?.[0]?.href ?? ''),
         tv: channels(c.broadcasts),
+        venue: [c.venue?.fullName, c.venue?.address?.city].filter(Boolean).join(', '),
         mine: mine.has(`${league}:${home.id}`) || mine.has(`${league}:${away.id}`)
       }
     ]
@@ -106,7 +109,8 @@ export function parseNews(json: string, league: string, mine: Set<string>, team?
         url,
         image: String(a.images?.[0]?.url ?? ''),
         publishedAt: Number.isNaN(at) ? 0 : at,
-        mine: teams.some((t) => mine.has(`${league}:${t}`))
+        mine: teams.some((t) => mine.has(`${league}:${t}`)),
+        teamIds: teams.slice(0, 10)
       }
     ]
   })
@@ -134,7 +138,12 @@ function shown(prefs: SportsPrefs, c: Cache): Pick<SportsFeed, 'games' | 'news'>
   const keep = (league: string, isMine: boolean): boolean => all.has(league) || (isMine && prefs.teams.some((t) => t.league === league))
   return {
     games: c.games.map((g) => ({ ...g, mine: mine.has(`${g.league}:${g.home.id}`) || mine.has(`${g.league}:${g.away.id}`) })).filter((g) => keep(g.league, g.mine)),
-    news: c.news.filter((n) => keep(n.league, n.mine))
+    news: c.news
+      .map((n) => {
+        const teamIds = n.teamIds ?? []
+        return { ...n, teamIds, mine: teamIds.some((t) => mine.has(`${n.league}:${t}`)) }
+      })
+      .filter((n) => keep(n.league, n.mine))
   }
 }
 
