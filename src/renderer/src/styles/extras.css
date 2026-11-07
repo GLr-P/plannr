@@ -1678,6 +1678,18 @@ button.disc-cover {
 .empty-state.welcome.sports-welcome p {
   margin: 0 0 6px;
 }
+.esports-steps {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  text-align: left;
+  line-height: 1.6;
+}
+.sports-welcome .news-add-link {
+  width: 100%;
+}
+.sports-welcome .news-add-link input {
+  flex: 1;
+}
 .sports-welcome > svg {
   width: 32px;
   height: 32px;

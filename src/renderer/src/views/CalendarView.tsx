@@ -4,8 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import type { EventContentArg, EventInput as FcEventInput } from '@fullcalendar/core'
-import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2, Trophy, Tv } from 'lucide-react'
-import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type SportsGame, type WeatherForecast, type TicketSummary } from '../../../shared/api'
+import { CheckSquare, ChevronLeft, ChevronRight, DollarSign, Flag, Newspaper, PanelLeft, Plus, Search, Wrench, Package2, Trophy, Tv, Gamepad2 } from 'lucide-react'
+import { displayPrefs, formatTicketNumber, type Task, type CalendarEvent, type GoogleEvent, type Holiday, type MoneyOccurrence, type NewsItem, type PackageInfo, type SportsGame, type EsportsMatch, type WeatherForecast, type TicketSummary } from '../../../shared/api'
 import { go } from '../store/nav'
 import { formatMoney } from '../lib/format'
 import { api } from '../api'
@@ -66,6 +66,10 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const showGames = useUi((s) => s.prefs.calendarGames) === '1'
   const [followsSports, setFollowsSports] = useState(false)
   const [games, setGames] = useState<SportsGame[]>([])
+  // Important e-sports matches of the games you follow (off until turned on)
+  const showMatches = useUi((s) => s.prefs.calendarEsports) === '1'
+  const [followsEsports, setFollowsEsports] = useState(false)
+  const [matches, setMatches] = useState<EsportsMatch[]>([])
   const [forecast, setForecast] = useState<WeatherForecast | null>(null)
   useEffect(() => {
     void api.weather.forecast().then(setForecast)
@@ -104,6 +108,9 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
     const sportsFeed = await api.sports.feed()
     setFollowsSports(sportsFeed.prefs.leagues.length + sportsFeed.prefs.teams.length > 0)
     setGames(sportsFeed.games.filter((g) => g.big && g.at >= fromMs && g.at <= toMs))
+    const esportsFeed = await api.esports.feed()
+    setFollowsEsports(esportsFeed.configured && esportsFeed.games.length > 0)
+    setMatches(esportsFeed.matches.filter((m) => m.big && m.at >= fromMs && m.at <= toMs))
     const news = await api.news.feed()
     setNewsSetUp(news.sources.some((s) => !s.page))
     setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
@@ -205,6 +212,17 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-game'],
         extendedProps: { game: g }
       })),
+      // Important e-sports matches (click opens Entertainment → E-sports)
+      ...(showMatches ? matches : []).map((m) => ({
+        id: `match:${m.id}`,
+        title: `${m.big}: ` + (m.state === 'pre' ? `${m.a.short} vs ${m.b.short}` : `${m.a.short} ${m.a.score}-${m.b.score} ${m.b.short}`),
+        start: new Date(m.at),
+        allDay: false,
+        editable: false,
+        order: 0,
+        classNames: ['ev-game'],
+        extendedProps: { match: m }
+      })),
       // Local news with a date (read-only; click to put it on your calendar)
       ...(showNews ? newsItems : []).map((n) => ({
         id: `news:${n.id}`,
@@ -229,7 +247,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes, games, showGames]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes, games, showGames, matches, showMatches]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -333,6 +351,15 @@ ${google.calendarName} (Google)`}>
           <span className="ev-title">{arg.event.title}</span>
         </div>
       )
+    const match = arg.event.extendedProps.match as EsportsMatch | undefined
+    if (match)
+      return (
+        <div className="ev-chip" title={`${match.a.name} vs ${match.b.name} (${match.gameName}: ${match.event})`}>
+          <Gamepad2 className="ev-icon" />
+          {arg.timeText && <span className="ev-time">{arg.timeText}</span>}
+          <span className="ev-title">{arg.event.title}</span>
+        </div>
+      )
     const news = arg.event.extendedProps.news as NewsItem | undefined
     if (news)
       return (
@@ -421,6 +448,17 @@ ${google.calendarName} (Google)`}>
             <Trophy /> Big games
           </button>
         )}
+        {followsEsports && (
+          <button
+            type="button"
+            className={`btn sm ${showMatches ? 'active-btn' : ''}`}
+            aria-pressed={showMatches}
+            onClick={() => setPref('calendarEsports', showMatches ? '0' : '1')}
+            title="Show important e-sports matches (Majors, Worlds, playoffs and finals) of the games you follow"
+          >
+            <Gamepad2 /> Big e-sports
+          </button>
+        )}
         <button
           type="button"
           className="btn sm primary"
@@ -505,6 +543,10 @@ ${google.calendarName} (Google)`}>
               if (info.event.extendedProps.package) return go({ view: 'packages' })
               if (info.event.extendedProps.game) {
                 useUi.getState().setPref('entTab', 'sports')
+                return go({ view: 'entertainment' })
+              }
+              if (info.event.extendedProps.match) {
+                useUi.getState().setPref('entTab', 'esports')
                 return go({ view: 'entertainment' })
               }
               if (info.event.extendedProps.episode) {

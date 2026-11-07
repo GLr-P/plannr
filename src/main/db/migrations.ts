@@ -525,5 +525,11 @@ export const migrations: string[] = [
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}
+  `,
+
+  /* 29: the e-sports games you follow sync too (settings key esports.games) */ `
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
   `
 ]

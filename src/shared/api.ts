@@ -1035,6 +1035,58 @@ export interface SportsFeed {
   errors: string[]
 }
 
+// ---------- E-sports (PandaScore's free plan; each person uses their own free token) ----------
+
+/** Games Plannr can follow (key = PandaScore's path) */
+export const ESPORTS_GAMES: { key: string; name: string }[] = [
+  { key: 'r6siege', name: 'Rainbow Six Siege' },
+  { key: 'valorant', name: 'Valorant' },
+  { key: 'lol', name: 'League of Legends' },
+  { key: 'csgo', name: 'Counter-Strike 2' },
+  { key: 'dota2', name: 'Dota 2' },
+  { key: 'rl', name: 'Rocket League' },
+  { key: 'ow', name: 'Overwatch' }
+]
+export interface EsportsSide {
+  id: string
+  name: string
+  /** Acronym, e.g. "G2" */
+  short: string
+  logo: string
+  score: string
+  winner: boolean
+}
+export interface EsportsMatch {
+  id: string
+  game: string
+  gameName: string
+  /** Start time (ms) */
+  at: number
+  state: 'pre' | 'in' | 'post'
+  /** "Canceled" or "Postponed" ('' otherwise) */
+  detail: string
+  a: EsportsSide
+  b: EsportsSide
+  /** League · series · stage, e.g. "BLAST R6 Major · Osaka 2026 · Playoffs" */
+  event: string
+  /** Best of N (0 when not known) */
+  bestOf: number
+  /** The main stream ('' when not known) */
+  url: string
+  /** An important match (S-tier events, A-tier playoffs and finals): its name ('' otherwise) */
+  big: string
+}
+export interface EsportsFeed {
+  /** A PandaScore token is saved on this PC */
+  configured: boolean
+  /** The games you follow (synced) */
+  games: string[]
+  matches: EsportsMatch[]
+  refreshedAt: number | null
+  /** Games (or the token) that couldn't be downloaded last time */
+  errors: string[]
+}
+
 // ---------- Movies, shows, books and games ----------
 
 export type MediaKind = 'movie' | 'show' | 'book' | 'game'
@@ -1860,6 +1912,15 @@ export interface PlannrApi {
   discover: {
     list(tab: DiscoverTab, refresh?: boolean): Promise<DiscoverSection[]>
   }
+  /** E-sports matches of the games you follow (needs your own free PandaScore token) */
+  esports: {
+    feed(): Promise<EsportsFeed>
+    /** Downloads when due (or now, with force) */
+    refresh(force?: boolean): Promise<EsportsFeed>
+    setGames(games: string[]): Promise<EsportsFeed>
+    /** Saves the token encrypted on this PC (null removes it) */
+    setToken(token: string | null): Promise<EsportsFeed>
+  }
   /** Movies, shows, books and games: your lists, ratings and progress */
   media: {
     list(): Promise<MediaItem[]>
@@ -2091,6 +2152,7 @@ export const API_SHAPE = {
   weather: ['forecast'],
   entertainment: ['feed', 'refresh', 'add', 'remove', 'markWatched', 'save', 'findPodcasts'],
   sports: ['feed', 'refresh', 'teams', 'setPrefs'],
+  esports: ['feed', 'refresh', 'setGames', 'setToken'],
   media: ['list', 'search', 'add', 'update', 'remove', 'refresh', 'where'],
   discover: ['list'],
   assistant: ['status', 'setup', 'ask'],

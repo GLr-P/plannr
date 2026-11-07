@@ -76,7 +76,8 @@ export const SYNCED_SETTINGS = [
   'news.prefs',
   'news.pages',
   'ent.channels',
-  'sports.prefs'
+  'sports.prefs',
+  'esports.games'
 ]
 
 const nowMs = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`

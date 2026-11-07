@@ -120,7 +120,7 @@ test('Entertainment: shows with episodes, movies and books with ratings, podcast
 })
 
 test('Sports: a favourite team in a league you don’t follow, then every game of it', async () => {
-  await page.getByRole('tab', { name: 'Sports' }).click()
+  await page.getByRole('tab', { name: 'Sports', exact: true }).click()
   // Nothing followed yet: a short welcome, the choosing happens in a dialog
   await expect(page.getByRole('heading', { name: 'Follow your teams' })).toBeVisible()
   await page.getByRole('button', { name: 'Choose teams' }).click()
@@ -149,6 +149,18 @@ test('Sports: a favourite team in a league you don’t follow, then every game o
   // The saved scoreboard is 3 November's games: shown only while they're within the last three days
   if (Date.now() < Date.parse('2026-11-06T00:00:00Z')) await expect(page.locator('.sports-game', { hasText: 'Toronto Maple Leafs' }).first()).toBeVisible()
   await shot(page, 'x1k-sports')
+  await page.getByRole('tab', { name: 'Videos & live' }).click()
+})
+
+test('E-sports asks for your own free PandaScore token first', async () => {
+  await page.getByRole('tab', { name: 'E-sports' }).click()
+  await expect(page.getByRole('heading', { name: 'Follow e-sports' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'pandascore.co' })).toHaveAttribute('href', /pandascore\.co/)
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled()
+  await page.getByLabel('PandaScore token').fill('abc')
+  await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled()
+  await page.getByLabel('PandaScore token').fill('')
+  await shot(page, 'x1l-esports')
   await page.getByRole('tab', { name: 'Videos & live' }).click()
 })
 

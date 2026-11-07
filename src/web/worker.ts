@@ -139,6 +139,13 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       message: offline,
       inbox: async () => []
     },
+    esports: {
+      // The PandaScore token stays on the PC that saved it
+      feed: async () => ({ configured: false, games: [], matches: [], refreshedAt: null, errors: [] }),
+      refresh: async () => ({ configured: false, games: [], matches: [], refreshedAt: null, errors: [] }),
+      setGames: offline,
+      setToken: offline
+    },
     assistant: {
       status: async () => ({ provider: 'gemini' as const, configured: false, model: '' }),
       setup: offline,

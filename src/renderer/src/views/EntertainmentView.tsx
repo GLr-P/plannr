@@ -8,8 +8,9 @@ import { showToast } from '../lib/toast'
 import { go } from '../store/nav'
 import { parseIdeas, type Idea } from '../../../shared/ideas'
 import { SportsTab } from '../components/SportsTab'
+import { EsportsTab } from '../components/EsportsTab'
 
-type Tab = 'watch' | MediaKind | 'sports' | 'podcast' | 'reddit' | 'saved'
+type Tab = 'watch' | MediaKind | 'sports' | 'esports' | 'podcast' | 'reddit' | 'saved'
 const TABS: { id: Tab; label: string; icon: typeof Film }[] = [
   { id: 'watch', label: 'Videos & live', icon: Youtube },
   { id: 'show', label: 'Shows', icon: Tv },
@@ -17,6 +18,7 @@ const TABS: { id: Tab; label: string; icon: typeof Film }[] = [
   { id: 'book', label: 'Books', icon: BookOpen },
   { id: 'game', label: 'Games', icon: Gamepad2 },
   { id: 'sports', label: 'Sports', icon: Trophy },
+  { id: 'esports', label: 'E-sports', icon: Gamepad2 },
   { id: 'podcast', label: 'Podcasts', icon: Podcast },
   { id: 'reddit', label: 'Reddit', icon: MessageSquare },
   { id: 'saved', label: 'Watch later', icon: Bookmark }
@@ -120,13 +122,13 @@ export function EntertainmentView() {
     <div className={`page ent-page ${playing ? 'with-player' : ''}`}>
       <div className="list-header">
         <h1>Entertainment</h1>
-        <span className="muted small">{tab === 'sports' ? '' : busy ? 'Checking…' : feed.refreshedAt ? `Updated ${relativeTime(feed.refreshedAt).toLowerCase()}` : ''}</span>
+        <span className="muted small">{tab === 'sports' || tab === 'esports' ? '' : busy ? 'Checking…' : feed.refreshedAt ? `Updated ${relativeTime(feed.refreshedAt).toLowerCase()}` : ''}</span>
         <div className="news-header-actions">
           <label className="news-search">
             <Search />
             <input value={query} placeholder="Search" aria-label="Search entertainment" onChange={(e) => setQuery(e.target.value)} />
           </label>
-          {tab !== 'sports' && (
+          {tab !== 'sports' && tab !== 'esports' && (
             <button type="button" className="icon-btn" aria-label="Check now" title="Check now" disabled={busy} onClick={() => void refresh()}>
               <RefreshCw className={busy ? 'spin' : ''} />
             </button>
@@ -171,6 +173,7 @@ export function EntertainmentView() {
       {tab === 'watch' && <WatchTab feed={feed} setFeed={setFeed} busy={busy} q={query} actions={actions} />}
       {(tab === 'show' || tab === 'movie' || tab === 'book' || tab === 'game') && <MediaShelf key={tab} kind={tab} items={media} setItems={(f) => setMedia((m) => (m ? f(m) : m))} q={query} web={web} />}
       {tab === 'sports' && <SportsTab q={query} />}
+      {tab === 'esports' && <EsportsTab q={query} />}
       {tab === 'podcast' && <PodcastTab feed={feed} setFeed={setFeed} q={query} actions={actions} />}
       {tab === 'reddit' && <RedditTab feed={feed} setFeed={setFeed} q={query} actions={actions} />}
       {tab === 'saved' && (

@@ -8,6 +8,7 @@ import * as money from './services/money'
 import { getBusiness } from './services/print'
 import { getSecret, putSecret } from './secrets'
 import * as packageService from './services/packages'
+import * as esports from './services/esports'
 import * as assistantService from './services/assistant'
 import { getOpenAtLogin, resourcePath, setOpenAtLogin } from './background'
 import * as backups from './services/backup'
@@ -217,6 +218,24 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
         putSecret(db, 'track17.key', key?.trim() || null)
         setSetting(db, 'track17.error', null)
         return { configured: Boolean(key?.trim()), error: null }
+      }
+    },
+    esports: {
+      feed: async () => esports.esportsFeed(db, Boolean(getSecret<string>(db, 'pandascore.token'))),
+      refresh: async (force) => {
+        const token = getSecret<string>(db, 'pandascore.token')
+        if (!token) return esports.esportsFeed(db, false)
+        return force || esports.esportsStale(db) ? esports.refreshEsports(db, token, fetchText) : esports.esportsFeed(db, true)
+      },
+      setGames: async (games) => {
+        esports.setEsportsGames(db, games)
+        const token = getSecret<string>(db, 'pandascore.token')
+        return token ? esports.refreshEsports(db, token, fetchText) : esports.esportsFeed(db, false)
+      },
+      setToken: async (token) => {
+        const t = token?.trim() || null
+        putSecret(db, 'pandascore.token', t)
+        return t ? esports.refreshEsports(db, t, fetchText) : esports.esportsFeed(db, false)
       }
     },
     assistant: {
