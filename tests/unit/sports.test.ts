@@ -63,6 +63,22 @@ describe('sports', () => {
     // Sorted by start time; nothing older than three days
     expect(feed.games.map((g) => g.at)).toEqual([...feed.games.map((g) => g.at)].sort((a, b) => a - b))
     expect(feed.games.every((g) => g.at > NOW - 3 * 86_400_000)).toBe(true)
+    // Regular-season games aren't important ones
+    expect(feed.games.every((g) => g.big === '')).toBe(true)
+  })
+
+  it('marks important games (shapes from ESPN’s real answers)', () => {
+    const big = (season: object, notes: object[] = []): string => sports.bigGame({ season }, { notes })
+    expect(big({ type: 3, slug: 'post-season' }, [{ type: 'event', headline: 'Super Bowl LX' }])).toBe('Super Bowl LX')
+    expect(big({ type: 3, slug: 'post-season' }, [{ type: 'event', headline: 'NBA Finals - Game 4' }])).toBe('NBA Finals - Game 4')
+    expect(big({ type: 3, slug: 'post-season' }, [{ type: 'event', headline: 'College Football Playoff Quarterfinal at the Rose Bowl Presented by Prudential' }])).toBe('College Football Playoff Quarterfinal at the Rose Bowl')
+    expect(big({ type: 3, slug: 'post-season' })).toBe('Playoffs')
+    expect(sports.bigGame({ seasonType: { type: 3 } }, {})).toBe('Playoffs')
+    // Soccer: the stage is the season slug; a result note doesn't count
+    expect(big({ type: 13677, slug: 'final' }, [{ type: 'event', headline: 'Paris Saint-Germain win 4-3 on penalties' }])).toBe('Final')
+    expect(big({ type: 1, slug: 'round-of-16' })).toBe('Round of 16')
+    expect(big({ type: 14308, slug: '2026-27-english-premier-league' })).toBe('')
+    expect(sports.bigGame({ seasonType: { type: 2 } }, { notes: [] })).toBe('')
   })
 
   it('follows every game of a league, marking your team’s', async () => {

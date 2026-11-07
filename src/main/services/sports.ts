@@ -46,6 +46,23 @@ function channels(broadcasts: unknown): string {
   return [...new Set(names)].slice(0, 3).join(', ')
 }
 
+const BIG_NOTE = /final|championship|playoff|bowl|stanley cup|world series|all-star|derby|classic/i
+const BIG_STAGE = /final|semi|quarter|round-of|knockout|playoff/i
+
+/**
+ * Important games: the postseason (ESPN season type 3), a knockout stage (soccer: the season slug), or a named event
+ * ("Super Bowl LX", "NBA Finals - Game 4", "Rose Bowl"). Soccer notes also hold results ("win 4-3 on penalties"), so only
+ * names that sound like an event count.
+ */
+export function bigGame(e: Json, c: Json): string {
+  const note = ((c.notes ?? []) as Json[]).map((n) => String(n.headline ?? '')).find((h) => BIG_NOTE.test(h)) ?? ''
+  if (note) return note.replace(/\s+presented by .*$/i, '')
+  const slug = String(e.season?.slug ?? '')
+  if (e.season?.type === 3 || e.seasonType?.type === 3 || /post-season/.test(slug)) return 'Playoffs'
+  if (BIG_STAGE.test(slug)) return slug.replace(/-/g, ' ').replace(/^./, (s) => s.toUpperCase())
+  return ''
+}
+
 /** Games from a scoreboard (one day of a league) or a team's schedule (its season) */
 export function parseGames(json: string, league: string, mine: Set<string>): SportsGame[] {
   const j = JSON.parse(json) as Json
@@ -84,7 +101,8 @@ export function parseGames(json: string, league: string, mine: Set<string>): Spo
         url: String((e.links as Json[] | undefined)?.find((l) => (l.rel as string[] | undefined)?.includes('summary'))?.href ?? e.links?.[0]?.href ?? ''),
         tv: channels(c.broadcasts),
         venue: [c.venue?.fullName, c.venue?.address?.city].filter(Boolean).join(', '),
-        mine: mine.has(`${league}:${home.id}`) || mine.has(`${league}:${away.id}`)
+        mine: mine.has(`${league}:${home.id}`) || mine.has(`${league}:${away.id}`),
+        big: bigGame(e, c)
       }
     ]
   })

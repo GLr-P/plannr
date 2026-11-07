@@ -62,6 +62,9 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
   const [addNews, setAddNews] = useState<NewsItem | null>(null)
   const [packages, setPackages] = useState<PackageInfo[]>([])
   const [episodes, setEpisodes] = useState<{ id: string; title: string; date: string }[]>([])
+  // Important games of what you follow in Sports (off until turned on)
+  const showGames = useUi((s) => s.prefs.calendarGames) === '1'
+  const [followsSports, setFollowsSports] = useState(false)
   const [games, setGames] = useState<SportsGame[]>([])
   const [forecast, setForecast] = useState<WeatherForecast | null>(null)
   useEffect(() => {
@@ -95,10 +98,12 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
           : []
       )
     )
-    // Your favourite teams' games (Entertainment → Sports)
+    // Important games (playoffs, finals…) of the teams and leagues you follow (Entertainment → Sports)
     const fromMs = new Date(range.from + 'T00:00').getTime()
     const toMs = new Date(range.to + 'T23:59').getTime()
-    setGames((await api.sports.feed()).games.filter((g) => g.mine && g.at >= fromMs && g.at <= toMs))
+    const sportsFeed = await api.sports.feed()
+    setFollowsSports(sportsFeed.prefs.leagues.length + sportsFeed.prefs.teams.length > 0)
+    setGames(sportsFeed.games.filter((g) => g.big && g.at >= fromMs && g.at <= toMs))
     const news = await api.news.feed()
     setNewsSetUp(news.sources.some((s) => !s.page))
     setNewsItems(news.items.filter((i) => i.page === 'local' && i.when && !i.filtered && !i.eventId && i.when.date >= range.from && i.when.date <= range.to))
@@ -189,10 +194,10 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         classNames: ['ev-episode'],
         extendedProps: { episode: true }
       })),
-      // Your teams' games (click opens Entertainment → Sports)
-      ...games.map((g) => ({
+      // Important games (click opens Entertainment → Sports)
+      ...(showGames ? games : []).map((g) => ({
         id: `game:${g.id}`,
-        title: g.state === 'pre' ? `${g.away.short} @ ${g.home.short}` : `${g.away.short} ${g.away.score} @ ${g.home.short} ${g.home.score}`,
+        title: `${g.big}: ` + (g.state === 'pre' ? `${g.away.short} @ ${g.home.short}` : `${g.away.short} ${g.away.score} @ ${g.home.short} ${g.home.score}`),
         start: new Date(g.at),
         allDay: false,
         editable: false,
@@ -224,7 +229,7 @@ export function CalendarView({ date, eventId }: { date?: string; eventId?: strin
         extendedProps: { ev: e }
       }))
     ],
-    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes, games]
+    [events, holidays, bills, googleEvents, tasks, newsItems, showNews, packages, episodes, games, showGames]
   )
 
   const api_ = () => calRef.current?.getApi()
@@ -403,6 +408,17 @@ ${google.calendarName} (Google)`}>
             title="Show dates from local news (click one to add it to your calendar)"
           >
             <Newspaper /> Local events
+          </button>
+        )}
+        {followsSports && (
+          <button
+            type="button"
+            className={`btn sm ${showGames ? 'active-btn' : ''}`}
+            aria-pressed={showGames}
+            onClick={() => setPref('calendarGames', showGames ? '0' : '1')}
+            title="Show important games (playoffs, finals, bowl and cup games) of the teams and leagues you follow in Sports"
+          >
+            <Trophy /> Big games
           </button>
         )}
         <button

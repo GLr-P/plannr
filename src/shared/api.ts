@@ -1009,6 +1009,8 @@ export interface SportsGame {
   venue: string
   /** One of your teams plays */
   mine: boolean
+  /** An important game (playoffs, a final, a bowl or cup game…): its name, e.g. "Super Bowl LX" or "Playoffs" ('' for a regular game) */
+  big?: string
 }
 export interface SportsNews {
   id: string
