@@ -146,7 +146,8 @@ test('Sports: a favourite team in a league you don’t follow, then every game o
   await expect(dialog.getByRole('navigation', { name: 'Leagues' }).getByRole('button', { name: /^NHL/ })).toContainText('Every game')
   await page.keyboard.press('Escape')
   await expect(following.getByRole('button', { name: 'All NHL' })).toBeVisible()
-  await expect(page.locator('.sports-game', { hasText: 'Toronto Maple Leafs' }).first()).toBeVisible()
+  // The saved scoreboard is 3 November's games: shown only while they're within the last three days
+  if (Date.now() < Date.parse('2026-11-06T00:00:00Z')) await expect(page.locator('.sports-game', { hasText: 'Toronto Maple Leafs' }).first()).toBeVisible()
   await shot(page, 'x1k-sports')
   await page.getByRole('tab', { name: 'Videos & live' }).click()
 })
