@@ -287,3 +287,22 @@ test('everything is kept after a restart; the phone layout stacks fields', async
   await expect(field('From').locator('input')).toHaveValue('10:00')
   await expect(field('Paid').locator('input')).toBeChecked()
 })
+
+test('typing in the middle of a field keeps the cursor there (it jumped to the end after each key)', async () => {
+  for (const [label, box] of [['Flowers', 'input'], ['Card message', 'textarea'], ['Customer phone', 'input']] as const) {
+    const el = field(label).locator(box)
+    await el.click()
+    await page.keyboard.press('Control+a')
+    await page.keyboard.type('hello world', { delay: 20 })
+    await saved()
+    await el.evaluate((e: HTMLInputElement) => e.setSelectionRange(5, 5))
+    await page.keyboard.type('XYZ', { delay: 120 })
+    await page.keyboard.press('Backspace')
+    await page.keyboard.type('Q', { delay: 120 })
+    await expect(el).toHaveValue('helloXYQ world')
+    expect(await el.evaluate((e: HTMLInputElement) => e.selectionStart), label).toBe(8)
+    await saved()
+  }
+  // Still linked: the ticket's own phone box got the edit
+  await expect(prop('Customer phone')).toHaveValue('helloXYQ world')
+})

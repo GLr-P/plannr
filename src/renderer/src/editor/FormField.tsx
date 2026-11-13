@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { mergeAttributes, Node } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react'
@@ -220,6 +220,28 @@ export function useFieldValue(attrs: FieldAttrs, editable: boolean, store: (valu
   return { links, link, live, value, readOnly, setValue, placeholder }
 }
 
+/**
+ * What the box shows while you type. The editor redraws a field (with its new value) a moment after each key,
+ * not during it, so a box fed straight from the node is reset to the old text in between and the next redraw
+ * puts the cursor at the end. The box keeps its own copy instead, and only takes the node's value when it
+ * changed from somewhere else (undo, a linked ticket box, a calculation).
+ */
+export function useTypedValue(value: string, setValue: (v: string) => void): [string, (v: string) => void] {
+  const [text, setText] = useState(value)
+  const last = useRef(value)
+  useEffect(() => {
+    if (value === last.current) return
+    last.current = value
+    setText(value)
+  }, [value])
+  const change = (v: string): void => {
+    last.current = v
+    setText(v)
+    setValue(v)
+  }
+  return [text, change]
+}
+
 /** The field's classes: its type, width, label position and whether it's linked */
 export const fieldClass = (attrs: FieldAttrs): string =>
   [
@@ -253,7 +275,9 @@ export function FieldLabel({ attrs }: { attrs: FieldAttrs }) {
 /** The box itself (input, choices, dropdown…), with existing customers offered under a linked name, and the hint */
 export function FieldBody({ attrs, editable, store }: { attrs: FieldAttrs; editable: boolean; store: (value: string) => void }) {
   const group = useId()
-  const { links, link, live, value, readOnly, setValue, placeholder } = useFieldValue(attrs, editable, store)
+  const field = useFieldValue(attrs, editable, store)
+  const { links, link, live, readOnly, placeholder } = field
+  const [value, setValue] = useTypedValue(field.value, field.setValue)
   const aria = attrs.label || 'Field'
   let control: React.ReactNode
   switch (attrs.kind) {
