@@ -20,6 +20,7 @@ import { ensureStarterNoteTemplates } from './services/note-templates'
 import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
 import { ensureSearchIndex } from './services/reindex'
+import { refreshTimeZone } from './timezone'
 import type { NavigateTarget, Theme, ThemePref } from '../shared/api'
 import { adoptLoginItem, appUserModelId, createTray, ensureStartMenuShortcut, resourcePath, showWindow, startReminders } from './background'
 import { Updater } from './updater'
@@ -189,6 +190,10 @@ if (!app.requestSingleInstanceLock()) {
     ensureTicketLayouts(db)
     ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)
+    // The right clock before the window opens (Electron's zone data can lag behind Windows; see timezone.ts)
+    refreshTimeZone(db)
+    setInterval(guarded(() => refreshTimeZone(db)), 60 * 60 * 1000)
+    powerMonitor.on('resume', guarded(() => refreshTimeZone(db)))
 
     // plannr://file/<id> serves stored attachments (images in notes, ticket photos…).
     protocol.handle('plannr', (request) => {

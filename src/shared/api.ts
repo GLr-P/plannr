@@ -2133,7 +2133,24 @@ export interface PlannrApi {
     setOpenAtLogin(enabled: boolean): Promise<void>
     /** Shows a sample Windows notification, to check notifications get through; false if Windows can't show them */
     testNotification(): Promise<boolean>
+    /** The time zone Plannr's clock uses (sports times, calendar, reminders) */
+    getTimeZone(): Promise<TimeZoneInfo>
+    /** '' = automatic (this computer's clock), or an IANA zone like "America/Vancouver" */
+    setTimeZone(zone: string): Promise<TimeZoneInfo>
   }
+}
+
+export interface TimeZoneInfo {
+  /** What's picked in Settings ('' = automatic) */
+  chosen: string
+  /** The zone in use now (IANA id; '' when the system's zone has no name) */
+  effective: string
+  /** Minutes behind UTC now, like Date.getTimezoneOffset() (420 = UTC-7) */
+  bias: number
+  /** Windows' own zone id, when known */
+  windows: string
+  /** Automatic had to correct the zone because Plannr's built-in data didn't match Windows */
+  fixed: boolean
 }
 
 export const API_SHAPE = {
@@ -2215,7 +2232,7 @@ export const API_SHAPE = {
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
   updates: ['status', 'check', 'install'],
-  app: ['info', 'openDataFolder', 'copyRich', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification']
+  app: ['info', 'openDataFolder', 'copyRich', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification', 'getTimeZone', 'setTimeZone']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
 
 // Compile-time check that API_SHAPE lists every method of PlannrApi.

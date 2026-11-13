@@ -20,6 +20,7 @@ import {
   MenuNameSettings,
   MoneyDisplaySettings,
   TicketSettings,
+  TimeZoneSetting,
   WeekStartSetting
 } from '../components/CustomizeSettings'
 import { useShortcutsOpen } from '../components/Shortcuts'
@@ -178,6 +179,7 @@ export function SettingsView() {
 
           {info && <NotificationSettings pc={pc} />}
           <WeekStartSetting />
+          {pc && <TimeZoneSetting />}
           <HolidaySettings />
         </>
       )}

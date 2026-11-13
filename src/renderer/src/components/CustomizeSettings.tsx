@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw, Plus, Trash2 } from 'lucide-react'
-import { TICKET_STATUSES, formatTicketNumber } from '../../../shared/api'
+import { TICKET_STATUSES, formatTicketNumber, type TimeZoneInfo } from '../../../shared/api'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
@@ -366,6 +366,62 @@ export function WeekStartSetting() {
         ]}
         onChange={(v) => void saveDisplay({ weekStart: v as 0 | 1 })}
       />
+    </section>
+  )
+}
+
+const utc = (bias: number): string => {
+  const m = Math.abs(bias)
+  return `UTC${bias <= 0 ? '+' : '-'}${Math.floor(m / 60)}${m % 60 ? `:${String(m % 60).padStart(2, '0')}` : ''}`
+}
+
+/** All zones, grouped by region ("America/Vancouver" → America: Vancouver). */
+const zoneGroups = (): [string, string[]][] => {
+  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
+  const groups = new Map<string, string[]>()
+  for (const z of all) {
+    const region = z.includes('/') ? z.slice(0, z.indexOf('/')) : 'Other'
+    groups.set(region, [...(groups.get(region) ?? []), z])
+  }
+  return [...groups]
+}
+const zoneLabel = (z: string): string => z.slice(z.indexOf('/') + 1).replace(/_/g, ' ').replace(/\//g, ' / ')
+
+/** Time zone for sports and e-sports times, the calendar and reminders: this computer's clock, or one you pick. */
+export function TimeZoneSetting() {
+  const [info, setInfo] = useState<TimeZoneInfo | null>(null)
+  useEffect(() => {
+    void api.app.getTimeZone().then(setInfo)
+  }, [])
+  if (!info) return null
+  const now = new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return (
+    <section className="setting">
+      <div>
+        <h3>Time zone</h3>
+        <p className="muted">
+          For sports and e-sports times, the calendar and reminders. Now {now} ({utc(info.bias)}
+          {info.chosen && !info.chosen.startsWith('Etc/') ? `, ${zoneLabel(info.chosen)}` : ''}).
+          {info.fixed && ` Matched to Windows’ “${info.windows}”, which is newer than Plannr’s built-in time zone list.`}
+        </p>
+      </div>
+      <select
+        className="setting-input"
+        value={info.chosen}
+        aria-label="Time zone"
+        onChange={(e) => void api.app.setTimeZone(e.target.value).then(setInfo)}
+      >
+        <option value="">Automatic</option>
+        {zoneGroups().map(([region, zones]) => (
+          <optgroup key={region} label={region}>
+            {zones.map((z) => (
+              <option key={z} value={z}>
+                {zoneLabel(z)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
     </section>
   )
 }

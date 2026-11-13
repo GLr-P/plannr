@@ -2,7 +2,9 @@ import { test, expect, type ElectronApplication, type Page } from '@playwright/t
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { launch, shot } from './helpers'
+import { parseRegistry, zoneBias } from '../../src/main/services/timezone'
 
 // Making Plannr your own: look, menu, Home, ticket numbers and statuses, money display, calendar.
 test.describe.configure({ mode: 'serial' })
@@ -35,6 +37,23 @@ test('look: accent colour, compact spacing and text size', async () => {
   await shot(page, 'z1-look')
   await page.getByRole('radio', { name: 'Default' }).click() // back to normal size for the screenshots that follow
   await expect.poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())).toBeCloseTo(1)
+})
+
+test('time zone: matches the Windows clock, and a picked zone applies at once', async () => {
+  // Automatic: the window's clock uses the offset Windows uses now (Electron's own zone data can lag behind Windows)
+  const offset = (): Promise<number> => page.evaluate(() => new Date().getTimezoneOffset())
+  const windowsBias = parseRegistry(execFileSync('reg', ['query', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\TimeZoneInformation'], { encoding: 'utf8' }))!.bias
+  expect(await offset()).toBe(windowsBias)
+  await settings('General')
+  const select = page.getByRole('combobox', { name: 'Time zone' })
+  await select.scrollIntoViewIfNeeded()
+  await expect(select).toHaveValue('')
+  await shot(page, 'z1-time-zone')
+  await select.selectOption('Europe/Paris')
+  await expect.poll(offset).toBe(zoneBias('Europe/Paris'))
+  await expect(page.locator('.setting', { hasText: 'Time zone' })).toContainText('Paris')
+  await select.selectOption('')
+  await expect.poll(offset).toBe(windowsBias)
 })
 
 test('layout: hide a menu item; reorder and hide Home sections', async () => {

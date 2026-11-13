@@ -24,6 +24,7 @@ import type { SyncService } from './sync/service'
 import { DEFAULT_CAPTURE_SHORTCUT, hideCapture, openCapture, registerCaptureShortcut } from './capture'
 import { resolveFilePath } from './services/files'
 import { getSetting, setSetting } from './services/settings'
+import { setTimeZone, timeZoneInfo } from './timezone'
 import { printPdf, printSavePdf, printSend, printTicket } from './print-window'
 import { createCoreApi } from './api-core'
 import { pacedForReddit } from './services/reddit-gate'
@@ -470,6 +471,8 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       getZoom: async () => Number(getSetting(db, 'zoom')) || 1,
       getOpenAtLogin: async () => getOpenAtLogin(),
       setOpenAtLogin: async (enabled) => setOpenAtLogin(enabled),
+      getTimeZone: async () => timeZoneInfo(db),
+      setTimeZone: async (zone) => setTimeZone(db, zone),
       testNotification: async () => {
         if (!Notification.isSupported()) return false
         // Tests don't put real notifications on the screen (except the background check, PLANNR_BACKGROUND=1)

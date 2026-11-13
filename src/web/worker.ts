@@ -212,7 +212,10 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       getZoom: async () => Number(getSetting(db, 'zoom')) || 1,
       getOpenAtLogin: async () => false,
       setOpenAtLogin: async () => undefined,
-      testNotification: async () => false
+      testNotification: async () => false,
+      // The phone's browser keeps its own clock up to date
+      getTimeZone: async () => ({ chosen: '', effective: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '', bias: new Date().getTimezoneOffset(), windows: '', fixed: false }),
+      setTimeZone: async () => ({ chosen: '', effective: Intl.DateTimeFormat().resolvedOptions().timeZone ?? '', bias: new Date().getTimezoneOffset(), windows: '', fixed: false })
     }
   }
   const web: WebExtras = {
