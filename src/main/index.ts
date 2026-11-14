@@ -27,6 +27,7 @@ import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
 import { SyncService } from './sync/service'
 import { getSecret, putSecret } from './secrets'
+import { startSharedSecrets } from './shared-secrets'
 import { ProfileManager } from './profile-manager'
 import { MAIN_PROFILE, saveRegistry } from './profiles'
 
@@ -191,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
     ensureOnboardingState(db)
     ensureStarterTemplate(db)
     ensureTicketLayouts(db)
+    startSharedSecrets(db) // keys and sign-ins follow you to your other PCs
     ensureStarterNoteTemplates(db)
     ensureSearchIndex(db)
     // The right clock before the window opens (Electron's zone data can lag behind Windows; see timezone.ts)

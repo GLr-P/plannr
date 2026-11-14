@@ -133,8 +133,8 @@ test('menu names: call Tickets "Orders" and Customers "Clients"', async () => {
 test('tickets: your own number prefix and status names', async () => {
   await settings('Tickets')
   await page.getByLabel('Ticket number prefix').fill('AB-')
-  await page.getByLabel('Name for Intake').fill('Checked in')
-  await page.getByLabel('Name for Ready for pickup').click() // leaving a field saves it
+  await page.locator('.status-editor').getByLabel('Status name').first().fill('Checked in')
+  await page.locator('.status-editor').getByLabel('Status name').first().press('Enter') // leaving a name saves it
   await expect(page.locator('.setting', { hasText: 'Ticket numbers' })).toContainText('AB-0007')
   await shot(page, 'z3-tickets')
 

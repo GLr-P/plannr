@@ -69,7 +69,19 @@ export function CustomersView() {
                     e.dataTransfer.effectAllowed = 'link'
                   }}
                 >
-                  <td className="cell-main">{c.name || <span className="muted">Unnamed customer</span>}</td>
+                  <td>
+                    <div className="cell-main">{c.name || <span className="muted">Unnamed customer</span>}</div>
+                    {(c.company || c.related.length > 0) && (
+                      <span className="for-chips">
+                        {c.company && <span className="for-chip">{c.company}</span>}
+                        {c.related.length > 0 && (
+                          <span className="for-chip" title={c.related.map((r) => r.relation).filter(Boolean).join(', ')}>
+                            {c.related.length} linked
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
                   <td className="nowrap">{c.phone}</td>
                   <td>{c.email}</td>
                   <td className="num">{c.ticketCount || ''}</td>

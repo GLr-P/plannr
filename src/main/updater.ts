@@ -11,29 +11,59 @@ import { getSetting } from './services/settings'
  * Updates from GitHub Releases. Checks the latest release; if it's newer, downloads the installer, checks it
  * against the SHA-256 GitHub publishes for the file, then runs it silently and quits. The installer replaces
  * the app and starts it again (electron-builder's NSIS flags: --updated /S --force-run). Data isn't touched.
+ *
+ * Two channels: stable releases (1.0.0, 1.1.0, 2.0.0…) for everyone, and betas (2.0.0-beta.1…, published as GitHub
+ * pre-releases) for those who tick "Get beta updates" (setting betaUpdates, per PC). A beta user still gets the
+ * stable release once it's out, since 2.0.0 is newer than any 2.0.0 beta.
  */
 
 const RELEASES_URL = process.env.PLANNR_UPDATE_URL ?? 'https://api.github.com/repos/GLr-P/plannr/releases/latest'
+/** Every release, betas included (newest first), for the beta channel */
+const ALL_RELEASES_URL = process.env.PLANNR_UPDATE_LIST_URL ?? 'https://api.github.com/repos/GLr-P/plannr/releases?per_page=30'
 
-/** True when version a is newer than b ("1.2.10" > "1.2.9"; a leading "v" and any "-beta" part are ignored). */
-export function newerThan(a: string, b: string): boolean {
-  const parts = (v: string): number[] => v.replace(/^v/i, '').split('-')[0].split('.').map((n) => Number(n) || 0)
-  const x = parts(a)
-  const y = parts(b)
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0)
+/**
+ * Compares versions the semver way: "1.2.10" > "1.2.9", "2.0.0" > "2.0.0-beta.3" > "2.0.0-beta.2" > "1.1.0".
+ * A leading "v" is ignored. Returns > 0 when a is newer.
+ */
+export function compareVersions(a: string, b: string): number {
+  const split = (v: string): { core: number[]; pre: string[] } => {
+    const [core, ...pre] = v.trim().replace(/^v/i, '').split('-')
+    return { core: core.split('.').map((n) => Number(n) || 0), pre: pre.join('-') ? pre.join('-').split('.') : [] }
   }
-  return false
+  const x = split(a)
+  const y = split(b)
+  for (let i = 0; i < Math.max(x.core.length, y.core.length); i++) {
+    const d = (x.core[i] ?? 0) - (y.core[i] ?? 0)
+    if (d) return d
+  }
+  if (!x.pre.length || !y.pre.length) return (x.pre.length ? 0 : 1) - (y.pre.length ? 0 : 1) // a release beats its betas
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i]
+    const q = y.pre[i]
+    if (p === undefined || q === undefined) return p === undefined ? -1 : 1
+    const pn = /^\d+$/.test(p)
+    const qn = /^\d+$/.test(q)
+    if (pn && qn && Number(p) !== Number(q)) return Number(p) - Number(q)
+    if (pn !== qn) return pn ? -1 : 1
+    if (p !== q) return p < q ? -1 : 1
+  }
+  return 0
 }
 
-interface Release {
+/** True when version a is newer than b */
+export const newerThan = (a: string, b: string): boolean => compareVersions(a, b) > 0
+
+export interface Release {
   tag_name: string
+  draft?: boolean
+  prerelease?: boolean
   html_url: string
   assets: { name: string; browser_download_url: string; size: number; digest?: string | null }[]
 }
 
 export class Updater {
   private release: Release | null = null
+  private db: Db | null = null
   private timer: ReturnType<typeof setInterval> | null = null
   status: UpdateStatus
 
@@ -63,6 +93,7 @@ export class Updater {
 
   /** Checks shortly after start and every 6 hours, unless turned off in Settings. */
   start(db: Db): void {
+    this.db = db
     this.cleanDownloads()
     const auto = (): void => {
       if (getSetting(db, 'autoUpdateCheck') === false || this.busy()) return
@@ -94,9 +125,13 @@ export class Updater {
     if (this.busy()) return this.status
     this.set({ state: 'checking', error: null })
     try {
-      const res = await net.fetch(RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } })
+      const beta = this.db ? getSetting(this.db, 'betaUpdates') === true : false
+      const res = await net.fetch(beta ? ALL_RELEASES_URL : RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } })
       if (!res.ok) throw new Error(res.status === 404 ? 'No releases published yet' : `GitHub answered ${res.status}`)
-      const release = (await res.json()) as Release
+      const body = (await res.json()) as Release | Release[]
+      // Beta channel: the newest release of any kind that has an installer; otherwise the latest stable one
+      const release = Array.isArray(body) ? pickNewest(body) : body
+      if (!release) throw new Error('No releases published yet')
       this.release = release
       const latest = release.tag_name.replace(/^v/i, '')
       const available = newerThan(latest, this.status.current) && Boolean(this.installerAsset())
@@ -175,4 +210,10 @@ export class Updater {
 const friendly = (err: unknown): string => {
   const msg = err instanceof Error ? err.message : String(err)
   return /ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ENOTFOUND|ERR_CONNECTION/i.test(msg) ? 'No internet connection' : msg
+}
+
+/** The newest published release with an installer (betas included), from GitHub's release list */
+export function pickNewest(list: Release[]): Release | null {
+  const usable = list.filter((r) => !r.draft && r.assets.some((a) => /^Plannr-Setup-.*\.exe$/i.test(a.name)))
+  return usable.reduce<Release | null>((best, r) => (!best || newerThan(r.tag_name, best.tag_name) ? r : best), null)
 }

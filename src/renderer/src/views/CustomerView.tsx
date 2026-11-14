@@ -24,6 +24,7 @@ import { CustomerEmails } from '../components/CustomerEmails'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { CustomerPicker } from '../components/CustomerPicker'
 import { useCustomerLayout } from '../store/customerLayout'
+import { useNavName } from '../store/display'
 import { NewTicketButton } from './TicketsView'
 
 export function CustomerView({ id }: { id: string }) {
@@ -71,6 +72,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
   // Sections and fields added on this visit (an empty one isn't kept: next time only ones with something in them show)
   const [opened, setOpened] = useState<Set<string>>(new Set())
   const [customizing, setCustomizing] = useState(false)
+  const customersName = useNavName('customers', 'Customers')
   const { layout: cl, load: loadLayout, save: saveLayout } = useCustomerLayout()
   const saver = useAutosave<CustomerInput>(async (patch) => {
     const saved = await api.customers.update(customer.id, patch)
@@ -168,7 +170,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
       <div className="page-toolbar">
         <div className="crumbs">
           <button type="button" className="crumb" onClick={() => go({ view: 'customers' })}>
-            Customers
+            {customersName}
           </button>
         </div>
         <div className="toolbar-right">

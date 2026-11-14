@@ -557,5 +557,26 @@ export const migrations: string[] = [
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}
+  `,
+
+  /* 33: settings follow you: QuickBooks' record of what it already sent syncs too (so another PC never sends the
+     same sale twice), which needs an id; more synced settings (see SYNCED_SETTINGS) */ `
+  CREATE TABLE qbo_links_new (
+    id TEXT PRIMARY KEY,        -- local_type:local_id
+    local_type TEXT NOT NULL,
+    local_id TEXT NOT NULL,
+    qbo_id TEXT NOT NULL,
+    sync_token TEXT NOT NULL,
+    synced_at INTEGER NOT NULL,
+    UNIQUE (local_type, local_id)
+  );
+  INSERT INTO qbo_links_new (id, local_type, local_id, qbo_id, sync_token, synced_at)
+    SELECT local_type || ':' || local_id, local_type, local_id, qbo_id, sync_token, synced_at FROM qbo_links;
+  DROP TABLE qbo_links;
+  ALTER TABLE qbo_links_new RENAME TO qbo_links;
+  ${tableTriggersSql(['qbo_links'])}
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
   `
 ]

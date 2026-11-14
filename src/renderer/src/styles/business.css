@@ -1854,3 +1854,15 @@ td .for-chips {
 .custom-fields {
   margin-top: 4px;
 }
+/* A ticket's body needn't fill half the screen: + Add a section stays close to what's there */
+.ticket-body .editor .prose {
+  min-height: 120px;
+}
+.prop-input[data-warn='true'] {
+  color: var(--c-orange, #c2650a);
+}
+.date-warning {
+  grid-column: 2;
+  font-size: 11.5px;
+  color: var(--c-orange, #c2650a);
+}

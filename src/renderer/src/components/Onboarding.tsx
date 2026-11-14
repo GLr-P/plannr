@@ -21,6 +21,10 @@ import {
   Wallet,
   Wrench, Newspaper, Tv, ListChecks, Package2 } from 'lucide-react'
 import { suggestPrefix } from '../../../shared/api'
+import { MENU_ITEMS, planFor, USE_CASES } from '../../../shared/use-cases'
+import { applyUseCases } from '../lib/applyUseCases'
+import { ICONS } from '../lib/icons'
+import { StatusEditor } from './StatusEditor'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { go } from '../store/nav'
@@ -88,10 +92,15 @@ export function Onboarding() {
   const hiddenPref = useUi((s) => s.prefs.navHidden)
   const setPref = useUi((s) => s.setPref)
   const hidden = (hiddenPref ?? '').split(',').filter(Boolean)
+  const [uses, setUses] = useState<string[]>([])
+  const navNames = useDisplay((s) => s.prefs.navNames)
+  const plan = planFor(uses)
+  const biz = plan.business
 
   useEffect(() => {
     if (!open) return
     setStep(0)
+    void api.settings.get('useCases').then((u) => setUses(Array.isArray(u) ? (u as string[]) : []))
     void Promise.all([api.business.get(), api.display.get()]).then(([b, d]) => {
       setName(b.name)
       setPrefix(d.ticketPrefix)
@@ -109,9 +118,11 @@ export function Onboarding() {
     await api.business.set({ name: name.trim() })
     await saveDisplay({ ticketPrefix: prefix || suggestPrefix(name), currency })
   }
-  const steps = ['welcome', 'business', 'features', 'connect', 'tips'] as const
+  // What Plannr is for decides the rest: no business questions for school or personal use
+  const steps = ['welcome', 'uses', 'setup', ...(biz ? (['business'] as const) : []), 'features', ...(biz ? (['connect'] as const) : []), 'tips'] as const
   const last = step === steps.length - 1
   const next = async (): Promise<void> => {
+    if (steps[step] === 'uses') await applyUseCases(uses)
     if (steps[step] === 'business') await saveBusiness()
     if (last) return finish(() => go({ view: 'home' }))
     setStep(step + 1)
@@ -131,6 +142,101 @@ export function Onboarding() {
               </p>
               <p className="muted">This takes about a minute. You can change everything later in Settings.</p>
             </div>
+          )}
+
+          {steps[step] === 'uses' && (
+            <>
+              <h2>What will you use Plannr for?</h2>
+              <p className="muted">Pick everything that fits. Plannr sets itself up for it, and you can change all of it later.</p>
+              <div className="onboard-features">
+                {USE_CASES.map((u) => {
+                  const on = uses.includes(u.id)
+                  const Icon = ICONS[u.icon] ?? Sparkles
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={on}
+                      aria-label={u.title}
+                      className={`feature-card ${on ? 'on' : ''}`}
+                      onClick={() => setUses(on ? uses.filter((x) => x !== u.id) : [...uses, u.id])}
+                    >
+                      <span className="feature-icon">
+                        <Icon />
+                      </span>
+                      <span className="feature-text">
+                        <strong>{u.title}</strong>
+                        <span>{u.blurb}</span>
+                      </span>
+                      <span className="feature-check" aria-hidden />
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {steps[step] === 'setup' && (
+            <>
+              <h2>Your setup</h2>
+              {biz ? (
+                <>
+                  <p className="muted">Made for {biz.title.toLowerCase()}. Change anything here, or later right where you see it.</p>
+                  <div className="onboard-fields two">
+                    <label className="mfield">
+                      Tickets are called
+                      <NameField value={navNames.tickets || 'Tickets'} label="What tickets are called" onSave={(v) => void saveDisplay({ navNames: { ...navNames, tickets: v === 'Tickets' ? '' : v } })} />
+                    </label>
+                    <label className="mfield">
+                      Customers are called
+                      <NameField value={navNames.customers || 'Customers'} label="What customers are called" onSave={(v) => void saveDisplay({ navNames: { ...navNames, customers: v === 'Customers' ? '' : v } })} />
+                    </label>
+                  </div>
+                  <h3 className="onboard-sub">Statuses</h3>
+                  <StatusEditor />
+                  {(plan.sections.length > 0 || biz.preset) && (
+                    <>
+                      <h3 className="onboard-sub">Sections</h3>
+                      <p className="small muted">
+                        {biz.preset ? <>New {(navNames.tickets || 'tickets').toLowerCase()} start from “{biz.preset.name}”. </> : null}
+                        Add more to any {(navNames.tickets || 'ticket').toLowerCase().replace(/s$/, '')} with + Add, or make your own.
+                      </p>
+                      <div className="chip-row">
+                        {plan.sections.map((x) => (
+                          <span key={x.id} className="chip">
+                            {x.title}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {plan.customerFields.length > 0 && (
+                    <>
+                      <h3 className="onboard-sub">{navNames.customers || 'Customer'} fields</h3>
+                      <div className="chip-row">
+                        {plan.customerFields.map((x) => (
+                          <span key={x.id} className="chip">
+                            {x.label}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="muted">Your menu is set for {plan.menuHidden.length ? 'what you picked' : 'everything'}. Tickets and customers are tucked away; turn them on in the next step if you need them.</p>
+                  <div className="chip-row">
+                    {MENU_ITEMS.filter((m) => !hidden.includes(m)).map((m) => (
+                      <span key={m} className="chip">
+                        {FEATURES.find((x) => x.id === m)?.title ?? m}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
           )}
 
           {steps[step] === 'business' && (
@@ -278,5 +384,20 @@ export function Onboarding() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** A name that saves when you leave the box */
+function NameField({ value, label, onSave }: { value: string; label: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <input
+      value={text}
+      aria-label={label}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text.trim() && text.trim() !== value && onSave(text.trim())}
+      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+    />
   )
 }

@@ -70,9 +70,9 @@ function getLink(db: Db, type: LocalType, id: string): Link | undefined {
 
 function setLink(db: Db, type: LocalType, id: string, entity: QboEntity, syncedAt: number): void {
   db.prepare(
-    `INSERT INTO qbo_links (local_type, local_id, qbo_id, sync_token, synced_at) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO qbo_links (id, local_type, local_id, qbo_id, sync_token, synced_at) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(local_type, local_id) DO UPDATE SET qbo_id = excluded.qbo_id, sync_token = excluded.sync_token, synced_at = excluded.synced_at`
-  ).run(type, id, entity.Id, entity.SyncToken, syncedAt)
+  ).run(`${type}:${id}`, type, id, entity.Id, entity.SyncToken, syncedAt)
 }
 
 const dropLink = (db: Db, type: LocalType, id: string): void => {

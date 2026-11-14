@@ -2761,3 +2761,44 @@ kbd {
   align-items: center;
   gap: 2px;
 }
+/* Settings lists (your sections, your customer fields) */
+.plain-list {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+.plain-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.plain-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 6px;
+}
+.chip-row .chip svg {
+  width: 12px;
+  height: 12px;
+}
+/* First-launch setup: your setup step */
+.onboard-sub {
+  margin: 16px 0 4px;
+  font-size: 14px;
+}
+.onboard-fields.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.onboard .status-editor {
+  padding: 0;
+}

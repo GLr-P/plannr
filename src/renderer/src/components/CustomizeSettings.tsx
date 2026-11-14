@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw, Plus, Trash2 } from 'lucide-react'
 import { formatTicketNumber, type TimeZoneInfo } from '../../../shared/api'
 import { StatusEditor } from './StatusEditor'
+import { CustomerPageSettings, SectionSettings } from './MakeItYoursSettings'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
@@ -457,6 +458,8 @@ export function TicketSettings() {
         </div>
         <StatusEditor />
       </section>
+      <SectionSettings />
+      <CustomerPageSettings />
       <MessageTemplatesSettings />
     </>
   )

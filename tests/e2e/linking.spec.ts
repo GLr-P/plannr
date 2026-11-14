@@ -43,7 +43,7 @@ test('+ Business and + Linked person add those sections; linking makes a new per
   await page.locator('.add-chips').getByRole('button', { name: 'Business' }).click()
   await expect(page.getByLabel('Business', { exact: true })).toBeFocused()
   await page.keyboard.type('Ropate Refinishers')
-  await page.locator('.add-chips').getByRole('button', { name: 'Linked person' }).click()
+  await page.locator('.add-chips').getByRole('button', { name: 'Linked people' }).click()
   await expect(page.getByLabel('Relation')).toBeFocused()
   await page.keyboard.type('Wife')
   await page.getByLabel('Link a person').fill('Jane')

@@ -1,15 +1,19 @@
 import { safeStorage } from 'electron'
 import type { Db } from './db'
 import { getSetting, setSetting } from './services/settings'
+import { sharedSecretChanged } from './shared-secrets'
 
 /**
  * Settings encrypted with Windows (safeStorage / DPAPI): only this Windows account on this PC can read them.
- * Used for integration keys and sign-in tokens.
+ * Used for integration keys and sign-in tokens. Most of them also follow you to your other PCs (shared-secrets.ts).
  */
-export function putSecret(db: Db, key: string, value: unknown): void {
-  if (value === null) return setSetting(db, key, null)
-  if (!safeStorage.isEncryptionAvailable()) throw new Error('Windows encryption is not available on this account')
-  setSetting(db, key, safeStorage.encryptString(JSON.stringify(value)).toString('base64'))
+export function putSecret(db: Db, key: string, value: unknown, opts: { share?: boolean } = {}): void {
+  if (value === null) setSetting(db, key, null)
+  else {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('Windows encryption is not available on this account')
+    setSetting(db, key, safeStorage.encryptString(JSON.stringify(value)).toString('base64'))
+  }
+  if (opts.share !== false) sharedSecretChanged(db, key)
 }
 
 export function getSecret<T>(db: Db, key: string): T | null {

@@ -37,7 +37,7 @@ export interface SectionPreset {
 }
 
 const text = (t: string): DocJSON => ({ type: 'text', text: t })
-const p = (t?: string): DocJSON => (t ? { type: 'paragraph', content: [text(t)] } : { type: 'paragraph' })
+export const p = (t?: string): DocJSON => (t ? { type: 'paragraph', content: [text(t)] } : { type: 'paragraph' })
 interface FieldOpts {
   options?: string[]
   placeholder?: string
@@ -47,12 +47,12 @@ interface FieldOpts {
   link?: string
 }
 /** A fill-in field on its own line */
-const field = (label: string, kind: string, o: FieldOpts = {}): DocJSON => ({
+export const field = (label: string, kind: string, o: FieldOpts = {}): DocJSON => ({
   type: 'paragraph',
   content: [{ type: 'formField', attrs: { label, kind, value: '', options: o.options ?? [], ...(o.placeholder ? { placeholder: o.placeholder } : {}), ...(o.rows ? { rows: o.rows } : {}), ...(o.formula ? { formula: o.formula, format: o.format ?? 'money' } : {}), ...(o.link ? { link: o.link } : {}) } }]
 })
-const long = (label: string, placeholder?: string, rows = 4): DocJSON => field(label, 'textarea', { placeholder, rows })
-const checklist = (items: string[]): DocJSON => ({
+export const long = (label: string, placeholder?: string, rows = 4): DocJSON => field(label, 'textarea', { placeholder, rows })
+export const checklist = (items: string[]): DocJSON => ({
   type: 'taskList',
   content: items.map((t) => ({ type: 'taskItem', attrs: { checked: false }, content: [p(t)] }))
 })

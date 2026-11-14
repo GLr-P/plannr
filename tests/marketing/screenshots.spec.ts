@@ -156,10 +156,19 @@ test('website screenshots', async () => {
 
   await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
   await page.getByRole('tab', { name: 'All', exact: true }).click().catch(() => undefined)
+  await expect(page.locator('.ticket-row').first()).toBeVisible()
   await shot('tickets')
 
   await page.locator('.ticket-row', { hasText: 'iPhone 14 Pro' }).click()
   await expect(page.locator('.ticket-no')).toHaveText('MR-0001')
+  // Show off sections: the Shop repair preset adds passcode, condition, work done and more
+  await page.locator('.page-toolbar').getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByLabel('Search sections').fill('shop repair')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.ticket-body .ticket-section').first()).toBeVisible()
+  await page.mouse.click(5, 400)
+  await page.locator('.main').evaluate((el) => el.scrollTo(0, 0))
+  await expect(page.locator('.toast')).toHaveCount(0, { timeout: 15_000 }) // no toast in the picture
   await shot('ticket')
 
   await page.locator('.sidebar .nav-item', { hasText: 'Calendar' }).first().click()

@@ -81,7 +81,8 @@ describe('sync between devices', () => {
     const t = tickets.createTicket(a.db, { customerId: c.id })
     items.addItem(a.db, t.id, { kind: 'labour', description: 'Screen swap', unitCents: 6000 })
     setSetting(a.db, 'business', { name: 'Maple Repair Co.' })
-    setSetting(a.db, 'theme', 'dark') // per device: stays here
+    setSetting(a.db, 'theme', 'dark') // follows you (2026-11-14)
+    setSetting(a.db, 'zoom', 1.2) // per device: stays here
     a.engine.markAllDirty()
     expect((await a.engine.sync()).pushed).toBeGreaterThan(5)
 
@@ -91,7 +92,8 @@ describe('sync between devices', () => {
     expect(items.listItems(b.db, t.id)).toHaveLength(1)
     expect(tickets.getTicket(b.db, t.id)).toMatchObject({ customerId: c.id, priceCents: 6000 })
     expect(getSetting(b.db, 'business')).toEqual({ name: 'Maple Repair Co.' })
-    expect(getSetting(b.db, 'theme')).toBeNull()
+    expect(getSetting(b.db, 'theme')).toBe('dark')
+    expect(getSetting(b.db, 'zoom')).toBeNull()
     expect(b.engine.pendingCount()).toBe(0) // what came in isn't sent back
   })
 

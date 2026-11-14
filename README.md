@@ -14,8 +14,8 @@ Plannr started as the one app a small business owner wanted instead of five: som
 |---|---|
 | **Notes** | A clean editor with checklists, tables, callouts, toggles and photos, spreadsheets with formulas and charts, calculations, drawings, columns and a table of contents, or a free-form page where you put text, fields, shapes, sticky notes, drawings and pictures anywhere. Earlier versions are kept, and any note prints or saves as PDF. `@` links notes, customers and tickets together, and the other side shows the link back. Folders, your own sidebar sections, icons and colours. Seven starter templates (meeting notes, checklist, weekly plan, daily log, inventory, supplier, how-to guide). |
 | **Calendar** | Month, week and day views. Drag notes and tickets onto a day. Reminders pop up in Windows. Public holidays included. |
-| **Customers** | The people and companies you work with: their details and everything you've done for them. Search by name, email or phone number in any format. |
-| **Tickets** | Track jobs, repairs, orders or requests from start to finish: status, dates, price, photos and a form you design, either as a document or on a free-form canvas where you put fields, text and pictures anywhere. Print a slip, a receipt or a label. Rename the statuses to fit your work. |
+| **Customers** | The people and companies you work with: name, phone and email to start, and a business, an address, linked people (a spouse, an employee) or your own fields when you need them. Search by name, email or phone number in any format. |
+| **Tickets** | Track jobs, repairs, orders, commissions or requests from start to finish. A ticket starts with the basics; **+ Add** puts in what the job needs: 24 ready-made sections (passcode, specs, work done, remote session, delivery, revisions…), photos, quote lines, a due date, or sections you make yourself. Presets for shop repairs, remote support, house calls, orders, appointments and more, or save your own. Tickets can be for a customer's business or someone linked to them, and the list can group them by customer. Print a slip, a receipt, an invoice or a label. |
 | **Money** | Income (tax included, tax on top, or no tax), expenses, bills and subscriptions with auto-pay, who still owes you, and monthly totals. CSV export. |
 | **Vault** | Passwords, cards and documents, encrypted with your own passcode (AES-256). Locks itself when you step away. |
 | **Entertainment** | New videos from the YouTube channels you like and which Twitch streamers are live, with a notification when one goes live (reruns left out); sports scores, schedules and headlines for the leagues and teams you follow. No accounts needed. |
@@ -23,7 +23,7 @@ Plannr started as the one app a small business owner wanted instead of five: som
 | **Assistant** | Ask about your tickets, calendar, money, notes and news, or have it add tasks, events and list items. Free with a Google Gemini key; ChatGPT, Claude, Groq or a model on your own PC (Ollama) also work. |
 | **News** | What's happening where you live: local news, events, closures, elections and the weather, from the sources you choose (news sites, your town's news page, Facebook pages). Sad news and stock markets are left out unless you want them. Put any story on your calendar in one click. |
 
-Don't need some of it? Untick it during the welcome tour (or later in Settings) and it leaves the menu. Group the menu under your own headings, rename things, pick a colour theme (Paper, Solarized, Dim, Nord, Forest, Rosé, Midnight, High contrast, each light and dark), and lay out Home as tiles.
+On first launch Plannr asks what you'll use it for (personal planning, school, a repair shop, art commissions, a shop taking orders, freelance work…) and sets itself up for it: the menu, what tickets and customers are called, their statuses, sections and presets. Don't need some of it? It leaves the menu. Group the menu under your own headings, rename things, pick a colour theme (Paper, Solarized, Dim, Nord, Forest, Rosé, Midnight, High contrast, each light and dark), and lay out Home as tiles.
 
 Optional connections, if you use them:
 
@@ -38,10 +38,12 @@ Each connection uses your own free developer key, so your data goes straight fro
 | | |
 |---|---|
 | ![A note with a table and a callout](docs/screenshots/note.png) | ![Calendar](docs/screenshots/calendar.png) |
-| ![A ticket with its fill-in form](docs/screenshots/ticket.png) | ![Money overview](docs/screenshots/money.png) |
+| ![A ticket with its sections](docs/screenshots/ticket.png) | ![Money overview](docs/screenshots/money.png) |
 | ![Dark mode](docs/screenshots/ticket-dark.png) | ![Settings: layout](docs/screenshots/settings.png) |
 
 ## Make it yours
+
+Everything is changed right where you see it, no update needed. **Customize** on a ticket renames or removes any box on it; statuses are added, renamed, recoloured and reordered from the status menu itself; sections are made and saved from a ticket; customer pages get your own fields. Your settings, layout, keys and connections follow you to your other PCs through sync (end-to-end encrypted).
 
 Light or dark, 8 accent colours, compact spacing and bigger text. Drag the menu into any order, hide what you don't use, and choose what Home shows. Name your own sidebar sections, and give notes and folders icons and colours. Pick your own ticket numbers, status names, currency and payment methods.
 

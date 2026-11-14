@@ -41,6 +41,8 @@ import { LinkedEvents } from '../components/LinkedEvents'
 import { TicketPayments } from './MoneyView'
 import type { Editor } from '@tiptap/core'
 import { Plus, SlidersHorizontal, Users, X } from 'lucide-react'
+import { useNavName } from '../store/display'
+import { singular } from '../lib/navOrder'
 import { ForPicker, MoreTickets } from '../components/TicketLinks'
 import { openPanel } from '../components/ContextMenu'
 import { AddToTicketPanel } from '../components/AddToTicket'
@@ -108,7 +110,17 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   // The template's layout (names for the boxes, what shows) with this ticket's own changes on top (Customize)
   const [baseLayout, setBaseLayout] = useState(ticket.layout)
   const [own, setOwnState] = useState<Partial<TicketLayout>>(ticket.ownLayout ?? {})
-  const layout = useMemo(() => ticketLayout({ ...baseLayout, ...own }), [baseLayout, own])
+  // Your names for tickets and customers (e.g. Commissions, Clients) stand in for the standard words
+  const ticketsName = useNavName('tickets', 'Tickets')
+  const customersName = useNavName('customers', 'Customers')
+  const layout = useMemo(() => {
+    const l = ticketLayout({ ...baseLayout, ...own })
+    if (l.customerLabel === 'Customer' && customersName !== 'Customers') {
+      const one = singular(customersName)
+      l.customerLabel = one.charAt(0).toUpperCase() + one.slice(1)
+    }
+    return l
+  }, [baseLayout, own, customersName])
   const [customizing, setCustomizing] = useState(false)
 
   const saver = useAutosave<TicketUpdate>(async (patch) => {
@@ -230,6 +242,9 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const added = (p: TicketPart): boolean => parts.includes(p)
   // Removed on this ticket (Customize ×) wins; otherwise a part shows when the template, + Add or its data says so
   const removed = (k: keyof TicketLayout): boolean => own[k] === false
+  // Who it's for only shows when there's a choice (a business or linked people), it's set, or you put it there
+  const forVisible =
+    layout.showFor && (own.showFor === true || customizing || Boolean(customer?.company) || Boolean(customer?.related.length) || Boolean(fields.forId) || fields.business)
   const show = {
     pickup: !removed('showPickup') && (layout.showPickup || added('pickup') || Boolean(fields.pickupOn)),
     warranty: !removed('showWarranty') && ((layout.showWarranty && layout.showPickup) || added('warranty') || Boolean(fields.warrantyUntil)),
@@ -261,7 +276,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     { id: 'customer', label: layout.customerLabel, shown: layout.showCustomer, restore: { showCustomer: true } },
     { id: 'phone', label: layout.phoneLabel, shown: layout.showCustomer && layout.showCustomerPhone, restore: { showCustomer: true, showCustomerPhone: true } },
     { id: 'email', label: layout.emailLabel, shown: layout.showCustomer && layout.showCustomerEmail, restore: { showCustomer: true, showCustomerEmail: true } },
-    { id: 'for', label: layout.forLabel, shown: layout.showCustomer && layout.showFor, restore: { showCustomer: true, showFor: true } },
+    { id: 'for', label: `${layout.forLabel} (their business or someone else)`, shown: layout.showCustomer && forVisible, restore: { showCustomer: true, showFor: true } },
     { id: 'received', label: layout.receivedLabel, shown: layout.showReceived, restore: { showReceived: true } },
     { id: 'price', label: `${layout.priceLabel} & payments`, shown: layout.showPrice, restore: { showPrice: true } },
     { id: 'status', label: 'Status', shown: layout.showStatus, restore: { showStatus: true } }
@@ -489,7 +504,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
       <div className="page-toolbar">
         <div className="crumbs">
           <button type="button" className="crumb" onClick={() => go({ view: 'tickets' })}>
-            Tickets
+            {ticketsName}
           </button>
           <span className="crumb-sep">/</span>
           <span className="ticket-no">{formatTicketNumber(ticket.number)}</span>
@@ -706,7 +721,14 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   readOnly={trashed}
                   onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
                   aria-label="Pickup date"
+                  title={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? `Before ${layout.receivedLabel.toLowerCase()}` : undefined}
+                  data-warn={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? 'true' : undefined}
                 />
+                {fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn && (
+                  <span className="date-warning" role="note">
+                    Before {layout.receivedLabel.toLowerCase()}
+                  </span>
+                )}
               </div>
             )}
             {show.warranty && (
@@ -772,7 +794,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showCustomer && layout.showFor && customer?.id && (
+            {layout.showCustomer && forVisible && customer?.id && (
               <div className="prop">
                 <PropLabel icon={<Users />} label={layout.forLabel} editing={customizing} onRename={(v) => setOwn({ forLabel: v })} onRemove={() => setOwn({ showFor: false })} />
                 <ForPicker

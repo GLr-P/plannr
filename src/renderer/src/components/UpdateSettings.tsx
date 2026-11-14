@@ -8,8 +8,10 @@ import { relativeTime } from '../lib/format'
 export function UpdateSettings() {
   const status = useUpdate((s) => s.status)
   const [auto, setAuto] = useState(true)
+  const [beta, setBeta] = useState(false)
   useEffect(() => {
     void api.settings.get('autoUpdateCheck').then((v) => setAuto(v !== false))
+    void api.settings.get('betaUpdates').then((v) => setBeta(v === true))
   }, [])
   if (!status) return null
 
@@ -62,6 +64,17 @@ export function UpdateSettings() {
             }}
           />
           Check automatically (every few hours)
+        </label>
+        <label className="check-row update-auto">
+          <input
+            type="checkbox"
+            checked={beta}
+            onChange={(e) => {
+              setBeta(e.target.checked)
+              void api.settings.set('betaUpdates', e.target.checked).then(() => checkForUpdates())
+            }}
+          />
+          Get beta updates: new features early, before they’re fully tested
         </label>
       </div>
       <div className="setting-controls">

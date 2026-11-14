@@ -301,6 +301,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
       placeholder: ({ node }) => {
         if (node.type.name === 'heading') return 'Heading'
         if (node.type.name === 'detailsSummary') return 'Toggle title'
+        if (options.ticket) return "Type '/' for sections and blocks (or use + Add), '@' to link a note or customer"
         return options.mentions === false ? "Type '/' for headings, checklists, toggles, images…" : "Type '/' for blocks, '@' to link a note, ticket or customer"
       }
     }),

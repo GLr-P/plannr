@@ -57,7 +57,8 @@ export const SYNCED_TABLES = [
   'habit_log',
   'list_items',
   'packages',
-  'media'
+  'media',
+  'qbo_links'
 ] as const
 
 /** Settings shared by every device (the rest — window size, theme, integrations, backups — stay per device). */
@@ -79,7 +80,19 @@ export const SYNCED_SETTINGS = [
   'sports.prefs',
   'esports.games',
   'tickets.sections',
-  'customers.layout'
+  'customers.layout',
+  // Settings that follow you to every PC (2026-11-14): the assistant, layout and look, integrations' choices,
+  // and your keys and sign-ins (sealed with your sync key: main/shared-secrets.ts)
+  'assistant.provider',
+  'assistant.model',
+  'assistant.customModel',
+  'ent.notifyEpisodes',
+  'ent.notifyLive',
+  'qbo.config',
+  'google.calendars',
+  'theme',
+  'ui.shared',
+  'secrets.shared'
 ]
 
 const nowMs = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`

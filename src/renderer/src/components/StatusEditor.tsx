@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 import { STATUS_COLORS, ticketStatuses, type StatusDef } from '../../../shared/api'
 import { api } from '../api'
-import { saveDisplay, useDisplay } from '../store/display'
+import { saveDisplay, useDisplay, useNavName } from '../store/display'
+import { singular } from '../lib/navOrder'
 import { useData } from '../store/data'
 
 /**
@@ -11,6 +12,8 @@ import { useData } from '../store/data'
  */
 export function StatusEditor() {
   useDisplay((s) => s.version) // re-render when they change (here or on another device)
+  const many = useNavName('tickets', 'Tickets').toLowerCase()
+  const one = singular(many)
   const statuses = ticketStatuses()
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [removing, setRemoving] = useState<{ id: string; to: string } | null>(null)
@@ -47,7 +50,9 @@ export function StatusEditor() {
 
   return (
     <div className="status-editor">
-      <p className="muted small">The steps a ticket goes through. New tickets start in the first one.</p>
+      <p className="muted small">
+        The steps a {one} goes through. New {many} start in the first one.
+      </p>
       <ul>
         {statuses.map((s, i) => (
           <li key={s.id} data-status={s.id}>
