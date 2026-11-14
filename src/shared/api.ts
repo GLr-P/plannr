@@ -152,7 +152,30 @@ export interface CustomerInput {
   region?: string
   postalCode?: string
   notes?: string
+  /** People linked to this customer (replaces the list) */
+  related?: CustomerLink[]
 }
+
+/** A link from one customer to another: "Jane is Randy's Wife" is stored on Randy as { id: Jane, relation: 'Wife' } */
+export interface CustomerLink {
+  id: string
+  relation: string
+}
+
+/** Someone linked to a customer, seen from that customer (either side of the link) */
+export interface LinkedCustomer {
+  id: string
+  name: string
+  phone: string
+  email: string
+  /** How they're related, as typed when linking */
+  relation: string
+  /** true when the link was made on the other customer's page (they listed this customer) */
+  reverse: boolean
+}
+
+/** Relations offered when linking people (anything else can be typed) */
+export const CUSTOMER_RELATIONS = ['Spouse', 'Wife', 'Husband', 'Partner', 'Parent', 'Child', 'Family', 'Employee', 'Coworker', 'Business partner', 'Friend', 'Referred by'] as const
 
 export interface Customer {
   id: string
@@ -169,6 +192,8 @@ export interface Customer {
   region: string
   postalCode: string
   notes: string
+  /** People linked from this customer's page */
+  related: CustomerLink[]
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -240,6 +265,15 @@ export interface TicketSummary {
   customerName: string
   customerPhone: string
   customerEmail: string
+  /** The customer's business name (shown when the ticket is for the business) */
+  customerCompany: string
+  /** For one of the customer's linked people (their customer id), e.g. Randy's wife */
+  forId: string | null
+  forName: string
+  /** For the customer's business rather than for them personally */
+  business: boolean
+  /** Built-in parts added to this ticket on top of its template (pickup date, photos, quote lines, emails) */
+  parts: TicketPart[]
   status: TicketStatus
   device: string
   issue: string
@@ -382,7 +416,14 @@ export interface TicketUpdate {
   warrantyUntil?: string | null
   content?: DocJSON
   taxExempt?: boolean
+  forId?: string | null
+  business?: boolean
+  parts?: TicketPart[]
 }
+
+/** Parts of a ticket page that aren't text: added with + Add when needed */
+export const TICKET_PARTS = ['pickup', 'photos', 'lines', 'emails'] as const
+export type TicketPart = (typeof TICKET_PARTS)[number]
 
 export type PhotoKind = 'before' | 'after'
 
@@ -1784,6 +1825,8 @@ export interface PlannrApi {
     updateItem(id: string, patch: LineInput): Promise<LineItem[]>
     removeItem(id: string): Promise<LineItem[]>
     totals(ticketId: string): Promise<TicketTotals>
+    /** Everyone linked to this customer, from either side */
+    linked(id: string): Promise<LinkedCustomer[]>
   }
   tasks: {
     list(opts?: { done?: boolean }): Promise<Task[]>
@@ -2175,7 +2218,7 @@ export interface TimeZoneInfo {
 
 export const API_SHAPE = {
   notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags', 'duplicate', 'versions', 'restoreVersion'],
-  customers: ['list', 'get', 'create', 'update', 'trash', 'restore'],
+  customers: ['list', 'get', 'create', 'update', 'trash', 'restore', 'linked'],
   tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
   parts: ['list', 'create', 'update', 'remove', 'restore', 'lowCount'],
   tasks: ['list', 'range', 'create', 'update', 'remove', 'restore', 'dueCount', 'checklists', 'setChecklist'],

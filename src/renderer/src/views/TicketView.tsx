@@ -79,7 +79,10 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     priceCents: ticket.priceCents,
     receivedOn: ticket.receivedOn,
     pickupOn: ticket.pickupOn,
-    warrantyUntil: ticket.warrantyUntil
+    warrantyUntil: ticket.warrantyUntil,
+    forId: ticket.forId,
+    business: ticket.business,
+    parts: ticket.parts
   })
   const [priceText, setPriceText] = useState(formatMoney(ticket.priceCents))
   const [fromLines, setFromLines] = useState(false) // the price comes from the line items
@@ -150,7 +153,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const mounted = useRef(true)
   const setLinkedCustomer = (patch: CustomerInput): void => {
     if (customerIdRef.current) return setCustomerField(patch)
-    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', company: '', city: '', region: '', postalCode: '', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
+    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', company: '', city: '', region: '', postalCode: '', notes: '', related: [], createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
     pendingCustomer.current = { ...pendingCustomer.current, ...patch }
     if (Object.keys(patch).some((k) => k !== 'name')) createDraftCustomer()
   }

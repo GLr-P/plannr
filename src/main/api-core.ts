@@ -99,7 +99,8 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       create: async (input) => moneyChanged(customers.createCustomer(db, input)),
       update: async (id, patch) => moneyChanged(customers.updateCustomer(db, id, patch)),
       trash: async (id) => moneyChanged(customers.trashCustomer(db, id)),
-      restore: async (id) => moneyChanged(customers.restoreCustomer(db, id))
+      restore: async (id) => moneyChanged(customers.restoreCustomer(db, id)),
+      linked: async (id) => customers.linkedCustomers(db, id)
     },
     tickets: {
       list: async (filter) => tickets.listTickets(db, filter),

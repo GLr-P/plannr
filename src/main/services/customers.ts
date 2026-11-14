@@ -1,6 +1,6 @@
 import type { Db } from '../db'
 import { newId, now, tx } from '../db'
-import type { Customer, CustomerInput, CustomerSummary } from '../../shared/api'
+import type { Customer, CustomerInput, CustomerLink, CustomerSummary, LinkedCustomer } from '../../shared/api'
 import { indexEntity, unindexEntity } from './search'
 import { digitsOnly, likeTerm } from './doc'
 import { reindexTicketsOfCustomer } from './tickets'
@@ -16,6 +16,7 @@ interface CustomerRow {
   region: string
   postal_code: string
   notes: string
+  related?: string
   created_at: number
   updated_at: number
   deleted_at: number | null
@@ -34,10 +35,56 @@ const toCustomer = (r: CustomerRow): Customer => ({
   region: r.region ?? '',
   postalCode: r.postal_code ?? '',
   notes: r.notes,
+  related: parseLinks(r.related),
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at
 })
+
+/** A customer's links as stored (bad or missing JSON reads as none; self-links and duplicates dropped) */
+export function parseLinks(raw: string | undefined | null, self?: string): CustomerLink[] {
+  let list: unknown
+  try {
+    list = JSON.parse(raw || '[]')
+  } catch {
+    return []
+  }
+  if (!Array.isArray(list)) return []
+  const seen = new Set<string>()
+  const out: CustomerLink[] = []
+  for (const l of list) {
+    const id = typeof l?.id === 'string' ? l.id : ''
+    if (!id || id === self || seen.has(id)) continue
+    seen.add(id)
+    out.push({ id, relation: typeof l.relation === 'string' ? l.relation.trim().slice(0, 60) : '' })
+  }
+  return out
+}
+
+/**
+ * Everyone linked to a customer: the people listed on their page, and the customers who listed them
+ * (Jane's page shows Randy, whose page says Jane is his Wife). Trashed customers are left out.
+ */
+export function linkedCustomers(db: Db, id: string): LinkedCustomer[] {
+  const me = db.prepare('SELECT related FROM customers WHERE id = ?').get(id) as { related: string } | undefined
+  if (!me) return []
+  const out = new Map<string, LinkedCustomer>()
+  const row = (cid: string) => db.prepare('SELECT id, name, phone, email FROM customers WHERE id = ? AND deleted_at IS NULL').get(cid) as { id: string; name: string; phone: string; email: string } | undefined
+  for (const link of parseLinks(me.related, id)) {
+    const r = row(link.id)
+    if (r) out.set(r.id, { id: r.id, name: customerName(r.name), phone: r.phone, email: r.email, relation: link.relation, reverse: false })
+  }
+  const others = db
+    .prepare(`SELECT c.id, c.name, c.phone, c.email, c.related FROM customers c, json_each(c.related) j
+             WHERE c.deleted_at IS NULL AND json_valid(c.related) AND json_extract(j.value, '$.id') = ? AND c.id <> ?`)
+    .all(id, id) as { id: string; name: string; phone: string; email: string; related: string }[]
+  for (const o of others) {
+    if (out.has(o.id)) continue
+    const relation = parseLinks(o.related).find((l) => l.id === id)?.relation ?? ''
+    out.set(o.id, { id: o.id, name: customerName(o.name), phone: o.phone, email: o.email, relation, reverse: true })
+  }
+  return [...out.values()]
+}
 
 export const customerName = (name: string): string => name.trim() || 'Unnamed customer'
 
@@ -129,6 +176,7 @@ export function updateCustomer(db: Db, id: string, patch: CustomerInput): Custom
     if (patch.region !== undefined) set('region', patch.region.slice(0, 100))
     if (patch.postalCode !== undefined) set('postal_code', patch.postalCode.slice(0, 20))
     if (patch.notes !== undefined) set('notes', patch.notes.slice(0, 20000))
+    if (patch.related !== undefined) set('related', JSON.stringify(parseLinks(JSON.stringify(patch.related), id).slice(0, 100)))
     sets.push('updated_at = ?')
     params.push(now(), id)
     const result = db.prepare(`UPDATE customers SET ${sets.join(', ')} WHERE id = ?`).run(...params)

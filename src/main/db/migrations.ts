@@ -538,5 +538,15 @@ export const migrations: string[] = [
   ALTER TABLE customers ADD COLUMN city TEXT NOT NULL DEFAULT '';
   ALTER TABLE customers ADD COLUMN region TEXT NOT NULL DEFAULT '';
   ALTER TABLE customers ADD COLUMN postal_code TEXT NOT NULL DEFAULT '';
+  `,
+
+  /* 31: flexible tickets and linked customers (synced with the rest of the row):
+     tickets.parts = built-in parts added to this ticket (JSON list: pickup, photos, lines, emails),
+     tickets.for_id = the linked person it's for, tickets.business = for the customer's business,
+     customers.related = people linked to this customer (JSON list of {id, relation}) */ `
+  ALTER TABLE tickets ADD COLUMN parts TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE tickets ADD COLUMN for_id TEXT;
+  ALTER TABLE tickets ADD COLUMN business INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE customers ADD COLUMN related TEXT NOT NULL DEFAULT '[]';
   `
 ]

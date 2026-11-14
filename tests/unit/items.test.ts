@@ -96,7 +96,7 @@ describe('line items and inventory', () => {
       invoiceNote: 'Thank you!',
       invoiceDueDays: 15
     }
-    const customer = { id: 'c', name: 'Randy', phone: '', email: '', address: '11655 Example Way', company: 'Example Refinishers Ltd', city: 'Richmond', region: 'British Columbia', postalCode: 'V6V 2M1', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }
+    const customer = { id: 'c', name: 'Randy', phone: '', email: '', address: '11655 Example Way', company: 'Example Refinishers Ltd', city: 'Richmond', region: 'British Columbia', postalCode: 'V6V 2M1', notes: '', related: [], createdAt: 0, updatedAt: 0, deletedAt: null }
     const html = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer, payments: [], business, logo: null, items: items.listItems(db, t.id) }, '2026-09-05')
     expect(html).toContain('INVOICE')
     expect(html).toContain('GST Registration No.')

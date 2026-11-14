@@ -3,7 +3,9 @@ import { newId, now, tx } from '../db'
 import {
   formatTicketNumber,
   statusLabel,
+  TICKET_PARTS,
   TICKET_STATUSES,
+  type TicketPart,
   type DocJSON,
   type Ticket,
   type TicketFilter,
@@ -25,6 +27,11 @@ interface TicketRow {
   customer_name: string | null
   customer_phone: string | null
   customer_email: string | null
+  customer_company: string | null
+  for_id: string | null
+  for_name: string | null
+  business: number
+  parts: string | null
   status: TicketStatus
   device: string
   issue: string
@@ -44,9 +51,21 @@ interface TicketRow {
 
 const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on, t.warranty_until,
   t.closed_at, t.created_at, t.updated_at, t.deleted_at, t.tax_exempt,
-  c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+  c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email, c.company AS customer_company,
+  t.for_id, f.name AS for_name, t.business, t.parts,
   (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid_cents`
-const FROM = 'FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id'
+const FROM = 'FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id LEFT JOIN customers f ON f.id = t.for_id'
+
+const PART_IDS = new Set<string>(TICKET_PARTS)
+/** A ticket's added parts as stored (unknown or repeated ones dropped) */
+export function parseParts(raw: string | null | undefined): TicketPart[] {
+  try {
+    const list = JSON.parse(raw || '[]') as unknown
+    return Array.isArray(list) ? [...new Set(list.filter((p): p is TicketPart => typeof p === 'string' && PART_IDS.has(p)))] : []
+  } catch {
+    return []
+  }
+}
 
 const STATUS_IDS = new Set<string>(TICKET_STATUSES.map((s) => s.id))
 
@@ -58,6 +77,11 @@ function toSummary(r: TicketRow): TicketSummary {
     customerName: r.customer_name ?? '',
     customerPhone: r.customer_phone ?? '',
     customerEmail: r.customer_email ?? '',
+    customerCompany: r.customer_company ?? '',
+    forId: r.for_id ?? null,
+    forName: r.for_id ? (r.for_name ?? '').trim() || 'Unnamed customer' : '',
+    business: r.business === 1,
+    parts: parseParts(r.parts),
     status: r.status,
     device: r.device,
     issue: r.issue,
@@ -86,12 +110,13 @@ export function reindexTicket(db: Db, id: string): void {
   // Shown in result snippets:
   const body = [r.customer_name, r.issue, r.content_text.replace(/\n/g, ' · ')].filter(Boolean).join(' · ')
   // Matched but never shown:
-  const extra = [statusLabel(r.status), String(r.number), phone, digitsOnly(phone), r.customer_email].filter(Boolean).join(' ')
+  // The person it's for and the business (when it's for the business) find it too
+  const extra = [statusLabel(r.status), String(r.number), phone, digitsOnly(phone), r.customer_email, r.for_name, r.business ? r.customer_company : ''].filter(Boolean).join(' ')
   indexEntity(db, 'ticket', id, ticketTitle(r), body, r.updated_at, extra)
 }
 
 export function reindexTicketsOfCustomer(db: Db, customerId: string): void {
-  const rows = db.prepare('SELECT id FROM tickets WHERE customer_id = ?').all(customerId) as { id: string }[]
+  const rows = db.prepare('SELECT id FROM tickets WHERE customer_id = ? OR for_id = ?').all(customerId, customerId) as { id: string }[]
   for (const { id } of rows) reindexTicket(db, id)
 }
 
@@ -105,8 +130,9 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
     params.push(status)
   }
   if (f.customerId) {
-    where.push('t.customer_id = ?')
-    params.push(f.customerId)
+    // Their own tickets and the ones done for them on someone else's account (Randy's ticket for his wife is on hers too)
+    where.push('(t.customer_id = ? OR t.for_id = ?)')
+    params.push(f.customerId, f.customerId)
   }
   if (isDate(f.from)) {
     where.push('t.received_on >= ?')
@@ -118,8 +144,9 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
   }
   for (const word of (f.query ?? '').trim().split(/\s+/).filter(Boolean)) {
     const like = likeTerm(word)
-    const ors = ['c.name', 'c.email', 't.device', 't.issue', 't.content_text'].map((col) => `${col} LIKE ? ESCAPE '\\'`)
-    params.push(like, like, like, like, like)
+    const cols = ['c.name', 'c.email', 'c.company', 'f.name', 't.device', 't.issue', 't.content_text']
+    const ors = cols.map((col) => `${col} LIKE ? ESCAPE '\\'`)
+    for (let i = 0; i < cols.length; i++) params.push(like)
     // Repair number: "NT-0007", "nt7", "0007" or "7" (any letters before it, so a custom prefix works too)
     const num = /^(?:[a-z]+-?)?0*(\d+)$/i.exec(word)
     if (num) {
@@ -202,6 +229,9 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
     }
     if (patch.warrantyUntil !== undefined) set('warranty_until', isDate(patch.warrantyUntil) ? patch.warrantyUntil : null)
     if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
+    if (patch.forId !== undefined) set('for_id', patch.forId || null)
+    if (patch.business !== undefined) set('business', patch.business ? 1 : 0)
+    if (patch.parts !== undefined) set('parts', JSON.stringify(parseParts(JSON.stringify(patch.parts))))
     if (patch.content !== undefined) {
       set('content_json', JSON.stringify(patch.content))
       set('content_text', extractText(patch.content))
