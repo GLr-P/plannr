@@ -2,7 +2,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { StoredFile } from '../../../shared/api'
 import { api } from '../api'
-import { openToggle, toggleBodyStart, toggleTitleAt } from './toggle-paste'
+import { openToggle, toggleBodyStart, toggleTitleAt } from './toggle-clipboard'
 
 export async function storeFile(file: File): Promise<StoredFile> {
   const data = new Uint8Array(await file.arrayBuffer())

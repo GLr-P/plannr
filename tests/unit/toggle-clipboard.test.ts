@@ -5,7 +5,7 @@ import Image from '@tiptap/extension-image'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import { Node, Slice } from '@tiptap/pm/model'
-import { pasteIntoBody, pasteIntoTitle, titleContent, toggleTitleAt } from '../../src/renderer/src/editor/toggle-paste'
+import { copySlice, pasteIntoBody, pasteIntoTitle, titleContent, toggleTitleAt } from '../../src/renderer/src/editor/toggle-clipboard'
 
 // Pasting onto a toggle's title used to split the toggle apart (empty toggles, text outside it).
 const schema = getSchema([StarterKit, Image, Details.configure({ persist: true }), DetailsSummary, DetailsContent])
@@ -84,5 +84,58 @@ describe('pasting onto a toggle title', () => {
     const s = paste(stateAt(TITLE_START), { content: [{ type: 'image', attrs: { src: 'x.png' } }], openStart: 0, openEnd: 0 })
     expect(s.doc.child(1).child(0).textContent).toBe('Title')
     expect(s.doc.child(1).child(1).child(0).type.name).toBe('image')
+  })
+})
+
+// Copying from a toggle used to carry the toggle along: pasting the title's text made a new toggle, and pasting
+// a title + body onto a line pulled that line into the new toggle.
+describe('copying from a toggle', () => {
+  // Intro (0–7), toggle at 7: title "Parts" 9–14, body line "Screen" 17–23; Outro after it
+  const doc = Node.fromJSON(schema, { type: 'doc', content: [P('Intro'), toggle('Parts', [P('Screen')]), P('Outro')] })
+  const copyOf = (from: number, to: number): Slice => {
+    const s = EditorState.create({ doc, schema })
+    return copySlice(s.apply(s.tr.setSelection(TextSelection.create(doc, from, to))))
+  }
+  const pasteAt = (slice: Slice, pos: number): unknown => {
+    const s = EditorState.create({ doc, schema })
+    return outline(s.tr.setSelection(TextSelection.create(doc, pos)).replaceSelection(slice).doc)
+  }
+  const INTRO_START = 1
+
+  it('the title text (selected, or triple-clicked into the next line) pastes as plain text', () => {
+    for (const [from, to] of [[9, 14], [9, 17], [11, 14]]) {
+      const slice = copyOf(from, to)
+      expect(slice.content.childCount).toBe(1)
+      expect(slice.content.firstChild!.type.name).toBe('paragraph')
+      expect(pasteAt(slice, INTRO_START)).toEqual([
+        { paragraph: [doc.textBetween(from, Math.min(to, 14)) + 'Intro'] },
+        { details: [{ detailsSummary: ['Parts'] }, { detailsContent: [{ paragraph: ['Screen'] }] }] },
+        { paragraph: ['Outro'] }
+      ])
+    }
+  })
+
+  it('title + body copies a whole toggle that does not swallow the line it is pasted on', () => {
+    const slice = copyOf(9, 23)
+    expect([slice.openStart, slice.openEnd]).toEqual([0, 0])
+    expect(pasteAt(slice, INTRO_START)).toEqual([
+      { details: [{ detailsSummary: ['Parts'] }, { detailsContent: [{ paragraph: ['Screen'] }] }] },
+      { paragraph: ['Intro'] },
+      { details: [{ detailsSummary: ['Parts'] }, { detailsContent: [{ paragraph: ['Screen'] }] }] },
+      { paragraph: ['Outro'] }
+    ])
+  })
+
+  it('from the body out past the toggle copies just the lines', () => {
+    const slice = copyOf(17, 32)
+    expect(slice.content.firstChild!.type.name).toBe('paragraph')
+    expect(slice.content.textBetween(0, slice.content.size, '|')).toBe('Screen|Outro')
+  })
+
+  it('from a line above into the title keeps the toggle whole', () => {
+    const slice = copyOf(3, 12)
+    expect(slice.content.lastChild!.type.name).toBe('details')
+    expect(slice.openEnd).toBe(0)
+    expect(slice.content.lastChild!.childCount).toBe(2) // title and (empty) body
   })
 })

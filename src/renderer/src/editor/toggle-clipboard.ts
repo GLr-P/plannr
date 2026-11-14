@@ -10,6 +10,59 @@ import type { EditorView } from '@tiptap/pm/view'
  * Pure apart from `pasteIntoToggle`, so the unit tests run it without a window.
  */
 
+/**
+ * What a copy holds. ProseMirror keeps the nodes around the selection (`includeParents`), so a piece of a toggle
+ * came with the toggle wrapped round it, and pasting rebuilt a toggle around plain text or pulled the line you pasted
+ * on into it. Now:
+ * - text from a title (also a triple-click, which runs on to the start of the next line) is copied like any line of text;
+ * - a selection starting in a toggle's body copies just those lines;
+ * - a toggle cut through by the selection (title included) is copied as a whole toggle holding what was selected.
+ */
+export function copySlice(state: EditorState): Slice {
+  const { $from, from, to } = state.selection
+  if ($from.parent.type.name === 'detailsSummary') {
+    const titleEnd = $from.end()
+    const rest = to > titleEnd ? state.doc.textBetween(titleEnd, to, '\n', '￼').trim() : ''
+    if (to <= titleEnd || !rest) {
+      const text = state.doc.slice(from, Math.min(to, titleEnd)).content
+      return new Slice(Fragment.from(state.schema.nodes.paragraph.create(null, text)), 1, 1)
+    }
+  }
+  return closeToggles(state.selection.content())
+}
+
+function closeToggles(slice: Slice): Slice {
+  const nodes: PMNode[] = []
+  slice.content.forEach((n) => nodes.push(n))
+  let { openStart, openEnd } = slice
+  const isToggle = (n: PMNode | undefined): n is PMNode => n?.type.name === 'details'
+  const whole = (n: PMNode): PMNode => n.type.createAndFill(n.attrs, n.content) ?? n
+
+  if (openStart > 0 && isToggle(nodes[0])) {
+    const first = nodes[0]
+    const single = nodes.length === 1
+    if (first.firstChild?.type.name === 'detailsContent') {
+      // Started inside the body: only the lines (the body's own blocks)
+      const lines: PMNode[] = []
+      first.firstChild.content.forEach((n) => lines.push(n))
+      nodes.splice(0, 1, ...lines)
+      openStart = Math.max(0, openStart - 2)
+      if (single) openEnd = Math.max(0, openEnd - 2)
+    } else {
+      nodes[0] = whole(first)
+      openStart = 0
+      if (single) openEnd = 0
+    }
+  }
+  const last = nodes[nodes.length - 1]
+  if (openEnd > 0 && isToggle(last) && last.firstChild?.type.name === 'detailsSummary') {
+    nodes[nodes.length - 1] = whole(last)
+    openEnd = 0
+  }
+  if (!nodes.length) return slice
+  return new Slice(Fragment.fromArray(nodes), openStart, openEnd)
+}
+
 /** Position of the toggle whose title holds the selection (both ends), or null */
 export function toggleTitleAt(state: EditorState, from = state.selection.from, to = state.selection.to): number | null {
   const $from = state.doc.resolve(from)

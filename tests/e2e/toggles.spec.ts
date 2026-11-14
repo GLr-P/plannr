@@ -172,3 +172,63 @@ test('pasting onto a toggle title keeps the toggle whole', async () => {
   await saved()
   await shot(page, 't4-paste-title')
 })
+
+test('copying a toggle title with Ctrl+C pastes its text, not a new toggle', async () => {
+  // The real Windows clipboard: put back whatever was on it
+  const before = await app.evaluate(async ({ clipboard }) => {
+    const out: Record<string, string> = {}
+    for (const item of await clipboard.read())
+      for (const type of item.types) if (type === 'text/plain' || type === 'text/html') out[type] = await (await item.getType(type)).text()
+    return out
+  })
+  try {
+    await page.keyboard.press('Control+n')
+    await expect(page.getByLabel('Title')).toBeFocused()
+    await page.keyboard.type('Copy test')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Intro')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('/toggle')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Parts')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Screen')
+    const top = page.locator('.prose > p')
+    // (a click there would hit the formatting bar shown above the selection)
+    const toStartOfIntro = () =>
+      page.evaluate(() => (document.querySelector('.prose') as unknown as { editor: { commands: { setTextSelection: (p: number) => void } } }).editor.commands.setTextSelection(1))
+    await expect(top).toHaveText(['Intro', ''])
+
+    // Triple-click the title line, copy, paste at the start of Intro
+    await toggle().locator('summary').first().click({ clickCount: 3 })
+    await page.keyboard.press('Control+c')
+    await toStartOfIntro()
+    await page.keyboard.press('Control+v')
+    await expect(top.first()).toHaveText('PartsIntro')
+    await expect(page.locator('.prose [data-type="details"]')).toHaveCount(1) // no new toggle
+
+    // Title + body copies the whole toggle, and pasting it doesn't pull Intro into it
+    await page.keyboard.press('Control+z')
+    await expect(top.first()).toHaveText('Intro')
+    const summary = await toggle().locator('summary').boundingBox()
+    const line = await body().locator('p').first().boundingBox()
+    await page.mouse.move(summary!.x + 1, summary!.y + summary!.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(line!.x + line!.width + 20, line!.y + line!.height / 2, { steps: 6 })
+    await page.mouse.up()
+    await page.keyboard.press('Control+c')
+    await toStartOfIntro()
+    await page.keyboard.press('Control+v')
+    // Pasted at the start of Intro: the toggle goes above it, Intro stays its own line
+    await expect(page.locator('.prose > *')).toHaveText(['PartsScreen', 'Intro', 'PartsScreen', ''])
+    await expect(page.locator('.prose > [data-type="details"]')).toHaveCount(2)
+    await expect(top).toHaveText(['Intro', ''])
+    await expect(page.locator('.prose > [data-type="details"] summary')).toHaveText(['Parts', 'Parts'])
+    await saved()
+    await shot(page, 't5-copy-title')
+  } finally {
+    await app.evaluate(async ({ clipboard, ClipboardItem }, types) => {
+      if (Object.keys(types).length) await clipboard.write([new ClipboardItem(types)])
+    }, before)
+  }
+})

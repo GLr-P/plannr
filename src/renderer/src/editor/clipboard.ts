@@ -4,7 +4,7 @@ import { Slice } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import { copiedSlice, copyHtml, copyText, type CopiedSlice } from '../../../shared/rich-copy'
 import { api } from '../api'
-import { pasteIntoToggle, toggleTitleAt } from './toggle-paste'
+import { copySlice, pasteIntoToggle, toggleTitleAt } from './toggle-clipboard'
 import { imageFiles, otherFiles } from './upload'
 
 /**
@@ -16,7 +16,7 @@ function copy(view: EditorView, event: ClipboardEvent, cut: boolean): boolean {
   const { state } = view
   const data = event.clipboardData
   if (state.selection.empty || !data) return false
-  const slice = state.selection.content().toJSON() as CopiedSlice | null
+  const slice = copySlice(state).toJSON() as CopiedSlice | null
   if (!slice) return false
   const html = copyHtml(slice)
   const text = copyText(slice)
