@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { isReadyStatus } from '../../../shared/api'
 import { findWhen } from '../../../shared/news-dates'
 import { showToast } from '../lib/toast'
 import { AlertTriangle, CalendarDays, DollarSign, FileText, Flag, Newspaper, Pin, Wrench, Plus } from 'lucide-react'
@@ -30,7 +31,7 @@ function dayLabel(date: string): string {
 
 /** Ready-for-pickup first, then by pickup date (soonest first), then newest. */
 function byUrgency(a: TicketSummary, b: TicketSummary): number {
-  if ((a.status === 'ready') !== (b.status === 'ready')) return a.status === 'ready' ? -1 : 1
+  if (isReadyStatus(a.status) !== isReadyStatus(b.status)) return isReadyStatus(a.status) ? -1 : 1
   if (a.pickupOn !== b.pickupOn) return !a.pickupOn ? 1 : !b.pickupOn ? -1 : a.pickupOn.localeCompare(b.pickupOn)
   return b.number - a.number
 }

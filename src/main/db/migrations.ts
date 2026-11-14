@@ -548,5 +548,14 @@ export const migrations: string[] = [
   ALTER TABLE tickets ADD COLUMN for_id TEXT;
   ALTER TABLE tickets ADD COLUMN business INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE customers ADD COLUMN related TEXT NOT NULL DEFAULT '[]';
+  `,
+
+  /* 32: customize anything: tickets.layout = this ticket's own changes to its template's layout (names, what shows),
+     customers.fields = values of your own customer fields; your sections and customer page setup sync */ `
+  ALTER TABLE tickets ADD COLUMN layout TEXT;
+  ALTER TABLE customers ADD COLUMN fields TEXT NOT NULL DEFAULT '{}';
+  DROP TRIGGER IF EXISTS sync_settings_ins;
+  DROP TRIGGER IF EXISTS sync_settings_upd;
+  ${settingsTriggersSql()}
   `
 ]

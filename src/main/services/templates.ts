@@ -53,10 +53,11 @@ function storeLayout(layout: Partial<TicketLayout> | null | undefined): string |
 
 /** The layout of a ticket's template (or the defaults for a blank ticket). */
 export function layoutForTicket(db: Db, ticketId: string): TicketLayout {
-  const r = db.prepare('SELECT tp.layout FROM tickets t LEFT JOIN templates tp ON tp.id = t.template_id WHERE t.id = ?').get(ticketId) as
-    | { layout: string | null }
+  const r = db.prepare('SELECT tp.layout, t.layout AS own FROM tickets t LEFT JOIN templates tp ON tp.id = t.template_id WHERE t.id = ?').get(ticketId) as
+    | { layout: string | null; own: string | null }
     | undefined
-  return ticketLayout(parseLayout(r?.layout))
+  // The template's layout, then this ticket's own changes on top (a renamed or removed box)
+  return ticketLayout({ ...parseLayout(r?.layout), ...parseLayout(r?.own) })
 }
 
 export function createTemplate(

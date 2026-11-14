@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowDownAZ, RotateCcw, Plus, Trash2 } from 'lucide-react'
-import { TICKET_STATUSES, formatTicketNumber, type TimeZoneInfo } from '../../../shared/api'
+import { formatTicketNumber, type TimeZoneInfo } from '../../../shared/api'
+import { StatusEditor } from './StatusEditor'
 import { api } from '../api'
 import { useUi } from '../store/ui'
 import { saveDisplay, useDisplay } from '../store/display'
@@ -430,7 +431,6 @@ export function TimeZoneSetting() {
 export function TicketSettings() {
   const prefs = useDisplay((s) => s.prefs)
   const [prefix, setPrefix] = useState(prefs.ticketPrefix)
-  const [labels, setLabels] = useState<Record<string, string>>({ ...prefs.statusLabels })
   return (
     <>
       <section className="setting">
@@ -452,23 +452,10 @@ export function TicketSettings() {
       </section>
       <section className="setting setting-stack">
         <div>
-          <h3>Status names</h3>
-          <p className="muted">Rename the steps a ticket goes through. Leave blank for the standard name.</p>
+          <h3>Statuses</h3>
+          <p className="muted">Also changeable from the status menu on any ticket (Edit statuses…).</p>
         </div>
-        <div className="status-names">
-          {TICKET_STATUSES.map((s) => (
-            <label key={s.id} className="mfield">
-              <span className={`status status-${s.id}`}>{s.label}</span>
-              <input
-                value={labels[s.id] ?? ''}
-                placeholder={s.label}
-                aria-label={`Name for ${s.label}`}
-                onChange={(e) => setLabels({ ...labels, [s.id]: e.target.value })}
-                onBlur={() => void saveDisplay({ statusLabels: labels })}
-              />
-            </label>
-          ))}
-        </div>
+        <StatusEditor />
       </section>
       <MessageTemplatesSettings />
     </>

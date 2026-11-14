@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
-import { statusLabel, TICKET_STATUSES, type TicketStatus } from '../../../shared/api'
+import { statusDef, statusLabel, ticketStatuses, type TicketStatus } from '../../../shared/api'
+import { useDisplay } from '../store/display'
+import { openPanel } from './ContextMenu'
+import { StatusEditor } from './StatusEditor'
 import type { SaveStatus } from '../lib/useAutosave'
 import { relativeTime } from '../lib/format'
 
@@ -30,18 +33,39 @@ export function ConfirmButton({ title, onConfirm, label }: { title: string; onCo
   )
 }
 
+/** A status's colour class (your colour for it; grey for a status that was removed) */
+export const statusTone = (status: TicketStatus): string => `tone-${statusDef(status)?.color ?? 'gray'}`
+
 export function StatusPill({ status }: { status: TicketStatus }) {
-  return <span className={`status status-${status}`}>{statusLabel(status)}</span>
+  useDisplay((s) => s.version) // your statuses' names and colours
+  return <span className={`status ${statusTone(status)}`}>{statusLabel(status)}</span>
 }
 
+/** Opens the status editor under an element */
+export const editStatuses = (anchor: HTMLElement): void => openPanel(anchor, 'Statuses', () => <StatusEditor />)
+
+/** The status of a ticket, with "Edit statuses…" at the bottom to change the list right there */
 export function StatusSelect({ value, onChange }: { value: TicketStatus; onChange: (s: TicketStatus) => void }) {
+  useDisplay((s) => s.version)
+  const statuses = ticketStatuses()
   return (
-    <select className={`status status-select status-${value}`} value={value} onChange={(e) => onChange(e.target.value as TicketStatus)} aria-label="Status">
-      {TICKET_STATUSES.map((s) => ({ ...s, label: statusLabel(s.id) })).map((s) => (
+    <select
+      className={`status status-select ${statusTone(value)}`}
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === '__edit') return editStatuses(e.currentTarget)
+        onChange(e.target.value as TicketStatus)
+      }}
+      aria-label="Status"
+    >
+      {statuses.map((s) => (
         <option key={s.id} value={s.id}>
           {s.label}
         </option>
       ))}
+      {!statuses.some((s) => s.id === value) && <option value={value}>{statusLabel(value)}</option>}
+      <option disabled>──────────</option>
+      <option value="__edit">Edit statuses…</option>
     </select>
   )
 }

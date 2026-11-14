@@ -4,8 +4,14 @@ import {
   formatTicketNumber,
   statusLabel,
   TICKET_PARTS,
-  TICKET_STATUSES,
+  STATUS_ID,
+  doneStatusIds,
+  readyStatusIds,
+  isDoneStatus,
+  firstStatusId,
+  statusDef,
   ticketLayout,
+  cleanLayout,
   type TicketPart,
   type DocJSON,
   type Ticket,
@@ -48,6 +54,7 @@ interface TicketRow {
   deleted_at: number | null
   template_id?: string | null
   content_json?: string | null
+  own_layout?: string | null
 }
 
 const COLS = `t.id, t.number, t.customer_id, t.status, t.device, t.issue, t.price_cents, t.received_on, t.pickup_on, t.warranty_until,
@@ -68,7 +75,8 @@ export function parseParts(raw: string | null | undefined): TicketPart[] {
   }
 }
 
-const STATUS_IDS = new Set<string>(TICKET_STATUSES.map((s) => s.id))
+export { statusList } from './status-sql'
+import { statusList } from './status-sql'
 
 function toSummary(r: TicketRow): TicketSummary {
   return {
@@ -125,7 +133,7 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
   const where: string[] = [f.trashed ? 't.deleted_at IS NOT NULL' : 't.deleted_at IS NULL']
   const params: (string | number)[] = []
   const status = f.status ?? 'all'
-  if (status === 'open') where.push("t.status <> 'picked_up'")
+  if (status === 'open') where.push(`t.status NOT IN (${statusList(doneStatusIds())})`)
   else if (status !== 'all') {
     where.push('t.status = ?')
     params.push(status)
@@ -170,13 +178,20 @@ export function listTickets(db: Db, f: TicketFilter = {}): TicketSummary[] {
 }
 
 export function getTicket(db: Db, id: string): Ticket | null {
-  const r = db.prepare(`SELECT ${COLS}, t.template_id, t.content_json ${FROM} WHERE t.id = ?`).get(id) as TicketRow | undefined
+  const r = db.prepare(`SELECT ${COLS}, t.template_id, t.content_json, t.layout AS own_layout ${FROM} WHERE t.id = ?`).get(id) as TicketRow | undefined
   const layout = r ? layoutForTicket(db, id) : null
   if (!r) return null
   return {
     ...toSummary(r),
     templateId: r.template_id ?? null,
     layout: layout!,
+    ownLayout: (() => {
+      try {
+        return cleanLayout(JSON.parse(r.own_layout || 'null'))
+      } catch {
+        return null
+      }
+    })(),
     content: r.content_json ? (JSON.parse(r.content_json) as DocJSON) : null
   }
 }
@@ -199,8 +214,8 @@ export function createTicket(db: Db, input: { templateId?: string | null; custom
     const parts = template ? ticketLayout(template.layout).parts : [] // a preset's photos, pickup date…
     db.prepare(
       `INSERT INTO tickets (id, number, customer_id, status, received_on, template_id, content_json, content_text, parts, created_at, updated_at)
-       VALUES (?, ?, ?, 'intake', ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, next, input.customerId ?? null, localDate(), template?.id ?? null, content ? JSON.stringify(content) : null, extractText(content), JSON.stringify(parts), t, t)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, next, input.customerId ?? null, firstStatusId(), localDate(), template?.id ?? null, content ? JSON.stringify(content) : null, extractText(content), JSON.stringify(parts), t, t)
     reindexTicket(db, id)
   })
   return getTicket(db, id)!
@@ -216,9 +231,9 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
     }
     if (patch.customerId !== undefined) set('customer_id', patch.customerId)
     if (patch.status !== undefined) {
-      if (!STATUS_IDS.has(patch.status)) throw new Error(`Unknown status: ${patch.status}`)
+      if (!statusDef(patch.status)) throw new Error(`Unknown status: ${patch.status}`) // one of your statuses
       set('status', patch.status)
-      set('closed_at', patch.status === 'picked_up' ? now() : null)
+      set('closed_at', isDoneStatus(patch.status) ? now() : null)
     }
     if (patch.device !== undefined) set('device', patch.device.slice(0, 200))
     if (patch.issue !== undefined) set('issue', patch.issue.slice(0, 500))
@@ -233,6 +248,10 @@ export function updateTicket(db: Db, id: string, patch: TicketUpdate): TicketSum
     if (patch.taxExempt !== undefined) set('tax_exempt', patch.taxExempt ? 1 : 0)
     if (patch.forId !== undefined) set('for_id', patch.forId || null)
     if (patch.business !== undefined) set('business', patch.business ? 1 : 0)
+    if (patch.layout !== undefined) {
+      const own = cleanLayout(patch.layout)
+      set('layout', own ? JSON.stringify(own) : null)
+    }
     if (patch.parts !== undefined) set('parts', JSON.stringify(parseParts(JSON.stringify(patch.parts))))
     if (patch.content !== undefined) {
       set('content_json', JSON.stringify(patch.content))
@@ -271,8 +290,25 @@ export function restoreTicket(db: Db, id: string): void {
 export function ticketCounts(db: Db): { open: number; ready: number } {
   return db
     .prepare(
-      `SELECT COUNT(*) FILTER (WHERE status <> 'picked_up') AS open, COUNT(*) FILTER (WHERE status = 'ready') AS ready
+      `SELECT COUNT(*) FILTER (WHERE status NOT IN (${statusList(doneStatusIds())})) AS open,
+         COUNT(*) FILTER (WHERE status IN (${statusList(readyStatusIds())})) AS ready
        FROM tickets WHERE deleted_at IS NULL`
     )
     .get() as { open: number; ready: number }
+}
+
+/** How many tickets are in each status (trash included, so a status that's still used is never lost) */
+export function statusCounts(db: Db): Record<string, number> {
+  const rows = db.prepare('SELECT status, COUNT(*) AS n FROM tickets GROUP BY status').all() as { status: string; n: number }[]
+  return Object.fromEntries(rows.map((r) => [r.status, r.n]))
+}
+
+/** Moves every ticket in one status to another (when a status is removed) */
+export function moveStatus(db: Db, from: string, to: string): number {
+  if (!STATUS_ID.test(from) || !STATUS_ID.test(to) || from === to) return 0
+  return tx(db, () => {
+    const ids = db.prepare('SELECT id FROM tickets WHERE status = ?').all(from) as { id: string }[]
+    for (const { id } of ids) updateTicket(db, id, { status: to })
+    return ids.length
+  })
 }

@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavName } from '../store/display'
 import { singular } from '../lib/navOrder'
 import { create } from 'zustand'
-import { ChevronDown, Plus, Search, Users, X } from 'lucide-react'
+import { ChevronDown, Pencil, Plus, Search, Users, X } from 'lucide-react'
 import { ForChips } from '../components/TicketLinks'
 import {
   formatTicketNumber,
-  TICKET_STATUSES,
-  statusLabel,
+  isDoneStatus,
+  isReadyStatus,
+  ticketStatuses,
   type TemplateSummary,
   type TicketStatus,
   type TicketSummary
@@ -17,7 +18,8 @@ import { useData } from '../store/data'
 import { go } from '../store/nav'
 import { DRAG_MIME, newTicket } from '../actions'
 import { formatDay, formatMoney } from '../lib/format'
-import { StatusPill } from '../components/common'
+import { editStatuses, StatusPill } from '../components/common'
+import { useDisplay } from '../store/display'
 import { PaidBadge } from './MoneyView'
 
 type StatusFilter = TicketStatus | 'open' | 'all' | 'trash'
@@ -59,7 +61,7 @@ export function groupByCustomer(tickets: TicketSummary[]): { key: string; name: 
 
 const statusChips = (): { id: StatusFilter; label: string }[] => [
   { id: 'open', label: 'Open' },
-  ...TICKET_STATUSES.map((s) => ({ id: s.id as StatusFilter, label: statusLabel(s.id) })),
+  ...ticketStatuses().map((s) => ({ id: s.id as StatusFilter, label: s.label })),
   { id: 'all', label: 'All' },
   { id: 'trash', label: 'Trash' }
 ]
@@ -70,6 +72,7 @@ const daysSince = (date: string): number => Math.floor((Date.now() - new Date(`$
 export function TicketsView() {
   const ticketsName = useNavName('tickets', 'Tickets')
   const { status, query, from, to, group } = useFilters()
+  useDisplay((s) => s.version) // your statuses
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null)
 
   const remote = useData((s) => s.remote) // changed on another device
@@ -146,6 +149,9 @@ export function TicketsView() {
             {c.label}
           </button>
         ))}
+        <button type="button" className="chip-btn chip-edit" title="Rename, add, remove or recolour statuses" aria-label="Edit statuses" onClick={(e) => editStatuses(e.currentTarget)}>
+          <Pencil />
+        </button>
       </div>
 
       {tickets === null ? null : tickets.length === 0 ? (
@@ -205,7 +211,7 @@ export function TicketsView() {
                   </td>
                   <td className="nowrap">
                     {formatDay(t.receivedOn)}
-                    {t.status !== 'picked_up' && t.receivedOn && daysSince(t.receivedOn) >= 7 && (
+                    {!isDoneStatus(t.status) && t.receivedOn && daysSince(t.receivedOn) >= 7 && (
                       <div className={`cell-sub ticket-age ${daysSince(t.receivedOn) >= 14 ? 'old' : ''}`} title="Open this long">
                         {daysSince(t.receivedOn)} days
                       </div>
@@ -214,7 +220,7 @@ export function TicketsView() {
                   <td className="nowrap">{formatDay(t.pickupOn)}</td>
                   <td className="num">
                     <div>{formatMoney(t.priceCents)}</div>
-                    {(t.status === 'ready' || t.status === 'picked_up' || t.paidCents > 0) && <PaidBadge priceCents={t.priceCents} paidCents={t.paidCents} />}
+                    {(isReadyStatus(t.status) || isDoneStatus(t.status) || t.paidCents > 0) && <PaidBadge priceCents={t.priceCents} paidCents={t.paidCents} />}
                   </td>
                 </tr>
                 ))

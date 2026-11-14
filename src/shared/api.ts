@@ -154,6 +154,56 @@ export interface CustomerInput {
   notes?: string
   /** People linked to this customer (replaces the list) */
   related?: CustomerLink[]
+  /** Your own fields' values, by field id (replaces them all) */
+  fields?: Record<string, string>
+}
+
+/** One of your own customer fields (Settings live in the synced setting 'customers.layout') */
+export interface CustomerFieldDef {
+  id: string
+  label: string
+  kind: 'text' | 'long' | 'date' | 'phone' | 'email' | 'number' | 'money'
+}
+export const CUSTOMER_FIELD_KINDS: { id: CustomerFieldDef['kind']; label: string }[] = [
+  { id: 'text', label: 'Short text' },
+  { id: 'long', label: 'Long text' },
+  { id: 'date', label: 'Date' },
+  { id: 'phone', label: 'Phone' },
+  { id: 'email', label: 'Email' },
+  { id: 'number', label: 'Number' },
+  { id: 'money', label: 'Money' }
+]
+/** The parts of a customer page that come built in (each can be renamed or hidden) */
+export const CUSTOMER_PARTS = [
+  { id: 'phone', label: 'Phone' },
+  { id: 'email', label: 'Email' },
+  { id: 'business', label: 'Business' },
+  { id: 'address', label: 'Address' },
+  { id: 'people', label: 'Linked people' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'stats', label: 'Totals' },
+  { id: 'tickets', label: 'Tickets' }
+] as const
+/** How customer pages look, for every customer: your names for the built-in parts, what's hidden, your own fields */
+export interface CustomerLayout {
+  hidden: string[]
+  labels: Record<string, string>
+  fields: CustomerFieldDef[]
+}
+export function customerLayout(raw: unknown): CustomerLayout {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<CustomerLayout>
+  const labels: Record<string, string> = {}
+  for (const [k, v] of Object.entries(r.labels ?? {})) if (typeof v === 'string' && v.trim()) labels[k] = v.trim().slice(0, 60)
+  const kinds = new Set(CUSTOMER_FIELD_KINDS.map((k) => k.id))
+  return {
+    hidden: Array.isArray(r.hidden) ? r.hidden.filter((h): h is string => typeof h === 'string') : [],
+    labels,
+    fields: Array.isArray(r.fields)
+      ? r.fields
+          .filter((f) => f && typeof f.id === 'string' && typeof f.label === 'string')
+          .map((f) => ({ id: f.id, label: f.label.slice(0, 60), kind: kinds.has(f.kind) ? f.kind : 'text' }))
+      : []
+  }
 }
 
 /** A link from one customer to another: "Jane is Randy's Wife" is stored on Randy as { id: Jane, relation: 'Wife' } */
@@ -194,6 +244,8 @@ export interface Customer {
   notes: string
   /** People linked from this customer's page */
   related: CustomerLink[]
+  /** Your own fields' values, by field id */
+  fields: Record<string, string>
   createdAt: number
   updatedAt: number
   deletedAt: number | null
@@ -205,15 +257,62 @@ export interface CustomerSummary extends Customer {
   lastVisit: string | null
 }
 
-export const TICKET_STATUSES = [
-  { id: 'intake', label: 'Intake' },
-  { id: 'diagnosing', label: 'Diagnosing' },
-  { id: 'waiting_parts', label: 'Waiting on parts' },
-  { id: 'ready', label: 'Ready for pickup' },
-  { id: 'picked_up', label: 'Picked up' }
-] as const
-export type TicketStatus = (typeof TICKET_STATUSES)[number]['id']
-export const statusLabel = (s: TicketStatus): string => display.statusLabels[s]?.trim() || (TICKET_STATUSES.find((x) => x.id === s)?.label ?? s)
+/**
+ * A step a ticket goes through. Yours to rename, colour, add, remove and reorder (from the status menu on a ticket,
+ * the tickets list, or Settings); kept in the synced display preferences.
+ * done = the ticket is finished (not "open"; closes it); ready = waiting on the customer (offers to message them,
+ * counted as "ready" and sorted first on Home).
+ */
+export interface StatusDef {
+  id: string
+  label: string
+  /** A colour from the palette: gray, blue, purple, orange, green, red, teal, pink, yellow */
+  color: string
+  done: boolean
+  ready: boolean
+}
+export const STATUS_COLORS = ['gray', 'blue', 'purple', 'orange', 'yellow', 'green', 'teal', 'red', 'pink'] as const
+export const DEFAULT_STATUSES: StatusDef[] = [
+  { id: 'intake', label: 'Intake', color: 'blue', done: false, ready: false },
+  { id: 'diagnosing', label: 'Diagnosing', color: 'purple', done: false, ready: false },
+  { id: 'waiting_parts', label: 'Waiting on parts', color: 'orange', done: false, ready: false },
+  { id: 'ready', label: 'Ready for pickup', color: 'green', done: false, ready: true },
+  { id: 'picked_up', label: 'Picked up', color: 'gray', done: true, ready: false }
+]
+/** The standard statuses (the list you start with) */
+export const TICKET_STATUSES = DEFAULT_STATUSES
+/** A status id (yours or a standard one) */
+export type TicketStatus = string
+export const STATUS_ID = /^[a-z0-9_-]{1,40}$/
+
+/** Saved statuses made safe; from before they were customizable, the standard ones with your old names */
+export function normalizeStatuses(raw: unknown, legacyLabels: Partial<Record<string, string>> = {}): StatusDef[] {
+  const colors = new Set<string>(STATUS_COLORS)
+  if (Array.isArray(raw)) {
+    const seen = new Set<string>()
+    const list = raw
+      .filter((s) => s && typeof s.id === 'string' && STATUS_ID.test(s.id) && !seen.has(s.id) && (seen.add(s.id), true))
+      .map((s) => ({
+        id: s.id as string,
+        label: typeof s.label === 'string' && s.label.trim() ? s.label.trim().slice(0, 40) : (s.id as string),
+        color: colors.has(s.color) ? (s.color as string) : 'gray',
+        done: s.done === true,
+        ready: s.ready === true && s.done !== true
+      }))
+    if (list.length) return list
+  }
+  return DEFAULT_STATUSES.map((s) => ({ ...s, label: legacyLabels[s.id]?.trim() || s.label }))
+}
+/** Your statuses, in order */
+export const ticketStatuses = (): StatusDef[] => normalizeStatuses(display.statuses, display.statusLabels)
+export const statusDef = (s: TicketStatus): StatusDef | undefined => ticketStatuses().find((x) => x.id === s)
+export const statusLabel = (s: TicketStatus): string => statusDef(s)?.label ?? (s ? s.replace(/[_-]+/g, ' ') : '')
+export const isDoneStatus = (s: TicketStatus): boolean => statusDef(s)?.done ?? false
+export const isReadyStatus = (s: TicketStatus): boolean => statusDef(s)?.ready ?? false
+export const doneStatusIds = (): string[] => ticketStatuses().filter((s) => s.done).map((s) => s.id)
+export const readyStatusIds = (): string[] => ticketStatuses().filter((s) => s.ready).map((s) => s.id)
+/** The status new tickets start in (the first one) */
+export const firstStatusId = (): string => ticketStatuses()[0]?.id ?? 'intake'
 
 // ---------- Display preferences (Settings), shared by the main process and the window ----------
 
@@ -222,8 +321,10 @@ export interface DisplayPrefs {
   ticketPrefix: string
   /** ISO currency code, e.g. CAD */
   currency: string
-  /** Your names for the ticket statuses (blank = default name) */
+  /** Your names for the ticket statuses (blank = default name); from before statuses were customizable */
   statusLabels: Partial<Record<TicketStatus, string>>
+  /** Your statuses, in order (unset = the standard ones) */
+  statuses?: StatusDef[]
   /** Choices when recording a payment or expense */
   paymentMethods: string[]
   /** 0 = Sunday, 1 = Monday */
@@ -388,8 +489,10 @@ export interface PartInput {
 export interface Ticket extends TicketSummary {
   content: DocJSON | null
   templateId: string | null
-  /** From its template: names for the built-in boxes and which parts show */
+  /** Its template's layout with this ticket's own changes: names for the built-in boxes and which parts show */
   layout: TicketLayout
+  /** Just this ticket's own changes (renamed or removed boxes) */
+  ownLayout: Partial<TicketLayout> | null
 }
 
 export interface TicketFilter {
@@ -419,6 +522,8 @@ export interface TicketUpdate {
   forId?: string | null
   business?: boolean
   parts?: TicketPart[]
+  /** This ticket's own changes to its template's layout (null = none) */
+  layout?: Partial<TicketLayout> | null
 }
 
 /** Parts of a ticket page that aren't text: added with + Add when needed */
@@ -456,6 +561,7 @@ export interface Template extends TemplateSummary {
 /** The top of a ticket page, set per ticket template: names for the built-in boxes and which parts show. */
 export interface TicketLayout {
   /** The big title box (also its name on printouts) */
+  showTitle: boolean
   titleLabel: string
   titlePlaceholder: string
   /** The line under the title */
@@ -466,6 +572,16 @@ export interface TicketLayout {
   showCustomer: boolean
   showCustomerPhone: boolean
   showCustomerEmail: boolean
+  customerLabel: string
+  phoneLabel: string
+  emailLabel: string
+  /** Who it's for (the customer, their business or a linked person) */
+  showFor: boolean
+  forLabel: string
+  /** The status at the top right */
+  showStatus: boolean
+  priceLabel: string
+  warrantyLabel: string
   showReceived: boolean
   receivedLabel: string
   /** The date that goes on the calendar (pickup, delivery, due…) */
@@ -496,6 +612,7 @@ export const PRINT_STYLES = [
 ] as const
 
 export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
+  showTitle: true,
   titleLabel: 'Title',
   titlePlaceholder: 'What is it?',
   showSummary: true,
@@ -504,6 +621,14 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   showCustomer: true,
   showCustomerPhone: true,
   showCustomerEmail: true,
+  customerLabel: 'Customer',
+  phoneLabel: 'Phone',
+  emailLabel: 'Email',
+  showFor: true,
+  forLabel: 'For',
+  showStatus: true,
+  priceLabel: 'Price',
+  warrantyLabel: 'Warranty',
   showReceived: true,
   receivedLabel: 'Received',
   showPickup: true,
@@ -536,6 +661,15 @@ export function ticketLayout(saved?: Partial<TicketLayout> | null): TicketLayout
     else if (typeof out[k] === 'string' && typeof v === 'string' && v.trim()) (out as Record<string, unknown>)[k] = v.trim().slice(0, 80)
   }
   return out
+}
+
+/** Only the known layout settings from saved changes (a ticket's own changes); null when there are none */
+export function cleanLayout(raw: unknown): Partial<TicketLayout> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const full = ticketLayout(raw as Partial<TicketLayout>)
+  const out: Record<string, unknown> = {}
+  for (const k of Object.keys(raw)) if (k in full) out[k] = full[k as keyof TicketLayout]
+  return Object.keys(out).length ? (out as Partial<TicketLayout>) : null
 }
 
 // ---------- Tasks ----------
@@ -1828,6 +1962,10 @@ export interface PlannrApi {
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
     counts(): Promise<{ open: number; ready: number }>
+    /** How many tickets are in each status (for editing statuses) */
+    statusCounts(): Promise<Record<string, number>>
+    /** Moves every ticket in one status to another (when a status is removed); returns how many */
+    moveStatus(from: string, to: string): Promise<number>
     /** Quote/invoice lines; changes return the new list (the ticket's price follows the total) */
     items(ticketId: string): Promise<LineItem[]>
     addItem(ticketId: string, input?: LineInput): Promise<LineItem[]>
@@ -2226,7 +2364,7 @@ export interface TimeZoneInfo {
 export const API_SHAPE = {
   notes: ['list', 'get', 'create', 'update', 'trash', 'restore', 'destroy', 'tags', 'duplicate', 'versions', 'restoreVersion'],
   customers: ['list', 'get', 'create', 'update', 'trash', 'restore', 'linked'],
-  tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
+  tickets: ['list', 'get', 'create', 'update', 'trash', 'restore', 'counts', 'statusCounts', 'moveStatus', 'items', 'addItem', 'updateItem', 'removeItem', 'totals'],
   parts: ['list', 'create', 'update', 'remove', 'restore', 'lowCount'],
   tasks: ['list', 'range', 'create', 'update', 'remove', 'restore', 'dueCount', 'checklists', 'setChecklist'],
   photos: ['list', 'add', 'remove', 'setKind'],

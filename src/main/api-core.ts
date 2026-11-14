@@ -110,6 +110,8 @@ export function createCoreApi(db: Db, dataDir: string, hooks: CoreHooks): CoreAp
       trash: async (id) => changed(tickets.trashTicket(db, id)),
       restore: async (id) => changed(tickets.restoreTicket(db, id)),
       counts: async () => tickets.ticketCounts(db),
+      statusCounts: async () => tickets.statusCounts(db),
+      moveStatus: async (from, to) => tickets.moveStatus(db, from, to),
       items: async (ticketId) => items.listItems(db, ticketId),
       addItem: async (ticketId, input) => moneyChanged(items.addItem(db, ticketId, input)),
       updateItem: async (id, patch) => moneyChanged(items.updateItem(db, id, patch)),

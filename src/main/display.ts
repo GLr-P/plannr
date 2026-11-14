@@ -1,4 +1,4 @@
-import { DEFAULT_DISPLAY, displayPrefs, setDisplayPrefs, TICKET_STATUSES, type DisplayPrefs } from '../shared/api'
+import { DEFAULT_DISPLAY, displayPrefs, normalizeStatuses, setDisplayPrefs, TICKET_STATUSES, type DisplayPrefs } from '../shared/api'
 import type { Db } from './db'
 import { rebuildSearchIndex } from './services/reindex'
 import { getSetting, setSetting } from './services/settings'
@@ -25,6 +25,8 @@ export function saveDisplayPrefs(db: Db, patch: Partial<DisplayPrefs>): DisplayP
   next.statusLabels = Object.fromEntries(
     TICKET_STATUSES.map((s) => [s.id, (next.statusLabels[s.id] ?? '').trim().slice(0, 30)]).filter(([, v]) => v)
   )
+  // Your statuses (once saved, they replace the standard ones and the old renames)
+  if (patch.statuses !== undefined) next.statuses = normalizeStatuses(patch.statuses, next.statusLabels)
   next.weekStart = next.weekStart === 1 ? 1 : 0
   setSetting(db, 'display', next)
   setDisplayPrefs(next)

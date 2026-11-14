@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { addDays } from '../lib/time'
 import { todayISO } from '../lib/format'
 import { CalendarCheck, CalendarDays, DollarSign, ExternalLink, Mail, Phone, RotateCcw, User, ShieldCheck } from 'lucide-react'
@@ -40,12 +40,14 @@ import { useTicketParts } from '../canvas/CanvasItem'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { TicketPayments } from './MoneyView'
 import type { Editor } from '@tiptap/core'
-import { Plus, Users } from 'lucide-react'
+import { Plus, SlidersHorizontal, Users, X } from 'lucide-react'
 import { ForPicker, MoreTickets } from '../components/TicketLinks'
 import { openPanel } from '../components/ContextMenu'
 import { AddToTicketPanel } from '../components/AddToTicket'
-import { sectionNode, sectionsIn, sectionPreset, type SectionPreset, type TicketPreset } from '../../../shared/ticket-sections'
-import type { TicketPart } from '../../../shared/api'
+import { blankCopy, sectionNode, sectionsIn, type SectionPreset } from '../../../shared/ticket-sections'
+import { newSectionId, useSections } from '../store/sections'
+import type { TemplateSummary } from '../../../shared/api'
+import { isReadyStatus, ticketLayout, type TicketLayout, type TicketPart } from '../../../shared/api'
 
 export function TicketView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined)
@@ -72,7 +74,7 @@ export function TicketView({ id }: { id: string }) {
   return <TicketPage key={`${ticket.id}:${ticket.deletedAt}`} ticket={ticket} reload={reload} />
 }
 
-type Fields = Omit<TicketUpdate, 'content' | 'taxExempt'>
+type Fields = Omit<TicketUpdate, 'content' | 'taxExempt' | 'layout'>
 
 /** The ticket's body knows it's a ticket (the / menu offers Customer details and Ticket dates). */
 const TICKET_EDITOR = { ticket: true }
@@ -103,14 +105,18 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const [updatedAt, setUpdatedAt] = useState(ticket.updatedAt)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const trashed = ticket.deletedAt !== null
-  const layout = ticket.layout // from the ticket's template: names for the boxes and which parts show
+  // The template's layout (names for the boxes, what shows) with this ticket's own changes on top (Customize)
+  const [baseLayout, setBaseLayout] = useState(ticket.layout)
+  const [own, setOwnState] = useState<Partial<TicketLayout>>(ticket.ownLayout ?? {})
+  const layout = useMemo(() => ticketLayout({ ...baseLayout, ...own }), [baseLayout, own])
+  const [customizing, setCustomizing] = useState(false)
 
   const saver = useAutosave<TicketUpdate>(async (patch) => {
     const s = await api.tickets.update(ticket.id, patch)
     setUpdatedAt(s.updatedAt)
     if (patch.status) void useData.getState().refreshCounts()
     // Ready for pickup: offer to let the customer know.
-    if (patch.status === 'ready') {
+    if (patch.status && isReadyStatus(patch.status)) {
       showToast('Ready for pickup. Let the customer know?', {
         label: 'Message',
         run: async () => openMessage((await loadTemplates()).find((t) => t.id === 'ready'))
@@ -160,7 +166,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const mounted = useRef(true)
   const setLinkedCustomer = (patch: CustomerInput): void => {
     if (customerIdRef.current) return setCustomerField(patch)
-    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', company: '', city: '', region: '', postalCode: '', notes: '', related: [], createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
+    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', company: '', city: '', region: '', postalCode: '', notes: '', related: [], fields: {}, createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
     pendingCustomer.current = { ...pendingCustomer.current, ...patch }
     if (Object.keys(patch).some((k) => k !== 'name')) createDraftCustomer()
   }
@@ -204,6 +210,8 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const editorRef = useRef<Editor | null>(null)
   const onEditorReady = useCallback((editor: Editor) => (editorRef.current = editor), [])
   const [inDoc, setInDoc] = useState(() => sectionsIn(ticket.content)) // text sections on the ticket, by preset id
+  const remoteChange = useData((s) => s.remote)
+  useEffect(() => void useSections.getState().load(), [remoteChange]) // your sections (synced)
   const onContent = useCallback(
     (doc: DocJSON) => {
       saver.queue({ content: doc })
@@ -220,16 +228,82 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   }, [ticket.id])
   const parts = fields.parts
   const added = (p: TicketPart): boolean => parts.includes(p)
+  // Removed on this ticket (Customize ×) wins; otherwise a part shows when the template, + Add or its data says so
+  const removed = (k: keyof TicketLayout): boolean => own[k] === false
   const show = {
-    pickup: layout.showPickup || added('pickup') || Boolean(fields.pickupOn),
-    warranty: (layout.showWarranty && layout.showPickup) || added('warranty') || Boolean(fields.warrantyUntil),
-    lines: layout.showLines || added('lines') || hasLines || fromLines,
-    photos: layout.showPhotos || added('photos') || photoCount > 0,
-    emails: layout.showEmails || added('emails')
+    pickup: !removed('showPickup') && (layout.showPickup || added('pickup') || Boolean(fields.pickupOn)),
+    warranty: !removed('showWarranty') && ((layout.showWarranty && layout.showPickup) || added('warranty') || Boolean(fields.warrantyUntil)),
+    lines: !removed('showLines') && (layout.showLines || added('lines') || hasLines || fromLines),
+    photos: !removed('showPhotos') && (layout.showPhotos || added('photos') || photoCount > 0),
+    emails: !removed('showEmails') && (layout.showEmails || added('emails'))
   }
   const present = new Set<string>([...inDoc, ...(Object.keys(show) as TicketPart[]).filter((p) => show[p]).map((p) => `part:${p}`)])
 
   const setParts = (next: TicketPart[]): void => set({ parts: next }, true)
+
+  /** This ticket's own layout changes (a renamed or removed box); saved with the ticket */
+  const setOwn = (patch: Partial<TicketLayout>): void => {
+    setOwnState((cur) => {
+      const next = { ...cur, ...patch }
+      saver.queue({ layout: next })
+      return next
+    })
+  }
+  const PART_KEY: Record<TicketPart, keyof TicketLayout> = { pickup: 'showPickup', photos: 'showPhotos', lines: 'showLines', warranty: 'showWarranty', emails: 'showEmails' }
+  const removePart = (part: TicketPart): void => {
+    setParts(parts.filter((p) => p !== part))
+    setOwn({ [PART_KEY[part]]: false })
+  }
+  /** The built-in boxes at the top: removed ones come back from + Add */
+  const boxes: { id: string; label: string; shown: boolean; restore: Partial<TicketLayout> }[] = [
+    { id: 'title', label: layout.titleLabel, shown: layout.showTitle, restore: { showTitle: true } },
+    { id: 'summary', label: layout.summaryLabel, shown: layout.showSummary, restore: { showSummary: true } },
+    { id: 'customer', label: layout.customerLabel, shown: layout.showCustomer, restore: { showCustomer: true } },
+    { id: 'phone', label: layout.phoneLabel, shown: layout.showCustomer && layout.showCustomerPhone, restore: { showCustomer: true, showCustomerPhone: true } },
+    { id: 'email', label: layout.emailLabel, shown: layout.showCustomer && layout.showCustomerEmail, restore: { showCustomer: true, showCustomerEmail: true } },
+    { id: 'for', label: layout.forLabel, shown: layout.showCustomer && layout.showFor, restore: { showCustomer: true, showFor: true } },
+    { id: 'received', label: layout.receivedLabel, shown: layout.showReceived, restore: { showReceived: true } },
+    { id: 'price', label: `${layout.priceLabel} & payments`, shown: layout.showPrice, restore: { showPrice: true } },
+    { id: 'status', label: 'Status', shown: layout.showStatus, restore: { showStatus: true } }
+  ]
+
+  const resetLayout = async (): Promise<void> => {
+    setOwnState({})
+    saver.queue({ layout: null })
+    await saver.flush()
+    const fresh = await api.tickets.get(ticket.id)
+    if (fresh) setBaseLayout(fresh.layout)
+  }
+  /** What's showing and its names, as a template layout (for "use for new tickets" and "save as a preset") */
+  const layoutForTemplate = (): Partial<TicketLayout> => ({
+    ...layout,
+    showPickup: false,
+    showPhotos: false,
+    showLines: false,
+    showEmails: false,
+    showWarranty: false,
+    parts: (Object.keys(show) as TicketPart[]).filter((p) => show[p])
+  })
+  const [templateName, setTemplateName] = useState('')
+  useEffect(() => {
+    if (ticket.templateId) void api.templates.get(ticket.templateId).then((t) => setTemplateName(t?.name ?? ''))
+  }, [ticket.templateId])
+  const useForTemplate = async (): Promise<void> => {
+    if (!ticket.templateId) return
+    await api.templates.update(ticket.templateId, { layout: layoutForTemplate() })
+    await resetLayout()
+    showToast(`New “${templateName}” tickets will look like this one`)
+  }
+  const [presetName, setPresetName] = useState<string | null>(null)
+  const saveAsPreset = async (): Promise<void> => {
+    const name = (presetName ?? '').trim()
+    if (!name) return
+    const body = editorRef.current?.getJSON() as DocJSON | undefined
+    const content: DocJSON = body?.content ? { type: 'doc', content: blankCopy(body.content) } : { type: 'doc', content: [{ type: 'paragraph' }] }
+    await api.templates.create({ name, kind: 'ticket', content, layout: layoutForTemplate() })
+    setPresetName(null)
+    showToast(`Saved “${name}”. It’s in + Add and the New ticket menu.`)
+  }
 
   /** Puts a section at the end of the ticket and moves to its first box */
   const insertSection = (s: SectionPreset, focusIt = true): void => {
@@ -253,10 +327,9 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const addSection = (s: SectionPreset): void => {
     if (s.part) {
       const part = s.part
-      if (!present.has(s.id)) return setParts([...parts, part])
-      setParts(parts.filter((p) => p !== part))
-      const keeps = (part === 'pickup' && fields.pickupOn) || (part === 'warranty' && fields.warrantyUntil) || (part === 'lines' && (hasLines || fromLines)) || (part === 'photos' && photoCount > 0)
-      if (keeps) showToast(`${s.title} has something in it, so it stays. Clear it to remove it.`)
+      if (present.has(s.id)) return removePart(part)
+      setParts([...parts, part])
+      setOwn({ [PART_KEY[part]]: true })
       return
     }
     if (inDoc.has(s.id)) {
@@ -266,27 +339,69 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     insertSection(s)
   }
 
-  const addPreset = (p: TicketPreset): void => {
-    const newParts = new Set(parts)
-    let count = 0
-    for (const id of p.sections) {
-      const s = sectionPreset(id)
-      if (!s) continue
-      if (s.part) {
-        if (!present.has(s.id)) (newParts.add(s.part), count++)
-      } else if (!inDoc.has(s.id)) {
-        insertSection(s, false)
-        count++
-      }
+  /** A preset is any ticket template: its sections that aren't here yet, and its parts */
+  const addTemplate = async (t: TemplateSummary): Promise<void> => {
+    const full = await api.templates.get(t.id)
+    const editor = editorRef.current
+    if (!full || !editor) return
+    const blocks = (full.content?.content ?? []).filter((b) => !(b.type === 'paragraph' && !b.content?.length))
+    const titles = new Set<string>()
+    editor.state.doc.forEach((n) => n.type.name === 'ticketSection' && titles.add(String(n.attrs.title).toLowerCase()))
+    const sectionsOfIt = blocks.filter((b) => b.type === 'ticketSection')
+    // Sections not here yet (by kind, or by name for your own); a template without sections adds all it has
+    const toAdd = sectionsOfIt.length
+      ? sectionsOfIt.filter((b) => !inDoc.has(String(b.attrs?.preset ?? '')) && !titles.has(String(b.attrs?.title ?? '').toLowerCase()))
+      : blocks
+    for (const b of toAdd) {
+      const { doc } = editor.state
+      const last = doc.lastChild
+      const at = last && last.type.name === 'paragraph' && last.content.size === 0 ? doc.content.size - last.nodeSize : doc.content.size
+      editor.chain().insertContentAt(at, b).run()
     }
-    if (newParts.size !== parts.length) setParts([...newParts])
-    showToast(count ? `Added ${count} section${count === 1 ? '' : 's'} from “${p.name}”` : `This ticket already has everything in “${p.name}”`)
+    const newParts = ticketLayout(full.layout).parts.filter((p) => !show[p])
+    if (newParts.length) {
+      setParts([...new Set([...parts, ...newParts])])
+      setOwn(Object.fromEntries(newParts.map((p) => [PART_KEY[p], true])))
+    }
+    const count = toAdd.length + newParts.length
+    showToast(count ? `Added ${count} from “${t.name}”` : `This ticket already has everything in “${t.name}”`)
   }
 
-  const openAdd = (anchor: HTMLElement): void =>
+  /** A blank section to name and fill in; ⋯ on it saves it to your sections */
+  const addNewSection = (): void => {
+    const editor = editorRef.current
+    if (!editor) return
+    const { doc } = editor.state
+    const last = doc.lastChild
+    const at = last && last.type.name === 'paragraph' && last.content.size === 0 ? doc.content.size - last.nodeSize : doc.content.size
+    editor.chain().insertContentAt(at, { type: 'ticketSection', attrs: { preset: newSectionId(), title: 'New section' }, content: [{ type: 'paragraph' }] }).run()
+    requestAnimationFrame(() => {
+      const all = document.querySelectorAll<HTMLInputElement>('.ticket-body .ticket-section .ticket-section-title')
+      const title = all[all.length - 1]
+      title?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      title?.focus()
+      title?.select()
+    })
+  }
+
+  const openAdd = async (anchor: HTMLElement): Promise<void> => {
+    const templates = await api.templates.list('ticket')
     openPanel(anchor, 'Add to this ticket', () => (
-      <AddToTicketPanel present={present} textSections={!isCanvas(ticket.content)} onSection={addSection} onPreset={addPreset} />
+      <AddToTicketPanel
+        present={present}
+        textSections={!isCanvas(ticket.content)}
+        templates={templates}
+        onSection={addSection}
+        onTemplate={(t) => void addTemplate(t)}
+        onNewSection={addNewSection}
+        hiddenBoxes={boxes.filter((b) => !b.shown)}
+        onBox={(id) => {
+          const box = boxes.find((b) => b.id === id)
+          if (box) setOwn(box.restore)
+        }}
+      />
     ))
+  }
 
   // What linked fill-in fields in the ticket's body show, and where their edits go.
   const setLinked = (link: FieldLink, value: string): void => {
@@ -383,8 +498,16 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           <SaveIndicator status={saver.status} updatedAt={updatedAt} />
           {!trashed && (
             <>
-              <StatusSelect value={fields.status} onChange={(status) => set({ status }, true)} />
-              <button type="button" className="btn sm" title="Add sections, photos, dates and more" onClick={(e) => openAdd(e.currentTarget)}>
+              {layout.showStatus && (
+                <span className={customizing ? 'customize-box' : undefined}>
+                  <StatusSelect value={fields.status} onChange={(status) => set({ status }, true)} />
+                  {customizing && <RemoveBox label="Status" onRemove={() => setOwn({ showStatus: false })} />}
+                </span>
+              )}
+              <button type="button" className={`btn sm ${customizing ? 'active' : ''}`} aria-pressed={customizing} title="Rename or remove anything on this ticket" onClick={() => setCustomizing((c) => !c)}>
+                <SlidersHorizontal /> Customize
+              </button>
+              <button type="button" className="btn sm" title="Add sections, photos, dates and more" onClick={(e) => void openAdd(e.currentTarget)}>
                 <Plus /> Add
               </button>
               <button
@@ -440,6 +563,55 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
       )}
 
       <div className="doc">
+        {customizing && (
+          <div className="customize-banner">
+            <div>
+              <b>Customizing this ticket.</b> Type over a name to rename it, × to remove it. Removed boxes come back from + Add.
+            </div>
+            <div className="customize-actions">
+              {ticket.templateId && templateName && (
+                <button type="button" className="btn sm" onClick={() => void useForTemplate()}>
+                  Use for new “{templateName}” tickets
+                </button>
+              )}
+              {presetName === null ? (
+                <button type="button" className="btn sm" onClick={() => setPresetName('')}>
+                  Save as a new preset…
+                </button>
+              ) : (
+                <span className="preset-name">
+                  <input
+                    autoFocus
+                    className="prop-input"
+                    value={presetName}
+                    placeholder="Preset name"
+                    aria-label="Preset name"
+                    onChange={(e) => setPresetName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void saveAsPreset()
+                      if (e.key === 'Escape') setPresetName(null)
+                    }}
+                  />
+                  <button type="button" className="btn sm primary" disabled={!presetName.trim()} onClick={() => void saveAsPreset()}>
+                    Save
+                  </button>
+                </span>
+              )}
+              {Object.keys(own).length > 0 && (
+                <button type="button" className="btn sm" onClick={() => void resetLayout()}>
+                  Reset
+                </button>
+              )}
+              <button type="button" className="btn sm primary" onClick={() => setCustomizing(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+        {customizing && layout.showTitle && (
+          <BoxName label={layout.titleLabel} hint={layout.titlePlaceholder} onRename={(v) => setOwn({ titleLabel: v })} onHint={(v) => setOwn({ titlePlaceholder: v })} onRemove={() => setOwn({ showTitle: false })} />
+        )}
+        {layout.showTitle && (
         <input
           className="doc-title"
           value={fields.device}
@@ -449,6 +621,10 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           onChange={(e) => set({ device: e.target.value })}
           aria-label={layout.titleLabel}
         />
+        )}
+        {customizing && layout.showSummary && (
+          <BoxName label={layout.summaryLabel} hint={layout.summaryPlaceholder} onRename={(v) => setOwn({ summaryLabel: v })} onHint={(v) => setOwn({ summaryPlaceholder: v })} onRemove={() => setOwn({ showSummary: false })} />
+        )}
         {layout.showSummary && (
           <input
             className="doc-subtitle"
@@ -464,9 +640,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           <div className="props">
             {layout.showCustomer && (
               <div className="prop">
-                <span className="prop-label">
-                  <User /> Customer
-                </span>
+                <PropLabel icon={<User />} label={layout.customerLabel} editing={customizing} onRename={(v) => setOwn({ customerLabel: v })} onRemove={() => setOwn({ showCustomer: false })} />
                 {customer ? (
                   <span className="prop-value">
                     <input
@@ -498,9 +672,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {layout.showReceived && (
               <div className="prop">
-                <span className="prop-label">
-                  <CalendarDays /> {layout.receivedLabel}
-                </span>
+                <PropLabel icon={<CalendarDays />} label={layout.receivedLabel} editing={customizing} onRename={(v) => setOwn({ receivedLabel: v })} onRemove={() => setOwn({ showReceived: false })} />
                 <input
                   type="date"
                   className="prop-input"
@@ -513,9 +685,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {layout.showCustomer && layout.showCustomerPhone && (
               <div className="prop">
-                <span className="prop-label">
-                  <Phone /> Phone
-                </span>
+                <PropLabel icon={<Phone />} label={layout.phoneLabel} editing={customizing} onRename={(v) => setOwn({ phoneLabel: v })} onRemove={() => setOwn({ showCustomerPhone: false })} />
                 <input
                   className="prop-input"
                   value={customer?.phone ?? ''}
@@ -528,9 +698,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {show.pickup && (
               <div className="prop">
-                <span className="prop-label">
-                  <CalendarCheck /> {layout.pickupLabel}
-                </span>
+                <PropLabel icon={<CalendarCheck />} label={layout.pickupLabel} editing={customizing} onRename={(v) => setOwn({ pickupLabel: v })} onRemove={() => removePart('pickup')} />
                 <input
                   type="date"
                   className="prop-input"
@@ -543,9 +711,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {show.warranty && (
               <div className="prop">
-                <span className="prop-label">
-                  <ShieldCheck /> Warranty
-                </span>
+                <PropLabel icon={<ShieldCheck />} label={layout.warrantyLabel} editing={customizing} onRename={(v) => setOwn({ warrantyLabel: v })} onRemove={() => removePart('warranty')} />
                 <span className="prop-warranty">
                   <select
                     className="prop-input"
@@ -574,9 +740,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {layout.showCustomer && layout.showCustomerEmail && (
               <div className="prop">
-                <span className="prop-label">
-                  <Mail /> Email
-                </span>
+                <PropLabel icon={<Mail />} label={layout.emailLabel} editing={customizing} onRename={(v) => setOwn({ emailLabel: v })} onRemove={() => setOwn({ showCustomerEmail: false })} />
                 <input
                   className="prop-input"
                   value={customer?.email ?? ''}
@@ -589,9 +753,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
             )}
             {layout.showPrice && (
               <div className="prop">
-                <span className="prop-label">
-                  <DollarSign /> Price
-                </span>
+                <PropLabel icon={<DollarSign />} label={layout.priceLabel} editing={customizing} onRename={(v) => setOwn({ priceLabel: v })} onRemove={() => setOwn({ showPrice: false })} />
                 <input
                   className="prop-input"
                   value={priceText}
@@ -610,11 +772,9 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showCustomer && customer?.id && (
+            {layout.showCustomer && layout.showFor && customer?.id && (
               <div className="prop">
-                <span className="prop-label">
-                  <Users /> For
-                </span>
+                <PropLabel icon={<Users />} label={layout.forLabel} editing={customizing} onRename={(v) => setOwn({ forLabel: v })} onRemove={() => setOwn({ showFor: false })} />
                 <ForPicker
                   customer={customer}
                   forId={fields.forId}
@@ -630,6 +790,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           </div>
         )}
 
+        {show.lines && customizing && <RemoveBox label="Quote lines" wide onRemove={() => removePart('lines')} />}
         {show.lines && (
           <TicketLines
             ticketId={ticket.id}
@@ -645,6 +806,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
 
         {!trashed && layout.showPrice && <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
 
+        {show.photos && customizing && <RemoveBox label="Photos" wide onRemove={() => removePart('photos')} />}
         {show.photos && <PhotoGallery ticketId={ticket.id} />}
 
         <div className="ticket-body">
@@ -656,7 +818,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
         </div>
         {!trashed && (
           <div className="ticket-add-row">
-            <button type="button" className="btn sm" onClick={(e) => openAdd(e.currentTarget)}>
+            <button type="button" className="btn sm" onClick={(e) => void openAdd(e.currentTarget)}>
               <Plus /> Add a section
             </button>
           </div>
@@ -668,5 +830,71 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
         <Backlinks id={ticket.id} />
       </div>
     </div>
+  )
+}
+
+/** A box's name at the top of a ticket; in Customize, its name can be typed over and it can be removed */
+function PropLabel({ icon, label, editing, onRename, onRemove }: { icon: ReactNode; label: string; editing: boolean; onRename: (v: string) => void; onRemove: () => void }) {
+  const [text, setText] = useState(label)
+  useEffect(() => setText(label), [editing]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!editing)
+    return (
+      <span className="prop-label">
+        {icon} {label}
+      </span>
+    )
+  return (
+    <span className="prop-label customizing">
+      {icon}
+      <input
+        className="prop-label-input"
+        value={text}
+        aria-label={`Name for ${label}`}
+        onChange={(e) => {
+          setText(e.target.value)
+          onRename(e.target.value)
+        }}
+      />
+      <RemoveBox label={label} onRemove={onRemove} />
+    </span>
+  )
+}
+
+/** The title's or summary's name and hint, in Customize */
+function BoxName({ label, hint, onRename, onHint, onRemove }: { label: string; hint: string; onRename: (v: string) => void; onHint: (v: string) => void; onRemove: () => void }) {
+  const [name, setName] = useState(label)
+  const [help, setHelp] = useState(hint)
+  return (
+    <div className="box-name">
+      <input
+        className="prop-label-input"
+        value={name}
+        aria-label={`Name for ${label}`}
+        onChange={(e) => {
+          setName(e.target.value)
+          onRename(e.target.value)
+        }}
+      />
+      <input
+        className="prop-label-input hint"
+        value={help}
+        placeholder="Hint shown when empty"
+        aria-label={`Hint for ${label}`}
+        onChange={(e) => {
+          setHelp(e.target.value)
+          onHint(e.target.value)
+        }}
+      />
+      <RemoveBox label={label} onRemove={onRemove} />
+    </div>
+  )
+}
+
+function RemoveBox({ label, onRemove, wide }: { label: string; onRemove: () => void; wide?: boolean }) {
+  return (
+    <button type="button" className={`icon-btn sm remove-box ${wide ? 'wide' : ''}`} aria-label={`Remove ${label}`} title={`Remove ${label} from this ticket`} onClick={onRemove}>
+      <X />
+      {wide && <span>Remove {label}</span>}
+    </button>
   )
 }

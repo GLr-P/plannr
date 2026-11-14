@@ -14,6 +14,8 @@ import {
   type ReminderKind
 } from '../../shared/api'
 import { getSetting } from './settings'
+import { statusList } from './status-sql'
+import { doneStatusIds } from '../../shared/api'
 import { layoutForTicket } from './templates'
 import { isDate } from './doc'
 
@@ -44,7 +46,8 @@ interface EventRow {
   link_deleted: number | null
 }
 
-const COLS = `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, e.link_type, e.link_id, e.reminders, e.repeat, e.repeat_until, e.exdates, e.updated_at,
+/** The columns, worked out each time: whether a linked ticket is finished depends on your statuses */
+const cols = (): string => `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, e.link_type, e.link_id, e.reminders, e.repeat, e.repeat_until, e.exdates, e.updated_at,
   CASE e.link_type
     WHEN 'ticket' THEN ticket_no(t.number)
       || CASE WHEN t.device <> '' THEN ' · ' || t.device ELSE '' END
@@ -52,7 +55,7 @@ const COLS = `e.id, e.title, e.notes, e.date, e.start_time, e.end_time, e.kind, 
     WHEN 'customer' THEN COALESCE(NULLIF(c.name, ''), 'Unnamed customer')
     WHEN 'note' THEN COALESCE(NULLIF(n.title, ''), 'Untitled')
   END AS link_title,
-  CASE WHEN e.link_type = 'ticket' AND t.status = 'picked_up' THEN 1 ELSE 0 END AS link_done,
+  CASE WHEN e.link_type = 'ticket' AND t.status IN (${statusList(doneStatusIds())}) THEN 1 ELSE 0 END AS link_done,
   CASE e.link_type WHEN 'ticket' THEN t.deleted_at WHEN 'customer' THEN c.deleted_at WHEN 'note' THEN n.deleted_at END AS link_deleted`
 
 const FROM = `FROM events e
@@ -120,7 +123,7 @@ export function listEvents(db: Db, from: string, to: string): CalendarEvent[] {
   if (!isDate(from) || !isDate(to)) return []
   const rows = db
     .prepare(
-      `SELECT ${COLS} ${FROM} WHERE ${VISIBLE} AND (
+      `SELECT ${cols()} ${FROM} WHERE ${VISIBLE} AND (
          (e.repeat = '' AND e.date BETWEEN ? AND ?)
          OR (e.repeat <> '' AND e.date <= ? AND (e.repeat_until IS NULL OR e.repeat_until >= ?)))`
     )
@@ -136,12 +139,12 @@ export function listEvents(db: Db, from: string, to: string): CalendarEvent[] {
 }
 
 export function getEvent(db: Db, id: string): CalendarEvent | null {
-  const r = db.prepare(`SELECT ${COLS} ${FROM} WHERE e.id = ? AND e.deleted_at IS NULL`).get(id) as EventRow | undefined
+  const r = db.prepare(`SELECT ${cols()} ${FROM} WHERE e.id = ? AND e.deleted_at IS NULL`).get(id) as EventRow | undefined
   return r ? toEvent(r) : null
 }
 
 export function eventsForLink(db: Db, linkId: string): CalendarEvent[] {
-  const rows = db.prepare(`SELECT ${COLS} ${FROM} WHERE ${VISIBLE} AND e.link_id = ? ORDER BY e.date DESC`).all(linkId) as unknown as EventRow[]
+  const rows = db.prepare(`SELECT ${cols()} ${FROM} WHERE ${VISIBLE} AND e.link_id = ? ORDER BY e.date DESC`).all(linkId) as unknown as EventRow[]
   return rows.map(toEvent)
 }
 

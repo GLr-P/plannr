@@ -30,7 +30,8 @@ const ticket = (content: DocJSON): Ticket => ({
   deletedAt: null,
   content,
   templateId: null,
-  layout: ticketLayout(null)
+  layout: ticketLayout(null),
+  ownLayout: null
 })
 const field = (label: string, attrs: Record<string, unknown>, box = { x: 24, y: 24, w: 300, h: 60 }): DocJSON => ({ type: 'formField', attrs: { label, kind: 'text', value: '', labelPos: 'top', box, ...attrs } })
 const canvas: DocJSON = {
@@ -52,7 +53,7 @@ const canvas: DocJSON = {
 }
 const data = (content: DocJSON) => ({
   ticket: ticket(content),
-  customer: { id: 'c1', name: 'Rosa Lima', phone: '555-0123', email: '', address: '9 Elm St', company: '', city: '', region: '', postalCode: '', notes: '', related: [], createdAt: 0, updatedAt: 0, deletedAt: null },
+  customer: { id: 'c1', name: 'Rosa Lima', phone: '555-0123', email: '', address: '9 Elm St', company: '', city: '', region: '', postalCode: '', notes: '', related: [], fields: {}, createdAt: 0, updatedAt: 0, deletedAt: null },
   fileData: () => null,
   photos: [],
   linesHtml: '',

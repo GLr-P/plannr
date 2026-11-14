@@ -5,7 +5,8 @@ import { isDate, localDate } from './doc'
 import { LOOKBACK_MS } from './reminders'
 import { updateNote } from './notes'
 import { updateTicket } from './tickets'
-import { formatTicketNumber } from '../../shared/api'
+import { doneStatusIds, formatTicketNumber } from '../../shared/api'
+import { statusList } from './status-sql'
 
 
 /*
@@ -143,7 +144,7 @@ export function checklistItems(db: Db, opts: { tickets?: boolean; done?: boolean
   const tickets = opts.tickets
     ? (db
         .prepare(
-          "SELECT id, number, device, content_json FROM tickets WHERE deleted_at IS NULL AND status <> 'picked_up' AND content_json LIKE '%\"taskItem\"%' ORDER BY number DESC"
+          `SELECT id, number, device, content_json FROM tickets WHERE deleted_at IS NULL AND status NOT IN (${statusList(doneStatusIds())}) AND content_json LIKE '%"taskItem"%' ORDER BY number DESC`
         )
         .all() as { id: string; number: number; device: string; content_json: string }[])
     : []

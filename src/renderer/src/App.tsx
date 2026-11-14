@@ -38,6 +38,7 @@ import { PrintPreview } from './components/PrintPreview'
 import { MobileNav, useDrawer } from './components/MobileNav'
 import { AddProfileDialog } from './components/Profiles'
 import type { NavigateTarget } from './api'
+import { useSections } from './store/sections'
 
 /** Shows what a notification (or a switch of profile) asked for. */
 function navigateTo(target: NavigateTarget): void {
@@ -64,6 +65,7 @@ function startTarget(): NavigateTarget | null {
 }
 
 function useGlobalShortcuts(): void {
+  useEffect(() => void useSections.getState().load(), []) // your ticket sections, for + Add and the / menu
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const { back, forward } = useNav.getState()

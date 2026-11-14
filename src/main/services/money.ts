@@ -1,4 +1,6 @@
 import type { Db } from '../db'
+import { statusList } from './status-sql'
+import { doneStatusIds, readyStatusIds } from '../../shared/api'
 import { newId, now, tx } from '../db'
 import {
   DEFAULT_CATEGORIES,
@@ -420,7 +422,7 @@ export function summary(db: Db, month: string, today = localDate()): MoneySummar
       `SELECT t.id, t.number, t.device, t.status, t.price_cents, c.name AS customer_name,
          (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid
        FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id
-       WHERE t.deleted_at IS NULL AND t.price_cents > 0 AND t.status IN ('ready', 'picked_up')
+       WHERE t.deleted_at IS NULL AND t.price_cents > 0 AND t.status IN (${statusList([...readyStatusIds(), ...doneStatusIds()])})
        ORDER BY t.number`
     )
     .all() as { id: string; number: number; device: string; status: UnpaidTicket['status']; price_cents: number; customer_name: string | null; paid: number }[]

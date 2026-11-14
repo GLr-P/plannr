@@ -1724,3 +1724,133 @@ td .for-chips {
   padding: 0;
   border: 0;
 }
+
+/* Status colours: yours to pick per status (Edit statuses…) */
+.tone-gray { --c: 113, 113, 122; }
+.tone-blue { --c: 47, 106, 224; }
+.tone-purple { --c: 139, 92, 246; }
+.tone-orange { --c: 194, 101, 10; }
+.tone-yellow { --c: 161, 120, 4; }
+.tone-green { --c: 22, 150, 70; }
+.tone-teal { --c: 13, 148, 136; }
+.tone-red { --c: 220, 38, 38; }
+.tone-pink { --c: 219, 39, 119; }
+:root[data-theme='dark'] .tone-gray { --c: 161, 161, 170; }
+:root[data-theme='dark'] .tone-blue { --c: 120, 160, 245; }
+:root[data-theme='dark'] .tone-purple { --c: 180, 150, 250; }
+:root[data-theme='dark'] .tone-orange { --c: 251, 146, 60; }
+:root[data-theme='dark'] .tone-yellow { --c: 234, 179, 8; }
+:root[data-theme='dark'] .tone-green { --c: 74, 222, 128; }
+:root[data-theme='dark'] .tone-teal { --c: 45, 212, 191; }
+:root[data-theme='dark'] .tone-red { --c: 248, 113, 113; }
+:root[data-theme='dark'] .tone-pink { --c: 244, 114, 182; }
+.chip-edit {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  padding: 0;
+}
+.chip-edit svg {
+  width: 14px;
+  height: 14px;
+}
+.ctx-menu:has(.status-editor) {
+  width: 400px;
+  max-width: 400px;
+}
+.status-editor {
+  padding: 8px 10px 10px;
+}
+.status-editor ul {
+  list-style: none;
+  margin: 6px 0 8px;
+  padding: 0;
+}
+.status-editor li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.status-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-swatch {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 0;
+  background: rgb(var(--c));
+  cursor: pointer;
+}
+.status-name {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: inherit;
+  background: transparent;
+  color: var(--text);
+}
+.status-name:hover,
+.status-name:focus {
+  border-color: var(--border);
+  outline: none;
+}
+.status-count {
+  min-width: 18px;
+  text-align: right;
+}
+.status-flags {
+  display: flex;
+  gap: 14px;
+  padding: 2px 0 0 26px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.status-flags label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.status-remove {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 0 26px;
+  font-size: 12px;
+}
+.customize-hidden {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  color: var(--text-muted);
+}
+.customize-hidden .chip svg {
+  width: 12px;
+  height: 12px;
+}
+.section-title.customizing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.customer-stats {
+  position: relative;
+}
+.customer-stats > .icon-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+.notes-label {
+  margin-bottom: 4px;
+}
+.custom-fields {
+  margin-top: 4px;
+}

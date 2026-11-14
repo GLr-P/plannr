@@ -17,6 +17,7 @@ interface CustomerRow {
   postal_code: string
   notes: string
   related?: string
+  fields?: string
   created_at: number
   updated_at: number
   deleted_at: number | null
@@ -36,6 +37,7 @@ const toCustomer = (r: CustomerRow): Customer => ({
   postalCode: r.postal_code ?? '',
   notes: r.notes,
   related: parseLinks(r.related),
+  fields: parseFields(r.fields),
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   deletedAt: r.deleted_at
@@ -86,12 +88,23 @@ export function linkedCustomers(db: Db, id: string): LinkedCustomer[] {
   return [...out.values()]
 }
 
+/** Your own fields' values as stored (strings only) */
+export function parseFields(raw: string | undefined | null): Record<string, string> {
+  try {
+    const o = JSON.parse(raw || '{}') as unknown
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return {}
+    return Object.fromEntries(Object.entries(o).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k.slice(0, 80), (v as string).slice(0, 5000)]))
+  } catch {
+    return {}
+  }
+}
+
 export const customerName = (name: string): string => name.trim() || 'Unnamed customer'
 
 export function reindexCustomer(db: Db, id: string): void {
   const r = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as CustomerRow | undefined
   if (!r || r.deleted_at !== null) return unindexEntity(db, id)
-  const body = [r.company, r.phone, r.email, r.address, r.city, r.postal_code, r.notes].filter(Boolean).join(' · ')
+  const body = [r.company, r.phone, r.email, r.address, r.city, r.postal_code, r.notes, ...Object.values(parseFields(r.fields))].filter(Boolean).join(' · ')
   indexEntity(db, 'customer', id, customerName(r.name), body, r.updated_at, digitsOnly(r.phone))
 }
 
@@ -176,6 +189,7 @@ export function updateCustomer(db: Db, id: string, patch: CustomerInput): Custom
     if (patch.region !== undefined) set('region', patch.region.slice(0, 100))
     if (patch.postalCode !== undefined) set('postal_code', patch.postalCode.slice(0, 20))
     if (patch.notes !== undefined) set('notes', patch.notes.slice(0, 20000))
+    if (patch.fields !== undefined) set('fields', JSON.stringify(parseFields(JSON.stringify(patch.fields))))
     if (patch.related !== undefined) set('related', JSON.stringify(parseLinks(JSON.stringify(patch.related), id).slice(0, 100)))
     sets.push('updated_at = ?')
     params.push(now(), id)

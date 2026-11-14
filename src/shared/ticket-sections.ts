@@ -280,6 +280,62 @@ export const TICKET_SECTIONS: SectionPreset[] = [
 
 export const sectionPreset = (id: string): SectionPreset | undefined => TICKET_SECTIONS.find((s) => s.id === id)
 
+/** A section you saved (or your version of a built-in one, under the same id). Synced setting 'tickets.sections'. */
+export interface SectionDef {
+  id: string
+  title: string
+  icon: string
+  group: SectionGroup
+  hint: string
+  content: DocJSON[]
+}
+/** Your sections, and built-in ones you hid from + Add */
+export interface SectionLibrary {
+  custom: SectionDef[]
+  hidden: string[]
+}
+export const SECTIONS_KEY = 'tickets.sections'
+
+export function sectionLibrary(raw: unknown): SectionLibrary {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<SectionLibrary>
+  const groups = new Set(SECTION_GROUPS.map((g) => g.id))
+  return {
+    custom: Array.isArray(r.custom)
+      ? r.custom
+          .filter((c) => c && typeof c.id === 'string' && typeof c.title === 'string' && Array.isArray(c.content))
+          .map((c) => ({ id: c.id, title: c.title.slice(0, 80), icon: typeof c.icon === 'string' ? c.icon : 'FileText', group: groups.has(c.group) ? c.group : 'other', hint: typeof c.hint === 'string' ? c.hint : '', content: c.content }))
+      : [],
+    hidden: Array.isArray(r.hidden) ? r.hidden.filter((h): h is string => typeof h === 'string') : []
+  }
+}
+
+/** A saved section as something + Add can insert */
+const fromDef = (d: SectionDef): SectionPreset => ({
+  id: d.id,
+  title: d.title,
+  icon: d.icon,
+  group: d.group,
+  hint: d.hint || 'Your section',
+  keywords: d.title.toLowerCase(),
+  content: () => JSON.parse(JSON.stringify(d.content)) as DocJSON[]
+})
+
+/** Every section + Add offers: built-in ones (your version where you changed one), then yours; hidden ones left out */
+export function allSections(lib: SectionLibrary, includeHidden = false): (SectionPreset & { mine: boolean; changed: boolean; hidden: boolean })[] {
+  const byId = new Map(lib.custom.map((d) => [d.id, d]))
+  const builtIn = TICKET_SECTIONS.map((s) => {
+    const mineVersion = byId.get(s.id)
+    return { ...(mineVersion ? { ...fromDef(mineVersion), keywords: s.keywords } : s), mine: false, changed: Boolean(mineVersion), hidden: lib.hidden.includes(s.id) }
+  })
+  const own = lib.custom.filter((d) => !sectionPreset(d.id)).map((d) => ({ ...fromDef(d), mine: true, changed: false, hidden: lib.hidden.includes(d.id) }))
+  return [...builtIn, ...own].filter((s) => includeHidden || !s.hidden)
+}
+
+/** One section by id, from your library or the built-in ones */
+export function findSection(id: string, lib: SectionLibrary): SectionPreset | undefined {
+  return allSections(lib, true).find((s) => s.id === id)
+}
+
 /** A section block ready to insert into a ticket */
 export function sectionNode(preset: SectionPreset): DocJSON {
   return { type: 'ticketSection', attrs: { preset: preset.id, title: preset.title }, content: preset.content?.() ?? [p()] }
@@ -342,6 +398,31 @@ export function presetDoc(preset: TicketPreset): DocJSON {
 /** The built-in parts a preset turns on */
 export const presetParts = (preset: TicketPreset): TicketPart[] =>
   preset.sections.map((id) => sectionPreset(id)?.part).filter((x): x is TicketPart => Boolean(x))
+
+/**
+ * A reusable copy of ticket content (for your own sections and presets): fill-in answers emptied, checklists
+ * unticked, pictures, files and @-links left out, so nothing about one customer ends up in the next ticket.
+ */
+export function blankCopy(nodes: DocJSON[]): DocJSON[] {
+  const drop = new Set(['image', 'fileAttachment', 'mention'])
+  const hasField = (n: DocJSON): boolean => n.type === 'formField' || Boolean(n.content?.some(hasField))
+  const walk = (n: DocJSON, parent: string): DocJSON | null => {
+    if (drop.has(n.type)) return null
+    // A line of notes in the ticket or a section is about that customer: emptied (fill-in boxes, headings, checklists stay)
+    if (n.type === 'paragraph' && (parent === 'doc' || parent === 'ticketSection') && !hasField(n)) return { type: 'paragraph' }
+    const attrs = n.type === 'formField' ? { ...n.attrs, value: '' } : n.type === 'taskItem' ? { ...n.attrs, checked: false } : n.attrs
+    const content = n.content?.map((c) => walk(c, n.type)).filter((c): c is DocJSON => c !== null)
+    // A block that held only a picture is now empty: keep it valid
+    if (content && content.length === 0 && n.type !== 'paragraph' && n.type !== 'heading') return { type: 'paragraph' }
+    return { ...n, ...(attrs ? { attrs } : {}), ...(content ? { content } : {}) }
+  }
+  // Emptied lines in a row become one
+  const tidy = (list: DocJSON[]): DocJSON[] =>
+    list
+      .map((n) => (n.content && n.type !== 'paragraph' ? { ...n, content: tidy(n.content) } : n))
+      .filter((n, i, all) => !(n.type === 'paragraph' && !n.content?.length && all[i - 1]?.type === 'paragraph' && !all[i - 1].content?.length))
+  return tidy(nodes.map((n) => walk(n, 'doc')).filter((c): c is DocJSON => c !== null))
+}
 
 /** Which sections a ticket's document already has (by preset id) */
 export function sectionsIn(doc: DocJSON | null | undefined): Set<string> {

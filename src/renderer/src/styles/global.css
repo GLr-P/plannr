@@ -2647,3 +2647,117 @@ kbd {
 .ticket-add-row .btn:hover {
   color: var(--text);
 }
+/* + Add rows with a hide/delete tool on hover */
+.add-ticket-row {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+.add-ticket-row[data-focused='true'] {
+  background: var(--bg-subtle);
+}
+.add-ticket-row .add-ticket-item {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+}
+.add-ticket-tool {
+  opacity: 0;
+  margin-right: 6px;
+}
+.add-ticket-row:hover .add-ticket-tool,
+.add-ticket-tool:focus-visible,
+.add-ticket-tool.danger {
+  opacity: 1;
+}
+.add-ticket-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.add-ticket-footer svg {
+  width: 14px;
+  height: 14px;
+}
+/* Customize on a ticket */
+.customize-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+.customize-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.preset-name {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.preset-name .prop-input {
+  width: 180px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+.prop-label.customizing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.prop-label-input {
+  min-width: 0;
+  width: 100%;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+}
+.box-name {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+}
+.box-name .prop-label-input {
+  max-width: 200px;
+}
+.box-name .prop-label-input.hint {
+  max-width: 320px;
+  color: var(--text-muted);
+}
+.remove-box.wide {
+  display: inline-flex;
+  width: auto;
+  gap: 4px;
+  padding: 0 8px;
+  margin: 8px 0 -4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.customize-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

@@ -53,7 +53,8 @@ import { FormField } from './FormField'
 import { RichClipboard } from './clipboard'
 import { BlockBackspace, CodeFence, HeadingBackspace, TabKeeper } from './keys'
 import { TicketSection } from './TicketSection'
-import { sectionNode, TICKET_SECTIONS } from '../../../shared/ticket-sections'
+import { allSections, sectionNode } from '../../../shared/ticket-sections'
+import { useSections } from '../store/sections'
 import { ICONS } from '../lib/icons'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
 import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type ImageUploader } from './upload'
@@ -182,19 +183,24 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { label: '2 columns', hint: 'Two side-by-side columns', icon: <Columns2 />, keywords: 'columns layout side by side two', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(2)).setTextSelection(r.from + 2).run() },
   { label: '3 columns', hint: 'Three side-by-side columns', icon: <Columns3 />, keywords: 'columns layout side by side three', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(3)).setTextSelection(r.from + 2).run() },
   { label: 'Table of contents', hint: 'The note’s headings, kept up to date', icon: <ListTree />, keywords: 'toc contents outline index headings', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() },
-  // Tickets and ticket templates: every built-in section (the same ones as + Add)
-  ...TICKET_SECTIONS.filter((s) => !s.part).map((s): SlashCommand => {
-    const SectionIcon = ICONS[s.icon] ?? FileText
-    return {
-      label: s.title,
-      hint: s.hint,
-      icon: <SectionIcon />,
-      keywords: `section ${s.keywords}`,
-      ticketOnly: true,
-      run: (e, r) => e.chain().focus().deleteRange(r).insertContent(sectionNode(s)).run()
-    }
-  })
 ]
+
+/** Tickets and ticket templates: every section + Add offers (built-in and yours), read fresh each time */
+function sectionCommands(): SlashCommand[] {
+  return allSections(useSections.getState().lib)
+    .filter((s) => !s.part)
+    .map((s): SlashCommand => {
+      const SectionIcon = ICONS[s.icon] ?? FileText
+      return {
+        label: s.title,
+        hint: s.hint,
+        icon: <SectionIcon />,
+        keywords: `section ${s.keywords}`,
+        ticketOnly: true,
+        run: (e, r) => e.chain().focus().deleteRange(r).insertContent(sectionNode(s)).run()
+      }
+    })
+}
 
 const SlashCommands = Extension.create({
   name: 'slashCommands',
@@ -214,7 +220,7 @@ const SlashCommands = Extension.create({
           const q = query.toLowerCase()
           const plannrFiles = uploaderOf(editor) === defaultUploader
           const ticket = Boolean(storageOf(editor)?.ticket)
-          return SLASH_COMMANDS.filter(
+          return [...SLASH_COMMANDS, ...(ticket ? sectionCommands() : [])].filter(
             (c) => (plannrFiles || !c.plannrFiles) && (ticket || !c.ticketOnly) && `${c.label} ${c.keywords}`.toLowerCase().includes(q)
           )
             // Names that match what was typed first ("columns" → 2 columns before Table)

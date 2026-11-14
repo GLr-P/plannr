@@ -31,6 +31,7 @@ const ticket = (over: Partial<Ticket> = {}): Ticket => ({
   content: { type: 'doc', content: [{ type: 'paragraph', content: [field('Passcode', '1234'), field('Condition', 'Scuffed'), field('Charger left', 'true', 'checkbox'), field('Notes', '')] }] },
   templateId: null,
   layout: ticketLayout({ titleLabel: 'Device', summaryLabel: 'Issue' }),
+  ownLayout: null,
   ...over
 })
 const pay = (amountCents: number, taxExempt = false): Transaction => ({

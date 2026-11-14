@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Building2, Mail, MapPin, Phone, Plus, Trash2, UserRound, Users, X } from 'lucide-react'
-import { CUSTOMER_RELATIONS, formatTicketNumber, type Customer, type CustomerInput, type LinkedCustomer, type TicketSummary } from '../../../shared/api'
+import { Building2, Mail, MapPin, Phone, Plus, RotateCcw, SlidersHorizontal, Tag, Trash2, UserRound, Users, X } from 'lucide-react'
+import {
+  CUSTOMER_FIELD_KINDS,
+  CUSTOMER_PARTS,
+  CUSTOMER_RELATIONS,
+  isDoneStatus,
+  formatTicketNumber,
+  type Customer,
+  type CustomerFieldDef,
+  type CustomerInput,
+  type LinkedCustomer,
+  type TicketSummary
+} from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
 import { go } from '../store/nav'
@@ -12,6 +23,7 @@ import { Backlinks } from '../components/Backlinks'
 import { CustomerEmails } from '../components/CustomerEmails'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { CustomerPicker } from '../components/CustomerPicker'
+import { useCustomerLayout } from '../store/customerLayout'
 import { NewTicketButton } from './TicketsView'
 
 export function CustomerView({ id }: { id: string }) {
@@ -48,13 +60,18 @@ export function sortContact(phone: string, email: string): { phone: string; emai
 }
 
 type Extra = 'business' | 'address' | 'people'
+/** Default names for the smaller boxes inside the built-in parts (also renamable) */
+const SUB_LABELS: Record<string, string> = { businessName: 'Name', street: 'Street', town: 'Town', province: 'Province', postal: 'Postal code' }
+const INPUT_TYPE: Record<CustomerFieldDef['kind'], string> = { text: 'text', long: 'text', date: 'date', phone: 'tel', email: 'email', number: 'number', money: 'text' }
 
 function CustomerPage({ customer }: { customer: Customer }) {
   const [c, setC] = useState(customer)
   const [tickets, setTickets] = useState<TicketSummary[]>([])
   const [linked, setLinked] = useState<LinkedCustomer[]>([])
-  // Sections added on this visit (an empty one isn't kept: next time only sections with something in them show)
-  const [opened, setOpened] = useState<Set<Extra>>(new Set())
+  // Sections and fields added on this visit (an empty one isn't kept: next time only ones with something in them show)
+  const [opened, setOpened] = useState<Set<string>>(new Set())
+  const [customizing, setCustomizing] = useState(false)
+  const { layout: cl, load: loadLayout, save: saveLayout } = useCustomerLayout()
   const saver = useAutosave<CustomerInput>(async (patch) => {
     const saved = await api.customers.update(customer.id, patch)
     setC((cur) => ({ ...cur, updatedAt: saved.updatedAt }))
@@ -65,24 +82,34 @@ function CustomerPage({ customer }: { customer: Customer }) {
   useEffect(() => {
     void api.tickets.list({ customerId: customer.id }).then(setTickets)
     loadLinked()
-  }, [customer.id, remote, loadLinked])
+    void loadLayout()
+  }, [customer.id, remote, loadLinked, loadLayout])
 
   const set = (patch: CustomerInput): void => {
     setC((cur) => ({ ...cur, ...patch }))
     saver.queue(patch)
   }
+  const setField = (id: string, value: string): void => set({ fields: { ...c.fields, [id]: value } })
   const tidyContact = (): void => {
     const fixed = sortContact(c.phone, c.email)
     if (fixed) set(fixed)
   }
 
+  // Your names and what you hid (for every customer)
+  const name = (id: string): string => cl.labels[id] || CUSTOMER_PARTS.find((p) => p.id === id)?.label || SUB_LABELS[id] || id
+  const hidden = (id: string): boolean => cl.hidden.includes(id)
+  const rename = (id: string, v: string): void => void saveLayout({ labels: { ...cl.labels, [id]: v } })
+  const hide = (id: string): void => void saveLayout({ hidden: [...new Set([...cl.hidden, id])] })
+  const unhide = (id: string): void => void saveLayout({ hidden: cl.hidden.filter((h) => h !== id) })
+
   const hasAddress = Boolean(c.address || c.city || c.region || c.postalCode)
   const shown: Record<Extra, boolean> = {
-    business: Boolean(c.company) || opened.has('business'),
-    address: hasAddress || opened.has('address'),
-    people: linked.length > 0 || opened.has('people')
+    business: !hidden('business') && (Boolean(c.company) || opened.has('business') || customizing),
+    address: !hidden('address') && (hasAddress || opened.has('address') || customizing),
+    people: !hidden('people') && (linked.length > 0 || opened.has('people') || customizing)
   }
-  const open = (x: Extra, focus: string): void => {
+  const fieldShown = (f: CustomerFieldDef): boolean => Boolean(c.fields[f.id]) || opened.has(f.id) || customizing
+  const open = (x: string, focus: string): void => {
     setOpened((o) => new Set(o).add(x))
     requestAnimationFrame(() => document.querySelector<HTMLElement>(focus)?.focus())
   }
@@ -115,6 +142,27 @@ function CustomerPage({ customer }: { customer: Customer }) {
     loadLinked()
   }
 
+  /** A box's name: in Customize it can be typed over (for every customer) and hidden */
+  const label = (id: string, icon: ReactNode, onRemove?: () => void): ReactNode =>
+    customizing ? (
+      <span className="prop-label customizing">
+        {icon}
+        <NameInput value={name(id)} onSave={(v) => rename(id, v)} />
+        {onRemove && <HideButton label={name(id)} onClick={onRemove} />}
+      </span>
+    ) : (
+      <span className="prop-label">
+        {icon} {name(id)}
+      </span>
+    )
+
+  const chips = [
+    ...(!hidden('business') && !shown.business ? [{ id: 'business', label: name('business'), focus: '#customer-business' }] : []),
+    ...(!hidden('address') && !shown.address ? [{ id: 'address', label: name('address'), focus: '#customer-street' }] : []),
+    ...(!hidden('people') && !shown.people ? [{ id: 'people', label: name('people'), focus: '.link-person .link-relation' }] : []),
+    ...cl.fields.filter((f) => !fieldShown(f)).map((f) => ({ id: f.id, label: f.label, focus: `#cf-${CSS.escape(f.id)}` }))
+  ]
+
   return (
     <div className="page customer-page">
       <div className="page-toolbar">
@@ -125,6 +173,9 @@ function CustomerPage({ customer }: { customer: Customer }) {
         </div>
         <div className="toolbar-right">
           <SaveIndicator status={saver.status} updatedAt={c.updatedAt} />
+          <button type="button" className={`btn sm ${customizing ? 'active' : ''}`} aria-pressed={customizing} title="Rename, hide or add boxes on customer pages" onClick={() => setCustomizing((v) => !v)}>
+            <SlidersHorizontal /> Customize
+          </button>
           <ConfirmButton
             title="Delete customer (their tickets are kept)"
             onConfirm={async () => {
@@ -141,6 +192,15 @@ function CustomerPage({ customer }: { customer: Customer }) {
       </div>
 
       <div className="doc">
+        {customizing && (
+          <CustomizeCustomers
+            hiddenParts={cl.hidden}
+            name={name}
+            onUnhide={unhide}
+            onAddField={(f) => void saveLayout({ fields: [...cl.fields, f] })}
+            onDone={() => setCustomizing(false)}
+          />
+        )}
         <input
           className="doc-title"
           value={c.name}
@@ -150,27 +210,29 @@ function CustomerPage({ customer }: { customer: Customer }) {
           aria-label="Customer name"
         />
 
-        <div className="props one-col">
-          <label className="prop">
-            <span className="prop-label">
-              <Phone /> Phone
-            </span>
-            <input className="prop-input" value={c.phone} placeholder="Add phone" inputMode="tel" onChange={(e) => set({ phone: e.target.value })} onBlur={tidyContact} aria-label="Phone" />
-          </label>
-          <label className="prop">
-            <span className="prop-label">
-              <Mail /> Email
-            </span>
-            <input className="prop-input" value={c.email} placeholder="Add email" inputMode="email" onChange={(e) => set({ email: e.target.value })} onBlur={tidyContact} aria-label="Email" />
-          </label>
-        </div>
+        {(!hidden('phone') || !hidden('email')) && (
+          <div className="props one-col">
+            {!hidden('phone') && (
+              <label className="prop">
+                {label('phone', <Phone />, () => hide('phone'))}
+                <input className="prop-input" value={c.phone} placeholder="Add phone" inputMode="tel" onChange={(e) => set({ phone: e.target.value })} onBlur={tidyContact} aria-label="Phone" />
+              </label>
+            )}
+            {!hidden('email') && (
+              <label className="prop">
+                {label('email', <Mail />, () => hide('email'))}
+                <input className="prop-input" value={c.email} placeholder="Add email" inputMode="email" onChange={(e) => set({ email: e.target.value })} onBlur={tidyContact} aria-label="Email" />
+              </label>
+            )}
+          </div>
+        )}
 
         {shown.business && (
           <section className="customer-extra" aria-label="Business details">
-            <ExtraHead icon={<Building2 />} title="Business" onRemove={() => close('business')} filled={Boolean(c.company)} />
+            <ExtraHead customizing={customizing} icon={<Building2 />} title={name('business')} onRename={(v) => rename('business', v)} onHide={() => hide('business')} onRemove={() => close('business')} filled={Boolean(c.company)} />
             <div className="props one-col">
               <label className="prop">
-                <span className="prop-label">Name</span>
+                {label('businessName', null)}
                 <input id="customer-business" className="prop-input" value={c.company} placeholder="Business name" onChange={(e) => set({ company: e.target.value })} aria-label="Business" />
               </label>
             </div>
@@ -179,22 +241,22 @@ function CustomerPage({ customer }: { customer: Customer }) {
 
         {shown.address && (
           <section className="customer-extra" aria-label="Address details">
-            <ExtraHead icon={<MapPin />} title="Address" onRemove={() => close('address')} filled={hasAddress} />
+            <ExtraHead customizing={customizing} icon={<MapPin />} title={name('address')} onRename={(v) => rename('address', v)} onHide={() => hide('address')} onRemove={() => close('address')} filled={hasAddress} />
             <div className="props one-col">
               <label className="prop">
-                <span className="prop-label">Street</span>
+                {label('street', null)}
                 <input id="customer-street" className="prop-input" value={c.address} placeholder="Street address" onChange={(e) => set({ address: e.target.value })} aria-label="Address" />
               </label>
               <label className="prop">
-                <span className="prop-label">Town</span>
+                {label('town', null)}
                 <input className="prop-input" value={c.city} placeholder="Town or city" onChange={(e) => set({ city: e.target.value })} aria-label="Town" />
               </label>
               <label className="prop">
-                <span className="prop-label">Province</span>
+                {label('province', null)}
                 <input className="prop-input" value={c.region} placeholder="Province or state" onChange={(e) => set({ region: e.target.value })} aria-label="Province" />
               </label>
               <label className="prop">
-                <span className="prop-label">Postal code</span>
+                {label('postal', null)}
                 <input className="prop-input" value={c.postalCode} placeholder="Postal code" onChange={(e) => set({ postalCode: e.target.value })} aria-label="Postal code" />
               </label>
             </div>
@@ -203,7 +265,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
 
         {shown.people && (
           <section className="customer-extra" aria-label="Linked people">
-            <ExtraHead icon={<Users />} title="Linked people" onRemove={linked.length ? undefined : () => close('people')} filled={false} />
+            <ExtraHead customizing={customizing} icon={<Users />} title={name('people')} onRename={(v) => rename('people', v)} onHide={() => hide('people')} onRemove={linked.length ? undefined : () => setOpened((o) => (o.delete('people'), new Set(o)))} filled={false} />
             {linked.length > 0 && (
               <ul className="linked-people">
                 {linked.map((p) => (
@@ -225,36 +287,60 @@ function CustomerPage({ customer }: { customer: Customer }) {
           </section>
         )}
 
-        {(!shown.business || !shown.address || !shown.people) && (
-          <div className="add-chips" aria-label="Add to this customer">
-            {!shown.business && (
-              <button type="button" className="chip" onClick={() => open('business', '#customer-business')}>
-                <Plus /> Business
-              </button>
-            )}
-            {!shown.address && (
-              <button type="button" className="chip" onClick={() => open('address', '#customer-street')}>
-                <Plus /> Address
-              </button>
-            )}
-            {!shown.people && (
-              <button type="button" className="chip" onClick={() => open('people', '.link-person .link-relation')}>
-                <Plus /> Linked person
-              </button>
-            )}
+        {cl.fields.some(fieldShown) && (
+          <div className="props one-col custom-fields">
+            {cl.fields.filter(fieldShown).map((f) => (
+              <label key={f.id} className="prop">
+                {customizing ? (
+                  <span className="prop-label customizing">
+                    <Tag />
+                    <NameInput value={f.label} onSave={(v) => void saveLayout({ fields: cl.fields.map((x) => (x.id === f.id ? { ...x, label: v } : x)) })} />
+                    <DeleteFieldButton label={f.label} onDelete={() => void saveLayout({ fields: cl.fields.filter((x) => x.id !== f.id) })} />
+                  </span>
+                ) : (
+                  <span className="prop-label">
+                    <Tag /> {f.label}
+                  </span>
+                )}
+                {f.kind === 'long' ? (
+                  <textarea id={`cf-${f.id}`} className="prop-input" rows={2} value={c.fields[f.id] ?? ''} onChange={(e) => setField(f.id, e.target.value)} aria-label={f.label} />
+                ) : (
+                  <input
+                    id={`cf-${f.id}`}
+                    className="prop-input"
+                    type={INPUT_TYPE[f.kind]}
+                    inputMode={f.kind === 'money' ? 'decimal' : undefined}
+                    value={c.fields[f.id] ?? ''}
+                    placeholder={f.kind === 'money' ? '$0.00' : `Add ${f.label.toLowerCase()}`}
+                    onChange={(e) => setField(f.id, e.target.value)}
+                    aria-label={f.label}
+                  />
+                )}
+              </label>
+            ))}
           </div>
         )}
 
-        <textarea
-          className="notes-area"
-          value={c.notes}
-          placeholder="Notes about this customer…"
-          onChange={(e) => set({ notes: e.target.value })}
-          aria-label="Customer notes"
-        />
+        {chips.length > 0 && !customizing && (
+          <div className="add-chips" aria-label="Add to this customer">
+            {chips.map((x) => (
+              <button key={x.id} type="button" className="chip" onClick={() => open(x.id, x.focus)}>
+                <Plus /> {x.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {tickets.length > 0 && (
+        {!hidden('notes') && (
+          <div className="notes-wrap">
+            {customizing && <div className="notes-label">{label('notes', null, () => hide('notes'))}</div>}
+            <textarea className="notes-area" value={c.notes} placeholder={`${name('notes')} about this customer…`} onChange={(e) => set({ notes: e.target.value })} aria-label="Customer notes" />
+          </div>
+        )}
+
+        {tickets.length > 0 && !hidden('stats') && (
           <div className="customer-stats">
+            {customizing && <HideButton label={name('stats')} onClick={() => hide('stats')} />}
             <div>
               <span className="small muted">Tickets</span>
               <b>{tickets.length}</b>
@@ -267,7 +353,7 @@ function CustomerPage({ customer }: { customer: Customer }) {
               <span className="small muted">Last visit</span>
               <b>{formatDay(tickets.map((t) => t.receivedOn ?? '').sort().pop() || null)}</b>
             </div>
-            {tickets.some((t) => t.priceCents !== null && t.priceCents > t.paidCents && t.status !== 'picked_up') && (
+            {tickets.some((t) => t.priceCents !== null && t.priceCents > t.paidCents && !isDoneStatus(t.status)) && (
               <div>
                 <span className="small muted">Still owing</span>
                 <b className="owing">{formatMoney(tickets.reduce((s, t) => s + Math.max(0, (t.priceCents ?? 0) - t.paidCents), 0))}</b>
@@ -275,39 +361,50 @@ function CustomerPage({ customer }: { customer: Customer }) {
             )}
           </div>
         )}
-        <div className="list-header section-gap">
-          <h2 className="section-title flush">Tickets</h2>
-          <NewTicketButton customerId={customer.id} />
-        </div>
-        {tickets.length === 0 ? (
-          <div className="empty-state left">No tickets yet.</div>
-        ) : (
-          historyGroups(tickets, customer.id, c.company).map((g) => (
-            <div key={g.key} className="history-group">
-              {g.label && <div className="history-group-label">{g.label}</div>}
-              <ul className="ticket-history">
-                {g.tickets.map((t) => (
-                  <li key={t.id}>
-                    <button type="button" className="history-row" onClick={() => go({ view: 'ticket', id: t.id })}>
-                      <span className="mono">{formatTicketNumber(t.number)}</span>
-                      <span className="history-main">
-                        {t.device || 'Untitled'}
-                        {t.issue && <span className="muted"> · {t.issue}</span>}
-                      </span>
-                      {t.warrantyUntil && t.warrantyUntil >= todayISO() && (
-                        <span className="badge warranty-badge" title={`Under warranty until ${formatDay(t.warrantyUntil)}`}>
-                          Warranty to {formatDay(t.warrantyUntil)}
-                        </span>
-                      )}
-                      <StatusPill status={t.status} />
-                      <span className="history-date">{formatDay(t.receivedOn)}</span>
-                      <span className="history-price">{formatMoney(t.priceCents)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+        {!hidden('tickets') && (
+          <>
+            <div className="list-header section-gap">
+              {customizing ? (
+                <span className="section-title flush customizing">
+                  <NameInput value={name('tickets')} onSave={(v) => rename('tickets', v)} />
+                  <HideButton label={name('tickets')} onClick={() => hide('tickets')} />
+                </span>
+              ) : (
+                <h2 className="section-title flush">{name('tickets')}</h2>
+              )}
+              <NewTicketButton customerId={customer.id} />
             </div>
-          ))
+            {tickets.length === 0 ? (
+              <div className="empty-state left">No tickets yet.</div>
+            ) : (
+              historyGroups(tickets, customer.id, c.company).map((g) => (
+                <div key={g.key} className="history-group">
+                  {g.label && <div className="history-group-label">{g.label}</div>}
+                  <ul className="ticket-history">
+                    {g.tickets.map((t) => (
+                      <li key={t.id}>
+                        <button type="button" className="history-row" onClick={() => go({ view: 'ticket', id: t.id })}>
+                          <span className="mono">{formatTicketNumber(t.number)}</span>
+                          <span className="history-main">
+                            {t.device || 'Untitled'}
+                            {t.issue && <span className="muted"> · {t.issue}</span>}
+                          </span>
+                          {t.warrantyUntil && t.warrantyUntil >= todayISO() && (
+                            <span className="badge warranty-badge" title={`Under warranty until ${formatDay(t.warrantyUntil)}`}>
+                              Warranty to {formatDay(t.warrantyUntil)}
+                            </span>
+                          )}
+                          <StatusPill status={t.status} />
+                          <span className="history-date">{formatDay(t.receivedOn)}</span>
+                          <span className="history-price">{formatMoney(t.priceCents)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            )}
+          </>
         )}
 
         <CustomerEmails email={c.email} name={c.name} />
@@ -341,8 +438,136 @@ export function historyGroups(tickets: TicketSummary[], me: string, company: str
   return list
 }
 
-function ExtraHead({ icon, title, onRemove, filled }: { icon: ReactNode; title: string; onRemove?: () => void; filled: boolean }) {
+/** Customize on a customer page: changes apply to every customer. New fields, and hidden parts to bring back. */
+function CustomizeCustomers({
+  hiddenParts,
+  name,
+  onUnhide,
+  onAddField,
+  onDone
+}: {
+  hiddenParts: string[]
+  name: (id: string) => string
+  onUnhide: (id: string) => void
+  onAddField: (f: CustomerFieldDef) => void
+  onDone: () => void
+}) {
+  const [label, setLabel] = useState('')
+  const [kind, setKind] = useState<CustomerFieldDef['kind']>('text')
+  const add = (): void => {
+    if (!label.trim()) return
+    onAddField({ id: `f_${Date.now().toString(36)}`, label: label.trim(), kind })
+    setLabel('')
+  }
+  return (
+    <div className="customize-banner">
+      <div>
+        <b>Customizing customer pages.</b> Changes apply to every customer: type over a name to rename it, × to hide it.
+      </div>
+      <div className="customize-actions">
+        <span className="preset-name">
+          <input
+            className="prop-input"
+            value={label}
+            placeholder="New field, e.g. Birthday"
+            aria-label="New field name"
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && add()}
+          />
+          <select className="prop-input" value={kind} aria-label="New field type" onChange={(e) => setKind(e.target.value as CustomerFieldDef['kind'])}>
+            {CUSTOMER_FIELD_KINDS.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn sm" disabled={!label.trim()} onClick={add}>
+            <Plus /> Add field
+          </button>
+        </span>
+        <button type="button" className="btn sm primary" onClick={onDone}>
+          Done
+        </button>
+      </div>
+      {hiddenParts.length > 0 && (
+        <div className="customize-hidden">
+          Hidden:
+          {hiddenParts.map((id) => (
+            <button key={id} type="button" className="chip" title="Show it again" onClick={() => onUnhide(id)}>
+              <RotateCcw /> {name(id)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NameInput({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  return (
+    <input
+      className="prop-label-input"
+      value={text}
+      aria-label={`Name for ${value}`}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text.trim() !== value && onSave(text.trim())}
+      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+    />
+  )
+}
+
+function HideButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="icon-btn sm" aria-label={`Hide ${label}`} title={`Hide ${label} on every customer page`} onClick={onClick}>
+      <X />
+    </button>
+  )
+}
+
+function DeleteFieldButton({ label, onDelete }: { label: string; onDelete: () => void }) {
   const [armed, setArmed] = useState(false)
+  return (
+    <button
+      type="button"
+      className={`icon-btn sm ${armed ? 'danger' : ''}`}
+      aria-label={armed ? `Delete ${label} for good` : `Delete ${label}`}
+      title={armed ? 'Click again: the field goes from every customer' : 'Delete this field'}
+      onBlur={() => setArmed(false)}
+      onClick={() => (armed ? onDelete() : setArmed(true))}
+    >
+      {armed ? <Trash2 /> : <X />}
+    </button>
+  )
+}
+
+function ExtraHead({
+  customizing,
+  icon,
+  title,
+  onRename,
+  onHide,
+  onRemove,
+  filled
+}: {
+  customizing: boolean
+  icon: ReactNode
+  title: string
+  onRename: (v: string) => void
+  onHide: () => void
+  onRemove?: () => void
+  filled: boolean
+}) {
+  const [armed, setArmed] = useState(false)
+  if (customizing)
+    return (
+      <div className="customer-extra-head">
+        {icon}
+        <NameInput value={title} onSave={onRename} />
+        <HideButton label={title} onClick={onHide} />
+      </div>
+    )
   return (
     <div className="customer-extra-head">
       {icon}
