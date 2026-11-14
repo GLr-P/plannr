@@ -5,6 +5,7 @@ import {
   statusLabel,
   TICKET_PARTS,
   TICKET_STATUSES,
+  ticketLayout,
   type TicketPart,
   type DocJSON,
   type Ticket,
@@ -195,10 +196,11 @@ export function createTicket(db: Db, input: { templateId?: string | null; custom
     const templateId = input.templateId === undefined ? getDefaultTemplateId(db) : input.templateId
     const template = templateId ? getTemplate(db, templateId) : null
     const content = template?.content ?? null
+    const parts = template ? ticketLayout(template.layout).parts : [] // a preset's photos, pickup date…
     db.prepare(
-      `INSERT INTO tickets (id, number, customer_id, status, received_on, template_id, content_json, content_text, created_at, updated_at)
-       VALUES (?, ?, ?, 'intake', ?, ?, ?, ?, ?, ?)`
-    ).run(id, next, input.customerId ?? null, localDate(), template?.id ?? null, content ? JSON.stringify(content) : null, extractText(content), t, t)
+      `INSERT INTO tickets (id, number, customer_id, status, received_on, template_id, content_json, content_text, parts, created_at, updated_at)
+       VALUES (?, ?, ?, 'intake', ?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, next, input.customerId ?? null, localDate(), template?.id ?? null, content ? JSON.stringify(content) : null, extractText(content), JSON.stringify(parts), t, t)
     reindexTicket(db, id)
   })
   return getTicket(db, id)!

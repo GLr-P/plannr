@@ -422,7 +422,7 @@ export interface TicketUpdate {
 }
 
 /** Parts of a ticket page that aren't text: added with + Add when needed */
-export const TICKET_PARTS = ['pickup', 'photos', 'lines', 'emails'] as const
+export const TICKET_PARTS = ['pickup', 'photos', 'lines', 'warranty', 'emails'] as const
 export type TicketPart = (typeof TICKET_PARTS)[number]
 
 export type PhotoKind = 'before' | 'after'
@@ -477,6 +477,10 @@ export interface TicketLayout {
   showLines: boolean
   showPhotos: boolean
   showEmails: boolean
+  /** The warranty choice at the top */
+  showWarranty: boolean
+  /** Parts a new ticket starts with (it can add and remove them later); presets use these instead of the show* switches */
+  parts: TicketPart[]
   /** How the Form printout looks: modern (the default), boxes, lines (like a paper form), clean, or elegant (serif) */
   printStyle: string
   /** Colour for the printout's labels and total, e.g. #db2777 */
@@ -508,6 +512,8 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   showLines: true,
   showPhotos: true,
   showEmails: true,
+  showWarranty: true,
+  parts: [],
   printStyle: 'modern',
   printAccent: '#000000'
 }
@@ -525,7 +531,8 @@ export function ticketLayout(saved?: Partial<TicketLayout> | null): TicketLayout
   const out = { ...DEFAULT_TICKET_LAYOUT }
   for (const [k, v] of Object.entries(saved ?? {}) as [keyof TicketLayout, unknown][]) {
     if (!(k in out)) continue
-    if (typeof out[k] === 'boolean' && typeof v === 'boolean') (out as Record<string, unknown>)[k] = v
+    if (k === 'parts') out.parts = Array.isArray(v) ? [...new Set(v.filter((p): p is TicketPart => (TICKET_PARTS as readonly unknown[]).includes(p)))] : []
+    else if (typeof out[k] === 'boolean' && typeof v === 'boolean') (out as Record<string, unknown>)[k] = v
     else if (typeof out[k] === 'string' && typeof v === 'string' && v.trim()) (out as Record<string, unknown>)[k] = v.trim().slice(0, 80)
   }
   return out
@@ -1810,6 +1817,8 @@ export interface PlannrApi {
     update(id: string, patch: CustomerInput): Promise<Customer>
     trash(id: string): Promise<void>
     restore(id: string): Promise<void>
+    /** Everyone linked to this customer, from either side */
+    linked(id: string): Promise<LinkedCustomer[]>
   }
   tickets: {
     list(filter?: TicketFilter): Promise<TicketSummary[]>
@@ -1825,8 +1834,6 @@ export interface PlannrApi {
     updateItem(id: string, patch: LineInput): Promise<LineItem[]>
     removeItem(id: string): Promise<LineItem[]>
     totals(ticketId: string): Promise<TicketTotals>
-    /** Everyone linked to this customer, from either side */
-    linked(id: string): Promise<LinkedCustomer[]>
   }
   tasks: {
     list(opts?: { done?: boolean }): Promise<Task[]>

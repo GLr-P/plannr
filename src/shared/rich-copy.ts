@@ -214,6 +214,8 @@ function nodeHtml(node: DocJSON): string {
     }
     case 'details':
       return kids()
+    case 'ticketSection':
+      return `<p style="${P}"><b>${esc(str(a.title))}</b></p>${kids()}`
     case 'detailsSummary':
       return `<p style="${P}"><b>${kids()}</b></p>`
     case 'detailsContent':
@@ -290,6 +292,8 @@ function blockLines(node: DocJSON, indent = ''): string[] {
     return [`${indent}${marker}${head[0] ?? ''}`, ...head.slice(1), ...rest.flatMap((n) => blockLines(n, `${indent}    `))]
   }
   switch (node.type) {
+    case 'ticketSection':
+      return [`${indent}${str(a.title)}`, ...kids()]
     case 'paragraph':
     case 'heading':
     case 'detailsSummary':

@@ -26,6 +26,13 @@ export function extractText(doc: DocJSON | null | undefined): string {
       const r = calculate(String(node.attrs?.expr ?? ''))
       line += `${String(node.attrs?.expr ?? '')}${r === null ? '' : ` = ${r}`}`
     }
+    else if (node.type === 'ticketSection') {
+      // A ticket section's name is its own line ("Work done"), before what's in it
+      const title = String(node.attrs?.title ?? '').trim()
+      if (line.trim()) lines.push(line.trim())
+      line = ''
+      if (title) lines.push(title)
+    }
     node.content?.forEach(walk)
     if (BLOCKS.has(node.type)) {
       if (line.trim()) lines.push(line.trim())

@@ -3,6 +3,7 @@ import { newId, now } from '../db'
 import { REPAIR_TICKET_LAYOUT, ticketLayout, type DocJSON, type Template, type TemplateKind, type TemplateSummary, type TicketLayout } from '../../shared/api'
 import { cleanIcon } from './folders'
 import { getSetting, setSetting } from './settings'
+import { presetDoc, presetParts, TICKET_PRESETS, type TicketPreset } from '../../shared/ticket-sections'
 
 interface TemplateRow {
   id: string
@@ -46,7 +47,7 @@ function storeLayout(layout: Partial<TicketLayout> | null | undefined): string |
   if (!layout) return null
   const full = ticketLayout(layout)
   const base = ticketLayout(null)
-  const diff = Object.fromEntries(Object.entries(full).filter(([k, v]) => base[k as keyof TicketLayout] !== v))
+  const diff = Object.fromEntries(Object.entries(full).filter(([k, v]) => JSON.stringify(base[k as keyof TicketLayout]) !== JSON.stringify(v)))
   return Object.keys(diff).length ? JSON.stringify(diff) : null
 }
 
@@ -158,9 +159,45 @@ export function ensureStarterTemplate(db: Db): void {
  * and tickets without a template follow the default template, so existing tickets look the same as before.
  */
 export function ensureTicketLayouts(db: Db): void {
-  if (getSetting(db, 'ticketLayoutsSet')) return
+  if (!getSetting(db, 'ticketLayoutsSet')) setTicketLayouts(db)
+  ensureTicketPresets(db)
+}
+
+function setTicketLayouts(db: Db): void {
   db.prepare("UPDATE templates SET layout = ? WHERE kind = 'ticket' AND name = 'Repair intake' AND layout IS NULL").run(storeLayout(REPAIR_TICKET_LAYOUT))
   const def = getSetting(db, DEFAULT_KEY)
   if (typeof def === 'string' && getTemplate(db, def)) db.prepare('UPDATE tickets SET template_id = ? WHERE template_id IS NULL').run(def)
   setSetting(db, 'ticketLayoutsSet', true)
+}
+
+/** The boxes at the top for tickets made from a preset: the minimum, with the preset's parts added to the ticket instead */
+export function presetLayout(preset: TicketPreset): Partial<TicketLayout> {
+  return {
+    titleLabel: preset.titleLabel ?? 'Title',
+    titlePlaceholder: preset.titlePlaceholder ?? 'What is it? (e.g. Dell laptop, iPhone 13)',
+    summaryLabel: preset.summaryLabel ?? 'What they need',
+    summaryPlaceholder: preset.summaryPlaceholder ?? 'What’s wrong, or what they’re asking for',
+    pickupLabel: preset.pickupLabel ?? 'Pickup',
+    showPickup: false,
+    showLines: false,
+    showPhotos: false,
+    showEmails: false,
+    showWarranty: false,
+    parts: presetParts(preset)
+  }
+}
+
+/**
+ * Once: the built-in presets become ticket templates (they can be edited, renamed or deleted like any other), and
+ * new tickets start from "Quick ticket", the minimum (requested 2026-11-14: "I don't want this to be a static ticket").
+ */
+export function ensureTicketPresets(db: Db): void {
+  if (getSetting(db, 'ticketPresetsCreated')) return
+  let quick: string | null = null
+  for (const preset of TICKET_PRESETS) {
+    const t = createTemplate(db, { name: preset.name, kind: 'ticket', icon: preset.icon, content: presetDoc(preset), layout: presetLayout(preset) })
+    if (preset.id === 'quick') quick = t.id
+  }
+  if (quick) setSetting(db, DEFAULT_KEY, quick)
+  setSetting(db, 'ticketPresetsCreated', true)
 }

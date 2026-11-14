@@ -462,3 +462,61 @@
 .note-canvas-mode .muted {
   margin-left: 6px;
 }
+
+/* Ticket sections (+ Add on a ticket): a named block with tools on the right */
+.prose .ticket-section {
+  margin: 14px 0;
+  padding: 4px 14px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.prose .ticket-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -6px 2px;
+  padding: 4px 0;
+  user-select: none;
+}
+.prose .ticket-section-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.prose .ticket-section-title {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text);
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.prose input.ticket-section-title:hover {
+  background: var(--bg-subtle);
+}
+.prose input.ticket-section-title:focus {
+  outline: none;
+  background: var(--bg-subtle);
+}
+.prose .ticket-section-tools {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.prose .ticket-section:hover .ticket-section-tools,
+.prose .ticket-section:focus-within .ticket-section-tools {
+  opacity: 1;
+}
+.prose .ticket-section-body > :first-child {
+  margin-top: 0;
+}
+.prose .ticket-section-body > :last-child {
+  margin-bottom: 0;
+}

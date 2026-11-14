@@ -34,6 +34,7 @@ import { MAIN_PROFILE, saveRegistry } from './profiles'
 // That folder is the first profile; other profiles have their own folders inside it (see profiles.ts).
 const baseDir = process.env.PLANNR_DATA_DIR ?? join(app.getPath('userData'), 'data')
 const isTest = Boolean(process.env.PLANNR_DATA_DIR)
+const OFFSCREEN = isTest && process.env.PLANNR_OFFSCREEN === '1'
 // Switching profile restarts Plannr in the other one (tests start the app again themselves).
 const profiles = new ProfileManager(baseDir, () => {
   quitting = true
@@ -99,7 +100,8 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: bounds?.width ?? 1320,
     height: bounds?.height ?? 860,
-    ...(bounds ? { x: bounds.x, y: bounds.y } : {}),
+    // Automated tests (PLANNR_OFFSCREEN=1) open the window off the screen so they don't take over the PC
+    ...(OFFSCREEN ? { x: -32000, y: -32000 } : bounds ? { x: bounds.x, y: bounds.y } : {}),
     minWidth: 900,
     minHeight: 600,
     show: false,
@@ -119,6 +121,7 @@ function createWindow(): void {
     }
   })
   mainWindow.once('ready-to-show', () => {
+    if (OFFSCREEN) return mainWindow?.showInactive() // never steals focus from what you're doing
     if (bounds?.maximized) mainWindow?.maximize()
     if (!startHidden) mainWindow?.show()
   })

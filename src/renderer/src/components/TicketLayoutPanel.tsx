@@ -73,6 +73,8 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
           {check('showLines', 'Quote & invoice lines')}
           {check('showPhotos', 'Photos')}
           {check('showEmails', 'Emails with the customer')}
+          {check('showWarranty', 'Warranty (with the second date)')}
+          <span className="layout-text muted small">Anything left off can still be added on a ticket with + Add.</span>
         </div>
         <div className="layout-group">
           <h4>Printed form</h4>

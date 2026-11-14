@@ -39,7 +39,11 @@ test('inventory: add a part with stock, cost, price and a reorder level', async 
 
 test('ticket lines: a part from inventory and labour; tax on top; the price follows; stock goes down', async () => {
   await page.keyboard.press('Control+t')
-  await page.getByLabel('Device').fill('iPhone 13')
+  await page.getByLabel('Title').fill('iPhone 13')
+  // Quote lines are added to a ticket when needed (+ Add)
+  await page.locator('.page-toolbar').getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByLabel('Search sections').fill('quote lines')
+  await page.keyboard.press('Enter')
   await page.getByRole('button', { name: 'Add line items' }).click()
   const lines = page.locator('.lines-table tbody tr')
   await expect(lines).toHaveCount(1)

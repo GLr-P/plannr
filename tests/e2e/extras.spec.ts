@@ -252,7 +252,7 @@ test('Packages: the carrier from the number, and the expected day on the calenda
 test('Warranty on a ticket, and a free trial with a price increase', async () => {
   const customer = await page.evaluate(() => window.plannr.customers.create({ name: 'Rosa Lima' }))
   const ticket = await page.evaluate((id) => window.plannr.tickets.create({ customerId: id }), customer.id)
-  await page.evaluate((id) => window.plannr.tickets.update(id, { device: 'Laptop' }), ticket.id)
+  await page.evaluate((id) => window.plannr.tickets.update(id, { device: 'Laptop', parts: ['warranty'] }), ticket.id) // added with + Add
   await nav('Tickets').click()
   await page.locator('.ticket-row, tr', { hasText: 'Laptop' }).first().click()
   await page.getByLabel('Warranty length').selectOption('90')

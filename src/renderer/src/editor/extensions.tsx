@@ -17,6 +17,7 @@ import { Callout } from './Callout'
 import { FileAttachment } from './FileAttachment'
 import {
   ChevronRight,
+  FileText,
   Code,
   FormInput,
   Heading1,
@@ -51,6 +52,9 @@ import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
 import { FormField } from './FormField'
 import { RichClipboard } from './clipboard'
 import { BlockBackspace, CodeFence, HeadingBackspace, TabKeeper } from './keys'
+import { TicketSection } from './TicketSection'
+import { sectionNode, TICKET_SECTIONS } from '../../../shared/ticket-sections'
+import { ICONS } from '../lib/icons'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
 import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type ImageUploader } from './upload'
 
@@ -177,7 +181,19 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { label: 'Drawing', hint: 'Draw, sketch and mark up with pen, shapes and colours', icon: <PenTool />, keywords: 'draw drawing sketch pen paint doodle whiteboard diagram', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'drawing' }).run() },
   { label: '2 columns', hint: 'Two side-by-side columns', icon: <Columns2 />, keywords: 'columns layout side by side two', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(2)).setTextSelection(r.from + 2).run() },
   { label: '3 columns', hint: 'Three side-by-side columns', icon: <Columns3 />, keywords: 'columns layout side by side three', run: (e, r) => e.chain().focus().deleteRange(r).insertContent(columnsContent(3)).setTextSelection(r.from + 2).run() },
-  { label: 'Table of contents', hint: 'The note’s headings, kept up to date', icon: <ListTree />, keywords: 'toc contents outline index headings', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() }
+  { label: 'Table of contents', hint: 'The note’s headings, kept up to date', icon: <ListTree />, keywords: 'toc contents outline index headings', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() },
+  // Tickets and ticket templates: every built-in section (the same ones as + Add)
+  ...TICKET_SECTIONS.filter((s) => !s.part).map((s): SlashCommand => {
+    const SectionIcon = ICONS[s.icon] ?? FileText
+    return {
+      label: s.title,
+      hint: s.hint,
+      icon: <SectionIcon />,
+      keywords: `section ${s.keywords}`,
+      ticketOnly: true,
+      run: (e, r) => e.chain().focus().deleteRange(r).insertContent(sectionNode(s)).run()
+    }
+  })
 ]
 
 const SlashCommands = Extension.create({
@@ -307,6 +323,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     MathLine,
     FormField,
     Callout,
+    TicketSection,
     FileAttachment,
     RichClipboard,
     TableKit.configure({ table: { resizable: true } }),

@@ -14,6 +14,8 @@ export async function launch(dataDir: string, extraEnv: Record<string, string> =
   delete env.ELECTRON_RUN_AS_NODE // set by VS Code; would make Electron act as plain Node
   env.PLANNR_DATA_DIR = dataDir
   env.PLANNR_NEWS_FIXTURES = join(root, 'tests', 'fixtures', 'news') // news never comes from the internet in tests
+  // The window opens off the screen without taking focus, so tests don't take over the PC. PLANNR_SHOW=1 to watch.
+  if (!process.env.PLANNR_SHOW) env.PLANNR_OFFSCREEN = '1'
   Object.assign(env, extraEnv)
   // PLANNR_EXE runs the tests against a packaged build (release/win-unpacked/Plannr.exe) instead of out/.
   const app = process.env.PLANNR_EXE

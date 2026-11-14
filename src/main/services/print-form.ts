@@ -272,6 +272,8 @@ function docHtml(doc: DocJSON, d: FormPrintData): string {
         return `<p>📎 ${esc(String(n.attrs?.name ?? 'file'))}</p>`
       case 'horizontalRule':
         return '<hr>'
+      case 'ticketSection':
+        return `<h3>${esc(String(n.attrs?.title ?? ''))}</h3>${kids()}`
       case 'table':
         return `<table class="dt">${kids()}</table>`
       case 'tableRow':

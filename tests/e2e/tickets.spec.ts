@@ -30,7 +30,9 @@ test.afterAll(async () => {
 test('creates a ticket from the starter template with a new customer', async () => {
   await nav('Tickets').click()
   await expect(page.locator('.empty-state')).toHaveText('No open tickets.')
-  await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
+  // New tickets start from Quick ticket now; this one uses the starter Repair intake template
+  await page.locator('.main').getByRole('button', { name: 'Choose template' }).click()
+  await page.locator('.dropdown-menu .menu-item', { hasText: 'Repair intake' }).click()
 
   await expect(page.locator('.ticket-no')).toHaveText('T-0001')
   await expect(page.getByLabel('Device')).toBeFocused()
@@ -134,7 +136,10 @@ test('customer page shows details and repair history; new ticket from there keep
   await row.click()
 
   await expect(page.getByLabel('Customer name')).toHaveValue('Jane Doe')
-  await page.getByLabel('Address').fill('12 Main St')
+  // Address and business are added when needed
+  await page.locator('.add-chips').getByRole('button', { name: 'Address' }).click()
+  await page.getByLabel('Address', { exact: true }).fill('12 Main St')
+  await page.locator('.add-chips').getByRole('button', { name: 'Business' }).click()
   await page.getByLabel('Business', { exact: true }).fill('Doe Landscaping')
   await page.getByLabel('Town').fill('Springfield')
   await page.getByLabel('Province').fill('BC')
@@ -164,7 +169,7 @@ test('global search finds customers and tickets', async () => {
 
 test('edits the template with a new form field; new tickets get it', async () => {
   await nav('Templates').click()
-  await expect(page.locator('.note-row')).toContainText('Default')
+  await expect(page.locator('.note-row', { hasText: 'Quick ticket' })).toContainText('Default') // the built-in presets are templates
   await page.locator('.note-row', { hasText: 'Repair intake' }).click()
   await page.locator('.prose > p').last().click()
   await page.keyboard.type('/form')
@@ -179,7 +184,8 @@ test('edits the template with a new form field; new tickets get it', async () =>
   await shot(page, 'b7-template')
 
   await nav('Tickets').click()
-  await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
+  await page.getByRole('button', { name: 'Choose template' }).click()
+  await page.locator('.dropdown-menu .menu-item', { hasText: 'Repair intake' }).click()
   await expect(page.locator('.ticket-no')).toHaveText('T-0003')
   await expect(field('Screen protector')).toBeVisible()
   // Blank ticket via the arrow menu

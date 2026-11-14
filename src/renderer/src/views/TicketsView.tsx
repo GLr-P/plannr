@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavName } from '../store/display'
 import { singular } from '../lib/navOrder'
 import { create } from 'zustand'
-import { ChevronDown, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, Plus, Search, Users, X } from 'lucide-react'
+import { ForChips } from '../components/TicketLinks'
 import {
   formatTicketNumber,
   TICKET_STATUSES,
@@ -21,13 +22,40 @@ import { PaidBadge } from './MoneyView'
 
 type StatusFilter = TicketStatus | 'open' | 'all' | 'trash'
 
-/** Filters survive opening a ticket and coming back. */
-const useFilters = create<{ status: StatusFilter; query: string; from: string; to: string }>(() => ({
+const readGroup = (): boolean => {
+  try {
+    return localStorage.getItem('tickets.groupByCustomer') === '1'
+  } catch {
+    return false
+  }
+}
+/** Filters survive opening a ticket and coming back; grouping is remembered on this PC. */
+const useFilters = create<{ status: StatusFilter; query: string; from: string; to: string; group: boolean }>(() => ({
   status: 'open',
   query: '',
   from: '',
-  to: ''
+  to: '',
+  group: readGroup()
 }))
+const setGroup = (group: boolean): void => {
+  useFilters.setState({ group })
+  try {
+    localStorage.setItem('tickets.groupByCustomer', group ? '1' : '0')
+  } catch {
+    // remembered for this session only
+  }
+}
+
+/** Tickets grouped by the customer whose account they're on (their business's and their family's tickets together) */
+export function groupByCustomer(tickets: TicketSummary[]): { key: string; name: string; company: string; tickets: TicketSummary[] }[] {
+  const groups = new Map<string, { key: string; name: string; company: string; tickets: TicketSummary[] }>()
+  for (const t of tickets) {
+    const key = t.customerId ?? 'none'
+    if (!groups.has(key)) groups.set(key, { key, name: t.customerId ? t.customerName || 'Unnamed customer' : 'No customer', company: t.customerCompany, tickets: [] })
+    groups.get(key)!.tickets.push(t)
+  }
+  return [...groups.values()] // in the list's order: the group with the newest ticket first
+}
 
 const statusChips = (): { id: StatusFilter; label: string }[] => [
   { id: 'open', label: 'Open' },
@@ -41,7 +69,7 @@ const daysSince = (date: string): number => Math.floor((Date.now() - new Date(`$
 
 export function TicketsView() {
   const ticketsName = useNavName('tickets', 'Tickets')
-  const { status, query, from, to } = useFilters()
+  const { status, query, from, to, group } = useFilters()
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null)
 
   const remote = useData((s) => s.remote) // changed on another device
@@ -100,6 +128,9 @@ export function TicketsView() {
             Clear dates
           </button>
         )}
+        <button type="button" className={`btn sm ${group ? 'active' : ''}`} aria-pressed={group} onClick={() => setGroup(!group)} title="Show each customer's tickets together">
+          <Users /> Group by customer
+        </button>
       </div>
 
       <div className="chips" role="tablist" aria-label="Status">
@@ -136,7 +167,19 @@ export function TicketsView() {
               </tr>
             </thead>
             <tbody>
-              {tickets.map((t) => (
+              {(group ? groupByCustomer(tickets) : [{ key: 'all', name: '', company: '', tickets }]).flatMap((g) => [
+                ...(group
+                  ? [
+                      <tr key={`g:${g.key}`} className="group-row">
+                        <td colSpan={7}>
+                          <span className="group-name">{g.name}</span>
+                          {g.company && <span className="muted"> · {g.company}</span>}
+                          <span className="muted"> · {g.tickets.length} {g.tickets.length === 1 ? 'ticket' : 'tickets'}</span>
+                        </td>
+                      </tr>
+                    ]
+                  : []),
+                ...g.tickets.map((t) => (
                 <tr
                   key={t.id}
                   className="ticket-row"
@@ -149,8 +192,9 @@ export function TicketsView() {
                 >
                   <td className="mono">{formatTicketNumber(t.number)}</td>
                   <td>
-                    <div className="cell-main">{t.customerName || <span className="muted">No customer</span>}</div>
-                    {t.customerPhone && <div className="cell-sub">{t.customerPhone}</div>}
+                    {!group && <div className="cell-main">{t.customerName || <span className="muted">No customer</span>}</div>}
+                    {!group && t.customerPhone && <div className="cell-sub">{t.customerPhone}</div>}
+                    <ForChips t={t} />
                   </td>
                   <td>
                     <div className="cell-main">{t.device || <span className="muted">No device</span>}</div>
@@ -173,7 +217,8 @@ export function TicketsView() {
                     {(t.status === 'ready' || t.status === 'picked_up' || t.paidCents > 0) && <PaidBadge priceCents={t.priceCents} paidCents={t.paidCents} />}
                   </td>
                 </tr>
-              ))}
+                ))
+              ])}
             </tbody>
           </table>
         </div>

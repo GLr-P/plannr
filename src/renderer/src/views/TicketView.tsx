@@ -39,6 +39,13 @@ import { CanvasView } from '../canvas/CanvasView'
 import { useTicketParts } from '../canvas/CanvasItem'
 import { LinkedEvents } from '../components/LinkedEvents'
 import { TicketPayments } from './MoneyView'
+import type { Editor } from '@tiptap/core'
+import { Plus, Users } from 'lucide-react'
+import { ForPicker, MoreTickets } from '../components/TicketLinks'
+import { openPanel } from '../components/ContextMenu'
+import { AddToTicketPanel } from '../components/AddToTicket'
+import { sectionNode, sectionsIn, sectionPreset, type SectionPreset, type TicketPreset } from '../../../shared/ticket-sections'
+import type { TicketPart } from '../../../shared/api'
 
 export function TicketView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined)
@@ -193,7 +200,93 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     set({ customerId }, true)
   }
 
-  const onContent = useCallback((doc: DocJSON) => saver.queue({ content: doc }), [saver.queue])
+  // ---------- Sections (+ Add) ----------
+  const editorRef = useRef<Editor | null>(null)
+  const onEditorReady = useCallback((editor: Editor) => (editorRef.current = editor), [])
+  const [inDoc, setInDoc] = useState(() => sectionsIn(ticket.content)) // text sections on the ticket, by preset id
+  const onContent = useCallback(
+    (doc: DocJSON) => {
+      saver.queue({ content: doc })
+      setInDoc(sectionsIn(doc))
+    },
+    [saver.queue]
+  )
+  // Parts with something in them always show, so removing one never hides information
+  const [hasLines, setHasLines] = useState(false)
+  const [photoCount, setPhotoCount] = useState(0)
+  useEffect(() => {
+    void api.tickets.items(ticket.id).then((l) => setHasLines(l.length > 0))
+    void api.photos.list(ticket.id).then((p) => setPhotoCount(p.length))
+  }, [ticket.id])
+  const parts = fields.parts
+  const added = (p: TicketPart): boolean => parts.includes(p)
+  const show = {
+    pickup: layout.showPickup || added('pickup') || Boolean(fields.pickupOn),
+    warranty: (layout.showWarranty && layout.showPickup) || added('warranty') || Boolean(fields.warrantyUntil),
+    lines: layout.showLines || added('lines') || hasLines || fromLines,
+    photos: layout.showPhotos || added('photos') || photoCount > 0,
+    emails: layout.showEmails || added('emails')
+  }
+  const present = new Set<string>([...inDoc, ...(Object.keys(show) as TicketPart[]).filter((p) => show[p]).map((p) => `part:${p}`)])
+
+  const setParts = (next: TicketPart[]): void => set({ parts: next }, true)
+
+  /** Puts a section at the end of the ticket and moves to its first box */
+  const insertSection = (s: SectionPreset, focusIt = true): void => {
+    const editor = editorRef.current
+    if (!editor) return
+    const { doc } = editor.state
+    const last = doc.lastChild
+    const at = last && last.type.name === 'paragraph' && last.content.size === 0 ? doc.content.size - last.nodeSize : doc.content.size
+    editor.chain().insertContentAt(at, sectionNode(s)).run()
+    if (!focusIt) return
+    requestAnimationFrame(() => {
+      const all = document.querySelectorAll<HTMLElement>(`.ticket-body .ticket-section[data-preset="${s.id}"]`)
+      const el = all[all.length - 1]
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      const box = el?.querySelector<HTMLElement>('.ticket-section-body input, .ticket-section-body textarea, .ticket-section-body select')
+      if (box) box.focus()
+      else editor.commands.focus(at + 3)
+    })
+  }
+
+  const addSection = (s: SectionPreset): void => {
+    if (s.part) {
+      const part = s.part
+      if (!present.has(s.id)) return setParts([...parts, part])
+      setParts(parts.filter((p) => p !== part))
+      const keeps = (part === 'pickup' && fields.pickupOn) || (part === 'warranty' && fields.warrantyUntil) || (part === 'lines' && (hasLines || fromLines)) || (part === 'photos' && photoCount > 0)
+      if (keeps) showToast(`${s.title} has something in it, so it stays. Clear it to remove it.`)
+      return
+    }
+    if (inDoc.has(s.id)) {
+      document.querySelector<HTMLElement>(`.ticket-body .ticket-section[data-preset="${s.id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return
+    }
+    insertSection(s)
+  }
+
+  const addPreset = (p: TicketPreset): void => {
+    const newParts = new Set(parts)
+    let count = 0
+    for (const id of p.sections) {
+      const s = sectionPreset(id)
+      if (!s) continue
+      if (s.part) {
+        if (!present.has(s.id)) (newParts.add(s.part), count++)
+      } else if (!inDoc.has(s.id)) {
+        insertSection(s, false)
+        count++
+      }
+    }
+    if (newParts.size !== parts.length) setParts([...newParts])
+    showToast(count ? `Added ${count} section${count === 1 ? '' : 's'} from “${p.name}”` : `This ticket already has everything in “${p.name}”`)
+  }
+
+  const openAdd = (anchor: HTMLElement): void =>
+    openPanel(anchor, 'Add to this ticket', () => (
+      <AddToTicketPanel present={present} textSections={!isCanvas(ticket.content)} onSection={addSection} onPreset={addPreset} />
+    ))
 
   // What linked fill-in fields in the ticket's body show, and where their edits go.
   const setLinked = (link: FieldLink, value: string): void => {
@@ -291,6 +384,9 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           {!trashed && (
             <>
               <StatusSelect value={fields.status} onChange={(status) => set({ status }, true)} />
+              <button type="button" className="btn sm" title="Add sections, photos, dates and more" onClick={(e) => openAdd(e.currentTarget)}>
+                <Plus /> Add
+              </button>
               <button
                 type="button"
                 className="btn sm"
@@ -364,7 +460,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
           />
         )}
 
-        {(layout.showCustomer || layout.showReceived || layout.showPickup || layout.showPrice) && (
+        {(layout.showCustomer || layout.showReceived || show.pickup || show.warranty || layout.showPrice) && (
           <div className="props">
             {layout.showCustomer && (
               <div className="prop">
@@ -430,7 +526,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showPickup && (
+            {show.pickup && (
               <div className="prop">
                 <span className="prop-label">
                   <CalendarCheck /> {layout.pickupLabel}
@@ -445,7 +541,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
-            {layout.showPickup && (
+            {show.warranty && (
               <div className="prop">
                 <span className="prop-label">
                   <ShieldCheck /> Warranty
@@ -514,10 +610,27 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                 />
               </div>
             )}
+            {layout.showCustomer && customer?.id && (
+              <div className="prop">
+                <span className="prop-label">
+                  <Users /> For
+                </span>
+                <ForPicker
+                  customer={customer}
+                  forId={fields.forId}
+                  business={fields.business}
+                  disabled={trashed}
+                  onChange={(patch) => {
+                    set(patch, true)
+                    if (patch.forId && !customer.related.some((l) => l.id === patch.forId)) void api.customers.get(customer.id).then((c) => c && setCustomer(c))
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 
-        {layout.showLines && (
+        {show.lines && (
           <TicketLines
             ticketId={ticket.id}
             taxExempt={taxExempt}
@@ -532,17 +645,25 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
 
         {!trashed && layout.showPrice && <TicketPayments key={fields.priceCents ?? 0} ticketId={ticket.id} number={ticket.number} priceCents={fields.priceCents} />}
 
-        {layout.showPhotos && <PhotoGallery ticketId={ticket.id} />}
+        {show.photos && <PhotoGallery ticketId={ticket.id} />}
 
         <div className="ticket-body">
           {isCanvas(ticket.content) ? (
             <CanvasView doc={ticket.content!} editable={!trashed} onChange={onContent} />
           ) : (
-            <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} options={TICKET_EDITOR} />
+            <NoteEditor docId={ticket.id} content={ticket.content} editable={!trashed} onChange={onContent} onReady={onEditorReady} options={TICKET_EDITOR} />
           )}
         </div>
+        {!trashed && (
+          <div className="ticket-add-row">
+            <button type="button" className="btn sm" onClick={(e) => openAdd(e.currentTarget)}>
+              <Plus /> Add a section
+            </button>
+          </div>
+        )}
 
-        {layout.showEmails && customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}
+        {show.emails && customer?.email && <CustomerEmails email={customer.email} name={customer.name} />}
+        <MoreTickets ticketId={ticket.id} customerId={fields.customerId} customerName={customer?.name ?? ''} forId={fields.forId} />
         <LinkedEvents id={ticket.id} refreshKey={fields.pickupOn} />
         <Backlinks id={ticket.id} />
       </div>

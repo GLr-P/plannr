@@ -10,11 +10,17 @@ import { api } from '../api'
 export function CustomerPicker({
   onPick,
   autoFocus,
-  placeholder = 'Search or add a customer…'
+  placeholder = 'Search or add a customer…',
+  label = 'Customer',
+  exclude
 }: {
   onPick: (customerId: string) => void
   autoFocus?: boolean
   placeholder?: string
+  /** The box's accessible name */
+  label?: string
+  /** Customers not to offer (e.g. the one whose page this is) */
+  exclude?: string[]
 }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<CustomerSummary[]>([])
@@ -25,7 +31,7 @@ export function CustomerPicker({
   useEffect(() => {
     let cancelled = false
     const t = setTimeout(async () => {
-      const r = await api.customers.list({ query, limit: 8 })
+      const r = (await api.customers.list({ query, limit: 8 + (exclude?.length ?? 0) })).filter((c) => !exclude?.includes(c.id)).slice(0, 8)
       if (!cancelled) {
         setResults(r)
         setSelected(0)
@@ -78,9 +84,9 @@ export function CustomerPicker({
           } else if (e.key === 'Enter' && options > 0) {
             e.preventDefault()
             choose(selected)
-          } else if (e.key === 'Escape') setOpen(false)
+          } else if (e.key === 'Escape' || e.key === 'Tab') setOpen(false) // Tab moves on to the next box, not into the list
         }}
-        aria-label="Customer"
+        aria-label={label}
       />
       {open && options > 0 && (
         <div className="picker-menu menu" role="listbox">
@@ -88,6 +94,7 @@ export function CustomerPicker({
             <button
               key={c.id}
               type="button"
+              tabIndex={-1}
               className="menu-item"
               data-selected={i === selected}
               onMouseEnter={() => setSelected(i)}
@@ -106,6 +113,7 @@ export function CustomerPicker({
           {query.trim() && (
             <button
               type="button"
+              tabIndex={-1}
               className="menu-item"
               data-selected={selected === results.length}
               onMouseEnter={() => setSelected(results.length)}
