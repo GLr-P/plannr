@@ -50,6 +50,7 @@ import type { EntityType } from '../../../shared/api'
 import { EntityIcon, ENTITY_LABEL } from '../components/EntityIcon'
 import { FormField } from './FormField'
 import { RichClipboard } from './clipboard'
+import { BlockBackspace, CodeFence, HeadingBackspace, TabKeeper } from './keys'
 import { popupRenderer, type MenuItem } from './SuggestionPopup'
 import { defaultUploader, insertFiles, insertImages, pickFiles, pickImages, type ImageUploader } from './upload'
 
@@ -187,6 +188,12 @@ const SlashCommands = Extension.create({
         pluginKey: new PluginKey('slashCommands'),
         editor: this.editor,
         char: '/',
+        allowSpaces: true, // "/2 columns", "/to-do list"
+        // Not in code: "C: /f" in a command is just text
+        allow: ({ state, range }) => {
+          const $from = state.doc.resolve(range.from)
+          return !$from.parent.type.spec.code && !$from.marks().some((m) => m.type.spec.code)
+        },
         items: ({ query, editor }) => {
           const q = query.toLowerCase()
           const plannrFiles = uploaderOf(editor) === defaultUploader
@@ -265,6 +272,7 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
+      codeBlock: { enableTabIndentation: true, tabSize: 2 },
       link: { openOnClick: false, autolink: true, defaultProtocol: 'https' }
     }),
     Placeholder.configure({
@@ -282,6 +290,10 @@ export function buildExtensions(docId: string, options: EditorOptions = {}) {
     DetailsSummary,
     DetailsContent,
     ToggleKeys,
+    HeadingBackspace,
+    BlockBackspace,
+    CodeFence,
+    TabKeeper,
     Highlight.configure({ multicolor: true }),
     TextStyle,
     Color,

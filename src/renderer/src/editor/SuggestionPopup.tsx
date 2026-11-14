@@ -87,7 +87,8 @@ export function popupRenderer<V>(emptyText?: string): SuggestionOptions<MenuItem
       const el = renderer?.element as HTMLElement | undefined
       const rect = props.clientRect?.()
       if (!el || !rect) return
-      el.style.display = hidden ? 'none' : ''
+      // Once a space is typed and nothing matches, it's just a sentence that starts with / or @
+      el.style.display = hidden || (!props.items.length && /\s/.test(props.query)) ? 'none' : ''
       const below = rect.bottom + 6
       const height = el.offsetHeight
       el.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - el.offsetWidth - 12))}px`

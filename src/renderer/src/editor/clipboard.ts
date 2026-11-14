@@ -1,6 +1,6 @@
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import { Slice } from '@tiptap/pm/model'
+import { Fragment, Slice, type Schema } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import { copiedSlice, copyHtml, copyText, type CopiedSlice } from '../../../shared/rich-copy'
 import { api } from '../api'
@@ -28,6 +28,15 @@ function copy(view: EditorView, event: ClipboardEvent, cut: boolean): boolean {
   if (html.includes('plannr://file/')) setTimeout(() => void api.app.copyRich(html, text).catch(() => undefined), 150)
   if (cut && view.editable) view.dispatch(state.tr.deleteSelection().scrollIntoView().setMeta('uiEvent', 'cut'))
   return true
+}
+
+/**
+ * Plain text (Notepad, a text message, a web form) as lines. ProseMirror's own reading drops blank lines, which
+ * squashed spaced-out notes together. One trailing line break (copying a whole line) doesn't add an empty line.
+ */
+export function textSlice(text: string, schema: Schema): Slice {
+  const lines = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n')
+  return new Slice(Fragment.fromArray(lines.map((l) => schema.nodes.paragraph.create(null, l ? schema.text(l) : null))), 1, 1)
 }
 
 /** A Plannr copy on the clipboard, rebuilt exactly (null if there's none or this editor can't hold it) */
@@ -72,7 +81,8 @@ export const RichClipboard = Extension.create({
             copy: (view, event) => copy(view, event, false),
             cut: (view, event) => copy(view, event, true)
           },
-          handlePaste: (view, event, slice) => paste(view, event, slice)
+          handlePaste: (view, event, slice) => paste(view, event, slice),
+          clipboardTextParser: (text, $context) => textSlice(text, $context.doc.type.schema)
         }
       })
     ]
