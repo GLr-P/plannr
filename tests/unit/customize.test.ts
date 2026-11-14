@@ -18,7 +18,7 @@ beforeEach(() => {
 
 describe('your statuses', () => {
   it('start as the standard ones, keeping names you gave them before', () => {
-    expect(normalizeStatuses(undefined, { intake: 'Received' }).map((s) => s.label)).toEqual(['Received', 'Diagnosing', 'Waiting on parts', 'Ready for pickup', 'Picked up'])
+    expect(normalizeStatuses(undefined, { intake: 'Received' }).map((s) => s.label)).toEqual(['Received', 'In progress', 'Waiting', 'Ready', 'Done'])
     expect(normalizeStatuses([{ id: 'bad id!' }, { id: 'a', label: 'A', color: 'nope', done: true, ready: true }])).toEqual([{ id: 'a', label: 'A', color: 'gray', done: true, ready: false }])
   })
 

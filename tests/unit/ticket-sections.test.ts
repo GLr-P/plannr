@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseSync } from 'node:sqlite'
 import { migrate, type Db } from '../../src/main/db'
-import { ensureStarterTemplate, ensureTicketLayouts, getDefaultTemplateId, getTemplate, listTemplates } from '../../src/main/services/templates'
+import { createTemplate, ensureStarterTemplate, ensureTicketLayouts, getDefaultTemplateId, getTemplate, listTemplates } from '../../src/main/services/templates'
 import * as tickets from '../../src/main/services/tickets'
 import { extractText } from '../../src/main/services/doc'
 import { copyText } from '../../src/shared/rich-copy'
 import { TICKET_PARTS } from '../../src/shared/api'
-import { presetDoc, presetParts, sectionNode, sectionPreset, sectionsIn, TICKET_PRESETS, TICKET_SECTIONS } from '../../src/shared/ticket-sections'
+import { presetDoc, presetLayout, presetParts, sectionNode, sectionPreset, sectionsIn, TICKET_PRESETS, TICKET_SECTIONS } from '../../src/shared/ticket-sections'
 
 describe('section and preset library', () => {
   it('every preset names real sections, and ids are unique', () => {
@@ -41,15 +41,16 @@ describe('built-in presets in a profile', () => {
     ensureTicketLayouts(db)
     ensureTicketLayouts(db) // a second start doesn't add them again
     const names = listTemplates(db).filter((t) => t.kind === 'ticket').map((t) => t.name)
-    expect(names).toContain('Repair intake') // the old starter stays
-    for (const p of TICKET_PRESETS) expect(names.filter((n) => n === p.name)).toHaveLength(1)
+    expect(names).not.toContain('Repair intake') // repair presets come with the repair setup now
+    for (const p of TICKET_PRESETS.filter((x) => !x.uses)) expect(names.filter((n) => n === p.name)).toHaveLength(1)
     expect(getTemplate(db, getDefaultTemplateId(db)!)!.name).toBe('Quick ticket')
 
     const quick = tickets.createTicket(db)
     expect(quick.parts).toEqual([])
     expect(quick.layout.showPickup).toBe(false)
-    expect(quick.layout.summaryLabel).toBe('What they need')
-    const shop = listTemplates(db).find((t) => t.name === 'Shop repair (drop-off)')!
+    expect(quick.layout.summaryLabel).toBe('Details')
+    const sp = TICKET_PRESETS.find((p) => p.id === 'shop')! // made by the repair setup
+    const shop = createTemplate(db, { name: sp.name, kind: 'ticket', content: presetDoc(sp), layout: presetLayout(sp) })
     const t = tickets.createTicket(db, { templateId: shop.id })
     expect(t.parts).toEqual(['photos', 'warranty', 'pickup']) // the preset's parts, removable on the ticket
     expect([...sectionsIn(t.content)]).toContain('passcode')

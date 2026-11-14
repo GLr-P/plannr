@@ -1,4 +1,4 @@
-import { DEFAULT_DISPLAY, displayPrefs, normalizeStatuses, setDisplayPrefs, TICKET_STATUSES, type DisplayPrefs } from '../shared/api'
+import { DEFAULT_DISPLAY, displayPrefs, normalizeStatuses, REPAIR_STATUSES, setDisplayPrefs, TICKET_STATUSES, type DisplayPrefs } from '../shared/api'
 import type { Db } from './db'
 import { rebuildSearchIndex } from './services/reindex'
 import { getSetting, setSetting } from './services/settings'
@@ -7,6 +7,18 @@ import { getSetting, setSetting } from './services/settings'
 export function pinLegacyPrefix(db: Db): void {
   if (getSetting(db, 'display') !== null) return
   if (db.prepare('SELECT 1 FROM tickets LIMIT 1').get()) setSetting(db, 'display', { ...DEFAULT_DISPLAY, ticketPrefix: 'NT-' })
+}
+
+/**
+ * Once, on installs from before 1.1, when the standard status names became general (New, In progress…): if you never
+ * changed your statuses, the repair ones you had are saved, so nothing you see changes. Run after loadDisplayPrefs.
+ */
+export function pinLegacyStatuses(db: Db, existing: boolean): void {
+  if (!existing) return
+  const saved = getSetting(db, 'display') as Partial<DisplayPrefs> | null
+  if (Array.isArray(saved?.statuses) && saved.statuses.length) return
+  const renamed = saved?.statusLabels ?? {}
+  saveDisplayPrefs(db, { statuses: REPAIR_STATUSES.map((s) => ({ ...s, label: renamed[s.id]?.trim() || s.label })) })
 }
 
 /** Loads the saved display preferences (ticket prefix, currency…) into the shared formatters. */

@@ -134,7 +134,7 @@ describe('Plannr → Google', () => {
     tickets.updateTicket(db, t.id, { pickupOn: '2026-10-12' })
     const plain = cal.createEvent(db, { title: 'Dentist', date: '2026-10-13' })
     await sync()
-    const pickupG = google.list(plannrCal()).find((e) => e.summary === 'Jane Doe pickup')!
+    const pickupG = google.list(plannrCal()).find((e) => e.summary === 'Jane Doe due date')!
     expect(pickupG.description).toBe('— From Plannr: T-0001 (Jane Doe)')
 
     await later()
@@ -198,7 +198,7 @@ describe('Google → Plannr', () => {
     const ev = cal.createEvent(db, { title: 'Order parts', date: '2026-10-10' })
     await sync()
     const cid = plannrCal()
-    const pickupG = google.list(cid).find((e) => e.summary?.includes('pickup'))!
+    const pickupG = google.list(cid).find((e) => e.summary?.includes('due date'))!
     const orderG = google.list(cid).find((e) => e.summary === 'Order parts')!
 
     google.editInGoogle(cid, pickupG.id, { start: { date: '2026-10-15' }, end: { date: '2026-10-16' } })

@@ -1,3 +1,4 @@
+import { NOTE_LIBRARY } from '../../src/shared/note-library'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { DatabaseSync } from 'node:sqlite'
 import { migrate, type Db } from '../../src/main/db'
@@ -14,7 +15,7 @@ beforeEach(() => {
 
 describe('note templates', () => {
   it('starter note templates are created once, separate from ticket templates', () => {
-    templates.ensureStarterTemplate(db)
+    templates.setDefaultTemplateId(db, templates.createTemplate(db, templates.REPAIR_INTAKE_TEMPLATE).id)
     ensureStarterNoteTemplates(db)
     ensureStarterNoteTemplates(db)
     expect(templates.listTemplates(db, 'note')).toHaveLength(STARTER_NOTE_TEMPLATES.length)
@@ -23,8 +24,8 @@ describe('note templates', () => {
   })
 
   it('a note made from a template copies its content and icon (and the text is searchable, table cells included)', () => {
-    ensureStarterNoteTemplates(db)
-    const guide = templates.listTemplates(db, 'note').find((t) => t.name === 'Repair guide')!
+    const def = NOTE_LIBRARY.find((t) => t.name === 'Repair guide')!
+    const guide = templates.createTemplate(db, { ...def, kind: 'note' })
     const n = notes.createNote(db, { templateId: guide.id })
     expect(n.icon).toBe('Wrench')
     expect(JSON.stringify(n.content)).toContain('"type":"callout"')
@@ -33,7 +34,7 @@ describe('note templates', () => {
   })
 
   it('ticket templates can’t be used for notes', () => {
-    templates.ensureStarterTemplate(db)
+    templates.createTemplate(db, templates.REPAIR_INTAKE_TEMPLATE)
     const ticketTpl = templates.listTemplates(db)[0]
     expect(notes.createNote(db, { templateId: ticketTpl.id }).content).toBeNull()
   })

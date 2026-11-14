@@ -168,7 +168,7 @@ export function TicketsView() {
                 <th>Ticket</th>
                 <th>Status</th>
                 <th>Received</th>
-                <th>Pickup</th>
+                <th>Due</th>
                 <th className="num">Price</th>
               </tr>
             </thead>
@@ -203,7 +203,7 @@ export function TicketsView() {
                     <ForChips t={t} />
                   </td>
                   <td>
-                    <div className="cell-main">{t.device || <span className="muted">No device</span>}</div>
+                    <div className="cell-main">{t.device || <span className="muted">Untitled</span>}</div>
                     {t.issue && <div className="cell-sub">{t.issue}</div>}
                   </td>
                   <td>

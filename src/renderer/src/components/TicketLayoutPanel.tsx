@@ -12,7 +12,7 @@ type TextKey = { [K in keyof TicketLayout]: TicketLayout[K] extends string ? K :
  * (customer, dates, price, line items, photos, emails) its tickets show. Hidden parts can still go in the form
  * itself, e.g. "/Customer details".
  */
-export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial<TicketLayout> | null; onChange: (layout: Partial<TicketLayout>) => void }) {
+export function TicketLayoutPanel({ layout: saved, onChange, open }: { layout: Partial<TicketLayout> | null; onChange: (layout: Partial<TicketLayout>) => void; open?: boolean }) {
   const [layout, setLayout] = useState<TicketLayout>(() => ticketLayout(saved))
   const set = (patch: Partial<TicketLayout>): void => {
     const next = { ...layout, ...patch }
@@ -36,7 +36,7 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
   )
 
   return (
-    <details className="layout-panel">
+    <details className="layout-panel" open={open}>
       <summary>
         <PanelTop /> Top of the ticket
         <span className="muted"> · what the title is called and which parts show (customer, dates, price, photos…)</span>
@@ -44,7 +44,7 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
       <div className="layout-grid">
         <div className="layout-group">
           <h4>Title box</h4>
-          {text('titleLabel', 'Name', 'Title')}
+          {text('titleLabel', 'Name', 'Name')}
           {text('titlePlaceholder', 'Example text', 'e.g. Anniversary bouquet')}
         </div>
         <div className="layout-group">
@@ -67,8 +67,8 @@ export function TicketLayoutPanel({ layout: saved, onChange }: { layout: Partial
               {check('showCustomerEmail', 'Email')}
             </div>
           )}
-          {check('showReceived', 'First date', text('receivedLabel', 'Called', 'Received'))}
-          {check('showPickup', 'Second date (goes on the calendar)', text('pickupLabel', 'Called', 'Pickup'))}
+          {check('showReceived', 'First date', text('receivedLabel', 'Called', 'Start date'))}
+          {check('showPickup', 'Second date (goes on the calendar)', text('pickupLabel', 'Called', 'Due date'))}
           {check('showPrice', 'Price and payments')}
           {check('showLines', 'Quote & invoice lines')}
           {check('showPhotos', 'Photos')}

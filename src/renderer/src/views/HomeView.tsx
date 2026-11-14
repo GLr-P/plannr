@@ -381,7 +381,7 @@ export function HomeView() {
                 </span>
                 <StatusPill status={t.status} />
                 <span className={`history-date ${t.pickupOn && t.pickupOn < todayISO() ? 'overdue' : ''}`}>
-                  {t.pickupOn ? `Pickup ${formatDay(t.pickupOn)}` : ''}
+                  {t.pickupOn ? `Due ${formatDay(t.pickupOn)}` : ''}
                 </span>
               </button>
             </li>

@@ -16,6 +16,8 @@ export async function launch(dataDir: string, extraEnv: Record<string, string> =
   env.PLANNR_NEWS_FIXTURES = join(root, 'tests', 'fixtures', 'news') // news never comes from the internet in tests
   // The window opens off the screen without taking focus, so tests don't take over the PC. PLANNR_SHOW=1 to watch.
   if (!process.env.PLANNR_SHOW) env.PLANNR_OFFSCREEN = '1'
+  // Older specs were written for 1.0's repair starter; the walkthrough specs start truly fresh
+  if (!extraEnv.PLANNR_ONBOARDING && !extraEnv.PLANNR_FRESH) env.PLANNR_SEED_LEGACY = '1'
   Object.assign(env, extraEnv)
   // PLANNR_EXE runs the tests against a packaged build (release/win-unpacked/Plannr.exe) instead of out/.
   const app = process.env.PLANNR_EXE

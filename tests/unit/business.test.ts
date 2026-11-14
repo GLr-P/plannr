@@ -80,8 +80,7 @@ describe('tickets', () => {
   })
 
   it('copies the default template into new tickets, independently', () => {
-    templates.ensureStarterTemplate(db)
-    templates.ensureStarterTemplate(db) // only once
+    templates.setDefaultTemplateId(db, templates.createTemplate(db, templates.REPAIR_INTAKE_TEMPLATE).id) // the repair setup's starter
     expect(templates.listTemplates(db).map((t) => t.name)).toEqual(['Repair intake'])
     const a = tickets.createTicket(db)
     expect(a.templateId).toBe(templates.listTemplates(db)[0].id)
@@ -196,7 +195,7 @@ describe('templates and form fields', () => {
   it('removing the default template falls back to another', () => {
     const a = templates.createTemplate(db, { name: 'A' })
     const b = templates.createTemplate(db, { name: 'B' })
-    templates.ensureStarterTemplate(db)
+    templates.setDefaultTemplateId(db, templates.createTemplate(db, templates.REPAIR_INTAKE_TEMPLATE).id)
     const starter = templates.getDefaultTemplateId(db)!
     templates.removeTemplate(db, starter)
     expect([a.id, b.id]).toContain(templates.getDefaultTemplateId(db))

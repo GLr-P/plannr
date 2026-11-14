@@ -904,7 +904,7 @@ function PlacePicker({ onPick }: { onPick: (p: NewsPlace) => void }) {
   )
 }
 
-function NewsSetup({ onDone, onAddPage }: { onDone: (f: NewsFeed) => void; onAddPage: () => void }) {
+export function NewsSetup({ onDone, onAddPage }: { onDone: (f: NewsFeed) => void; onAddPage?: () => void }) {
   const [place, setPlace] = useState<NewsPlace | null>(null)
   const [suggested, setSuggested] = useState<NewsSource[]>([])
   const [link, setLink] = useState('')
@@ -942,13 +942,13 @@ function NewsSetup({ onDone, onAddPage }: { onDone: (f: NewsFeed) => void; onAdd
       {!place ? (
         <>
           <PlacePicker onPick={(p) => void pick(p)} />
-          <p className="small muted news-setup-alt">
+          {onAddPage && <p className="small muted news-setup-alt">
             Or skip local news and{' '}
             <button type="button" className="link-btn" onClick={onAddPage}>
               add a page for games, PC parts or anything else
             </button>
             .
-          </p>
+          </p>}
         </>
       ) : (
         <>

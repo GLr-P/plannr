@@ -42,7 +42,7 @@ describe('display preferences', () => {
     const p = loadDisplayPrefs(db)
     expect(p).toMatchObject({ ticketPrefix: 'AB-', currency: 'CAD', paymentMethods: ['Cash', 'Interac'], statusLabels: { intake: 'Checked in' } })
     expect(statusLabel('intake')).toBe('Checked in')
-    expect(statusLabel('ready')).toBe('Ready for pickup')
+    expect(statusLabel('ready')).toBe('Ready')
   })
 
   it('a new prefix shows in search, and tickets are found by it', () => {

@@ -50,7 +50,7 @@ export function BusinessSettings() {
         <h3>
           Business details {saved && <span className="small muted saved-flash">Saved</span>}
         </h3>
-        <p className="muted">Printed on intake slips, receipts, invoices and device labels (Print on a ticket).</p>
+        <p className="muted">Printed on customer slips, quotes, receipts, invoices and labels (Print on a ticket).</p>
         <div className="business-grid">
           <div className="mfield wide logo-field">
             Logo
@@ -105,7 +105,7 @@ export function BusinessSettings() {
               ))}
             </select>
           </label>
-          {text('intakeTerms', 'Terms on the intake slip', { area: true, wide: true, placeholder: 'e.g. Devices left over 60 days after we call may be recycled. We are not responsible for data loss.' })}
+          {text('intakeTerms', 'Terms on the customer slip', { area: true, wide: true, placeholder: 'e.g. Deposits are non-refundable. Items left over 60 days after we call may be disposed of.' })}
           {text('receiptNote', 'Note at the bottom of receipts', { area: true, wide: true })}
           <label className="mfield">
             Invoices are due

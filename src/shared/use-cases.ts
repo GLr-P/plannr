@@ -1,11 +1,13 @@
-import type { CustomerFieldDef, DocJSON, StatusDef, TicketLayout } from './api'
-import { checklist, field, long, type SectionDef } from './ticket-sections'
+import { REPAIR_STATUSES, type CustomerFieldDef, type StatusDef } from './api'
+import { noteTemplatesFor, type NoteTemplateDef } from './note-library'
+import { presetsFor, sectionsNotFor, type TicketPreset } from './ticket-sections'
 
 /**
- * What people use Plannr for, picked on first launch (requested 2026-11-14: "ask them what they will be using it for
- * and help them customize all the features towards that"). Each one tailors the menu, what tickets and customers
- * are called, the statuses, the sections and a starting preset, and customer fields. All of it stays editable.
- * Pure, so tests check every profile.
+ * What people use Plannr for, picked on first launch (2026-11-14: "ask them what they will be using it for and help
+ * them customize all the features towards that"; then "it should be marketed towards all users… assume you could be
+ * anything"). Each one tailors the menu, what tickets and customers are called, the statuses, which sections + Add
+ * shows, the presets and note templates made, customer fields, and suggested folders and lists. Everything stays
+ * editable. Pure, so tests check every one.
  */
 export interface UseCase {
   id: string
@@ -14,53 +16,60 @@ export interface UseCase {
   blurb: string
   /** Menu items this use needs (the union over everything picked stays in the menu) */
   menu: string[]
-  /** Uses tickets and customers: the business setup applies */
+  /** A business: asks for its name and details for printouts, invoices and money */
   business: boolean
-  /** What tickets and customers are called in the menu */
+  /** What tickets and customers are called in the menu (customers: '' = not used) */
   names?: { tickets: string; customers: string }
   statuses?: StatusDef[]
-  /** Built-in sections that don't fit this work, hidden from + Add (still there to unhide) */
-  hideSections?: string[]
-  /** Sections made for this work */
-  sections?: SectionDef[]
-  /** A starting preset (a ticket template), made the default for new tickets */
-  preset?: { name: string; icon: string; sections: string[]; layout: Partial<TicketLayout> }
+  /** The preset new tickets start from (an id in TICKET_PRESETS; default: Quick ticket) */
+  startPreset?: string
   customerFields?: CustomerFieldDef[]
+  /** Folders worth starting with in Notes (offered in the setup) */
+  folders?: string[]
+  /** Lists worth starting with (offered in the setup) */
+  lists?: string[]
 }
 
 /** Every menu item that can be shown or hidden */
 export const MENU_ITEMS = ['tasks', 'calendar', 'tickets', 'customers', 'money', 'inventory', 'mail', 'notes', 'lists', 'packages', 'news', 'entertainment', 'assistant', 'vault', 'templates']
 
-/** Built-in sections only a computer or phone repair needs */
-const TECH_SECTIONS = ['passcode', 'device', 'specs', 'condition', 'backup', 'diagnosis', 'parts', 'checklist', 'software', 'accounts', 'network', 'remote', 'housecall']
-
 const status = (id: string, label: string, color: string, flags: { done?: boolean; ready?: boolean } = {}): StatusDef => ({ id, label, color, done: Boolean(flags.done), ready: Boolean(flags.ready) })
-const section = (id: string, title: string, icon: string, hint: string, content: () => DocJSON[], group: SectionDef['group'] = 'other'): SectionDef => ({ id, title, icon, group, hint, content: content() })
-const layoutOf = (l: Partial<TicketLayout> & { parts?: TicketLayout['parts'] }): Partial<TicketLayout> => ({
-  showPickup: false,
-  showLines: false,
-  showPhotos: false,
-  showEmails: false,
-  showWarranty: false,
-  ...l
-})
 
 export const USE_CASES: UseCase[] = [
   {
     id: 'personal',
     title: 'Personal & home',
     icon: 'Home',
-    blurb: 'To-dos, your calendar, notes, lists and habits, bills, packages',
+    blurb: 'To-dos, calendar, notes, lists, habits, bills, home projects and trips',
     business: false,
-    menu: ['tasks', 'calendar', 'notes', 'lists', 'money', 'packages', 'vault', 'news', 'entertainment', 'assistant']
+    menu: ['tasks', 'calendar', 'notes', 'lists', 'money', 'packages', 'vault', 'news', 'entertainment', 'assistant'],
+    folders: ['Home', 'Recipes', 'Ideas'],
+    lists: ['Groceries', 'To buy']
   },
   {
     id: 'school',
     title: 'School & studying',
     icon: 'GraduationCap',
-    blurb: 'Assignments and due dates, class notes, study lists',
+    blurb: 'Assignments and due dates, tests, class notes and study plans',
     business: false,
-    menu: ['tasks', 'calendar', 'notes', 'lists', 'templates', 'assistant']
+    menu: ['tasks', 'calendar', 'tickets', 'notes', 'lists', 'templates', 'assistant'],
+    names: { tickets: 'Assignments', customers: '' },
+    statuses: [status('todo', 'To do', 'blue'), status('working', 'Working on it', 'purple'), status('review', 'Checking it over', 'yellow'), status('handed_in', 'Handed in', 'green', { done: true })],
+    startPreset: 'assignment',
+    folders: ['Classes', 'Study guides'],
+    lists: ['School supplies']
+  },
+  {
+    id: 'work',
+    title: 'Work & projects',
+    icon: 'Briefcase',
+    blurb: 'Projects, tasks with priorities, issues and meeting notes',
+    business: false,
+    menu: ['tasks', 'calendar', 'tickets', 'notes', 'lists', 'mail', 'templates', 'assistant'],
+    names: { tickets: 'Projects', customers: '' },
+    statuses: [status('planned', 'Planned', 'blue'), status('in_progress', 'In progress', 'purple'), status('blocked', 'Blocked', 'red'), status('review', 'In review', 'yellow'), status('done', 'Done', 'gray', { done: true })],
+    startPreset: 'project',
+    folders: ['Meetings', 'Projects', 'Reference']
   },
   {
     id: 'repair',
@@ -68,7 +77,37 @@ export const USE_CASES: UseCase[] = [
     icon: 'Wrench',
     blurb: 'Devices in for repair, remote help, house calls, parts and invoices',
     business: true,
-    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'inventory', 'mail', 'notes', 'templates', 'vault', 'assistant']
+    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'inventory', 'mail', 'notes', 'templates', 'vault', 'assistant'],
+    names: { tickets: 'Tickets', customers: 'Customers' },
+    statuses: REPAIR_STATUSES,
+    startPreset: 'repair-quick',
+    folders: ['Repair guides', 'Suppliers']
+  },
+  {
+    id: 'trades',
+    title: 'Trades & home services',
+    icon: 'Hammer',
+    blurb: 'Plumbing, electrical, cleaning, landscaping: site visits, quotes, materials',
+    business: true,
+    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'inventory', 'notes', 'templates', 'assistant'],
+    names: { tickets: 'Jobs', customers: 'Customers' },
+    statuses: [status('requested', 'Quote requested', 'blue'), status('quoted', 'Quoted', 'purple'), status('booked', 'Booked', 'teal'), status('in_progress', 'In progress', 'orange'), status('invoiced', 'Invoiced', 'yellow', { ready: true }), status('paid', 'Paid', 'gray', { done: true })],
+    startPreset: 'site-visit',
+    customerFields: [{ id: 'f_access', label: 'Access notes', kind: 'long' }],
+    folders: ['Job sites', 'Suppliers']
+  },
+  {
+    id: 'design',
+    title: 'Design & creative work',
+    icon: 'Palette',
+    blurb: 'Graphic, web, photo and video projects: briefs, design notes, revisions',
+    business: true,
+    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'mail', 'notes', 'templates', 'assistant'],
+    names: { tickets: 'Projects', customers: 'Clients' },
+    statuses: [status('brief', 'Brief', 'blue'), status('concepts', 'Concepts', 'purple'), status('in_progress', 'In progress', 'orange'), status('review', 'Client review', 'yellow', { ready: true }), status('revisions', 'Revisions', 'pink'), status('delivered', 'Delivered', 'gray', { done: true })],
+    startPreset: 'design-project',
+    customerFields: [{ id: 'f_brand', label: 'Brand colours & fonts', kind: 'long' }],
+    folders: ['Clients', 'Inspiration']
   },
   {
     id: 'art',
@@ -78,87 +117,67 @@ export const USE_CASES: UseCase[] = [
     business: true,
     menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'notes', 'lists', 'templates', 'assistant'],
     names: { tickets: 'Commissions', customers: 'Clients' },
-    statuses: [
-      status('inquiry', 'Inquiry', 'blue'),
-      status('sketching', 'Sketching', 'purple'),
-      status('in_progress', 'In progress', 'orange'),
-      status('revisions', 'Revisions', 'yellow'),
-      status('ready', 'Ready to deliver', 'green', { ready: true }),
-      status('delivered', 'Delivered', 'gray', { done: true })
-    ],
-    hideSections: TECH_SECTIONS,
-    sections: [
-      section('art:brief', 'Brief', 'Lightbulb', 'What they want, the style, references', () => [long('What they want'), field('Style', 'text', { placeholder: 'e.g. watercolour, loose, warm colours' }), long('References', 'Links or notes about reference photos', 2)], 'work'),
-      section('art:size', 'Size & medium', 'Tag', 'Size, medium and framing', () => [field('Size', 'text', { placeholder: 'e.g. 12 × 16 in' }), field('Medium', 'select', { options: ['Digital', 'Acrylic', 'Oil', 'Watercolour', 'Pencil', 'Mixed', 'Other'] }), field('Framing', 'select', { options: ['None', 'Framed', 'Mat only', 'Canvas wrap'] })], 'work'),
-      section('art:revisions', 'Revisions', 'ListChecks', 'How many are included, and what changed', () => [field('Revisions included', 'number'), long('Revision notes', undefined, 3)], 'work'),
-      section('art:usage', 'Usage & rights', 'Shield', 'Personal or commercial use, credit', () => [field('Use', 'select', { options: ['Personal', 'Commercial', 'Print run'] }), field('Credit or tag', 'text')], 'other')
-    ],
-    preset: {
-      name: 'Commission',
-      icon: 'Star',
-      sections: ['art:brief', 'art:size', 'art:revisions', 'payment', 'part:photos', 'part:pickup'],
-      layout: layoutOf({ titleLabel: 'Piece', titlePlaceholder: 'What is it? (e.g. Pet portrait, 12 × 16)', summaryLabel: 'Notes', summaryPlaceholder: 'Anything to remember about it', pickupLabel: 'Due', receivedLabel: 'Started', parts: ['photos', 'pickup'] })
-    },
+    statuses: [status('inquiry', 'Inquiry', 'blue'), status('sketching', 'Sketching', 'purple'), status('in_progress', 'In progress', 'orange'), status('revisions', 'Revisions', 'yellow'), status('ready', 'Ready to deliver', 'green', { ready: true }), status('delivered', 'Delivered', 'gray', { done: true })],
+    startPreset: 'commission',
     customerFields: [
       { id: 'f_handle', label: 'Social handle', kind: 'text' },
       { id: 'f_contact', label: 'Prefers to be contacted by', kind: 'text' }
-    ]
+    ],
+    folders: ['Ideas', 'References']
   },
   {
     id: 'shop',
     title: 'Shop & orders',
     icon: 'ShoppingCart',
-    blurb: 'Orders for a florist, bakery or craft shop: items, delivery, payment',
+    blurb: 'A florist, bakery or craft shop: orders, custom orders, delivery, stock',
     business: true,
     menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'inventory', 'notes', 'templates', 'assistant'],
     names: { tickets: 'Orders', customers: 'Customers' },
-    statuses: [
-      status('new', 'New order', 'blue'),
-      status('preparing', 'Preparing', 'purple'),
-      status('ready', 'Ready', 'green', { ready: true }),
-      status('out', 'Out for delivery', 'orange'),
-      status('completed', 'Completed', 'gray', { done: true })
+    statuses: [status('new', 'New order', 'blue'), status('preparing', 'Preparing', 'purple'), status('ready', 'Ready', 'green', { ready: true }), status('out', 'Out for delivery', 'orange'), status('completed', 'Completed', 'gray', { done: true })],
+    startPreset: 'order',
+    customerFields: [{ id: 'f_usual', label: 'Usual order', kind: 'long' }],
+    folders: ['Products', 'Suppliers']
+  },
+  {
+    id: 'bookings',
+    title: 'Appointments & bookings',
+    icon: 'Calendar',
+    blurb: 'Salons, tutoring, coaching, lessons, pet care: bookings, notes, progress',
+    business: true,
+    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'notes', 'templates', 'assistant'],
+    names: { tickets: 'Bookings', customers: 'Clients' },
+    statuses: [status('requested', 'Requested', 'blue'), status('booked', 'Booked', 'teal'), status('done', 'Done', 'green', { ready: true }), status('paid', 'Paid', 'gray', { done: true }), status('cancelled', 'Cancelled', 'red', { done: true })],
+    startPreset: 'appointment',
+    customerFields: [
+      { id: 'f_birthday', label: 'Birthday', kind: 'date' },
+      { id: 'f_prefs', label: 'Preferences', kind: 'long' }
     ],
-    hideSections: TECH_SECTIONS,
-    sections: [
-      section('shop:items', 'What’s in it', 'Package', 'Items, colours and anything special', () => [long('Items'), field('Colours or style', 'text'), long('Special requests', undefined, 2)], 'order')
-    ],
-    preset: {
-      name: 'Order',
-      icon: 'ShoppingCart',
-      sections: ['shop:items', 'delivery', 'payment', 'part:lines', 'part:pickup'],
-      layout: layoutOf({ titleLabel: 'Order', titlePlaceholder: 'What they ordered', summaryLabel: 'Notes', summaryPlaceholder: 'Occasion or anything to remember', pickupLabel: 'Due', parts: ['lines', 'pickup'] })
-    },
-    customerFields: [{ id: 'f_usual', label: 'Usual order', kind: 'long' }]
+    folders: ['Clients', 'Lesson plans']
+  },
+  {
+    id: 'events',
+    title: 'Events & planning',
+    icon: 'Gift',
+    blurb: 'Weddings, parties and catering: venues, guests, schedules, budgets',
+    business: true,
+    menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'notes', 'lists', 'templates', 'assistant'],
+    names: { tickets: 'Events', customers: 'Clients' },
+    statuses: [status('inquiry', 'Inquiry', 'blue'), status('booked', 'Booked', 'teal'), status('planning', 'Planning', 'purple'), status('final', 'Final details', 'yellow', { ready: true }), status('done', 'Done', 'gray', { done: true })],
+    startPreset: 'event',
+    folders: ['Venues', 'Vendors', 'Ideas']
   },
   {
     id: 'freelance',
-    title: 'Freelance & services',
+    title: 'Freelance & consulting',
     icon: 'Briefcase',
-    blurb: 'Client jobs and projects: quotes, time, invoices, follow-ups',
+    blurb: 'Client jobs: quotes, scope, time, invoices, follow-ups',
     business: true,
     menu: ['tasks', 'calendar', 'tickets', 'customers', 'money', 'mail', 'notes', 'templates', 'assistant'],
     names: { tickets: 'Jobs', customers: 'Clients' },
-    statuses: [
-      status('lead', 'Lead', 'blue'),
-      status('quoted', 'Quoted', 'purple'),
-      status('in_progress', 'In progress', 'orange'),
-      status('waiting', 'Waiting on client', 'yellow', { ready: true }),
-      status('invoiced', 'Invoiced', 'teal'),
-      status('paid', 'Paid', 'gray', { done: true })
-    ],
-    hideSections: TECH_SECTIONS.filter((s) => s !== 'checklist'),
-    sections: [
-      section('job:scope', 'Scope', 'ClipboardList', 'What’s included and what isn’t', () => [long('Included'), long('Not included', undefined, 2)], 'work'),
-      section('job:milestones', 'Milestones', 'ListChecks', 'Steps to tick off', () => [checklist(['Kickoff', 'First draft', 'Feedback', 'Final delivery'])], 'work')
-    ],
-    preset: {
-      name: 'Job',
-      icon: 'Briefcase',
-      sections: ['job:scope', 'job:milestones', 'approval', 'time', 'followup', 'part:lines', 'part:pickup'],
-      layout: layoutOf({ titleLabel: 'Job', titlePlaceholder: 'What’s the job?', summaryLabel: 'Notes', summaryPlaceholder: 'The short version', pickupLabel: 'Due', parts: ['lines', 'pickup'] })
-    },
-    customerFields: [{ id: 'f_billing', label: 'Billing contact', kind: 'text' }]
+    statuses: [status('lead', 'Lead', 'blue'), status('quoted', 'Quoted', 'purple'), status('in_progress', 'In progress', 'orange'), status('waiting', 'Waiting on client', 'yellow', { ready: true }), status('invoiced', 'Invoiced', 'teal'), status('paid', 'Paid', 'gray', { done: true })],
+    startPreset: 'job',
+    customerFields: [{ id: 'f_billing', label: 'Billing contact', kind: 'text' }],
+    folders: ['Clients', 'Proposals']
   },
   {
     id: 'other',
@@ -172,23 +191,43 @@ export const USE_CASES: UseCase[] = [
 
 export const useCase = (id: string): UseCase | undefined => USE_CASES.find((u) => u.id === id)
 
-/** What picking these does, put together: the first business use decides names, statuses and the preset */
-export function planFor(ids: string[]): {
+export interface UsePlan {
   menuHidden: string[]
+  /** The first picked use that's a business (asks for business details) */
   business: UseCase | undefined
-  sections: SectionDef[]
+  /** The first picked use that names tickets (decides names, statuses and where new tickets start) */
+  primary: UseCase | undefined
+  /** Uses tickets at all */
+  tickets: boolean
+  /** Uses customers at all */
+  customers: boolean
+  presets: TicketPreset[]
+  /** Built-in sections that don't fit (hidden from + Add) */
   hideSections: string[]
+  noteTemplates: NoteTemplateDef[]
   customerFields: CustomerFieldDef[]
-} {
-  const picked = ids.map(useCase).filter((u): u is UseCase => Boolean(u))
-  const shown = new Set(picked.flatMap((u) => u.menu))
-  const business = picked.find((u) => u.business)
-  return {
-    menuHidden: picked.length ? MENU_ITEMS.filter((m) => !shown.has(m)) : [],
-    business,
-    sections: business?.sections ?? [],
-    hideSections: business?.hideSections ?? [],
-    customerFields: picked.flatMap((u) => u.customerFields ?? [])
-  }
+  folders: string[]
+  lists: string[]
 }
 
+/** What picking these does, put together */
+export function planFor(ids: string[]): UsePlan {
+  const picked = ids.map(useCase).filter((u): u is UseCase => Boolean(u))
+  const shown = new Set(picked.flatMap((u) => u.menu))
+  const uniq = (xs: string[]): string[] => [...new Set(xs)]
+  const fields = new Map<string, CustomerFieldDef>()
+  for (const f of picked.flatMap((u) => u.customerFields ?? [])) if (!fields.has(f.id)) fields.set(f.id, f)
+  return {
+    menuHidden: picked.length ? MENU_ITEMS.filter((m) => !shown.has(m)) : [],
+    business: picked.find((u) => u.business),
+    primary: picked.find((u) => u.names) ?? picked.find((u) => u.business),
+    tickets: !picked.length || shown.has('tickets'),
+    customers: !picked.length || shown.has('customers'),
+    presets: presetsFor(ids),
+    hideSections: sectionsNotFor(ids),
+    noteTemplates: noteTemplatesFor(ids),
+    customerFields: [...fields.values()],
+    folders: uniq(picked.flatMap((u) => u.folders ?? [])),
+    lists: uniq(picked.flatMap((u) => u.lists ?? []))
+  }
+}

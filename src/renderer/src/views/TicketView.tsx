@@ -5,6 +5,7 @@ import { CalendarCheck, CalendarDays, DollarSign, ExternalLink, Mail, Phone, Rot
 import {
   formatCurrency,
   formatTicketNumber,
+  statusLabel,
   type Customer,
   type CustomerInput,
   type DocJSON,
@@ -28,7 +29,7 @@ import { useMessageDialog } from '../components/MessageDialog'
 import type { PrintKind } from '../../../shared/api'
 import { openPrint } from '../components/PrintPreview'
 
-const PRINT_NAME: Record<PrintKind, string> = { form: 'Form', intake: 'Intake slip', quote: 'Quote', invoice: 'Invoice', receipt: 'Receipt', label: 'Label' }
+const PRINT_NAME: Record<PrintKind, string> = { form: 'Form', intake: 'Customer slip', quote: 'Quote', invoice: 'Invoice', receipt: 'Receipt', label: 'Label' }
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
 import { Backlinks } from '../components/Backlinks'
@@ -129,7 +130,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     if (patch.status) void useData.getState().refreshCounts()
     // Ready for pickup: offer to let the customer know.
     if (patch.status && isReadyStatus(patch.status)) {
-      showToast('Ready for pickup. Let the customer know?', {
+      showToast(`${statusLabel(patch.status)}. Let them know?`, {
         label: 'Message',
         run: async () => openMessage((await loadTemplates()).find((t) => t.id === 'ready'))
       })
@@ -552,7 +553,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   }
                   openMenu({ clientX: r.left, clientY: r.bottom + 4 }, [
                     { label: 'Form (everything, as designed)', icon: <LayoutTemplate />, onSelect: () => print('form') },
-                    { label: 'Intake slip (customer copy)', icon: <ClipboardList />, onSelect: () => print('intake') },
+                    { label: 'Customer slip (their copy)', icon: <ClipboardList />, onSelect: () => print('intake') },
                     { label: 'Quote', icon: <FileTextIcon />, onSelect: () => print('quote') },
                     { label: 'Invoice', icon: <FileCheck />, onSelect: () => print('invoice') },
                     { label: 'Receipt', icon: <Receipt />, onSelect: () => print('receipt') },
@@ -720,7 +721,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   value={fields.pickupOn ?? ''}
                   readOnly={trashed}
                   onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
-                  aria-label="Pickup date"
+                  aria-label="Due date"
                   title={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? `Before ${layout.receivedLabel.toLowerCase()}` : undefined}
                   data-warn={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? 'true' : undefined}
                 />

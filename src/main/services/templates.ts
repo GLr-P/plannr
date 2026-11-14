@@ -1,9 +1,10 @@
 import type { Db } from '../db'
 import { newId, now } from '../db'
-import { REPAIR_TICKET_LAYOUT, ticketLayout, type DocJSON, type Template, type TemplateKind, type TemplateSummary, type TicketLayout } from '../../shared/api'
+import { LEGACY_LAYOUT_NAMES, REPAIR_TICKET_LAYOUT, ticketLayout, type DocJSON, type Template, type TemplateKind, type TemplateSummary, type TicketLayout } from '../../shared/api'
 import { cleanIcon } from './folders'
+import { NOTE_LIBRARY } from '../../shared/note-library'
 import { getSetting, setSetting } from './settings'
-import { presetDoc, presetParts, TICKET_PRESETS, type TicketPreset } from '../../shared/ticket-sections'
+import { presetDoc, presetLayout, presetLayout10, TICKET_PRESETS, untouched10, type TicketPreset } from '../../shared/ticket-sections'
 
 interface TemplateRow {
   id: string
@@ -147,12 +148,40 @@ export const REPAIR_INTAKE: DocJSON = {
   ]
 }
 
-/** Creates the starter "Repair intake" template the first time the app runs. */
+/**
+ * Before 1.1 the first run made a "Repair intake" template. Since then a fresh install starts with the presets for
+ * everyone only (repair ones come with the repair setup); the flag still marks "this install has run before".
+ */
 export function ensureStarterTemplate(db: Db): void {
   if (getSetting(db, 'starterTemplateCreated')) return
-  const template = createTemplate(db, { name: 'Repair intake', content: REPAIR_INTAKE, layout: REPAIR_TICKET_LAYOUT })
-  setSetting(db, DEFAULT_KEY, template.id)
   setSetting(db, 'starterTemplateCreated', true)
+}
+
+/** The repair starter (made by the repair setup if it isn't there) */
+export const REPAIR_INTAKE_TEMPLATE = { name: 'Repair intake', icon: 'Wrench', content: REPAIR_INTAKE, layout: REPAIR_TICKET_LAYOUT }
+
+const LEGACY_KEYS = ['titleLabel', 'titlePlaceholder', 'summaryLabel', 'summaryPlaceholder', 'receivedLabel', 'pickupLabel'] as const
+
+/**
+ * Once, on installs from before 1.1 (when the standard wording became general): templates keep the box names they
+ * showed (anything they took from the old defaults is saved on them), and an install whose setup didn't include
+ * repair gets the general wording on built-in presets it never changed (the 1.0 Quick ticket said "Dell laptop,
+ * iPhone 13"). `existing` = the install ran before this version.
+ */
+export function pinLegacyTemplateWording(db: Db, existing: boolean, uses: string[] | null): void {
+  if (!existing) return
+  const rows = db.prepare("SELECT id, name, layout FROM templates WHERE kind = 'ticket' AND deleted_at IS NULL").all() as unknown as { id: string; name: string; layout: string | null }[]
+  const general = uses !== null && uses.length > 0 && !uses.includes('repair')
+  for (const r of rows) {
+    const saved = parseLayout(r.layout) ?? {}
+    const preset = TICKET_PRESETS.find((p) => p.name === r.name && !p.uses)
+    if (general && preset && untouched10(saved)) {
+      updateTemplate(db, r.id, { layout: { ...saved, ...presetLayout(preset) } })
+      continue
+    }
+    const missing = LEGACY_KEYS.filter((k) => saved[k] === undefined)
+    if (missing.length) updateTemplate(db, r.id, { layout: { ...saved, ...Object.fromEntries(missing.map((k) => [k, LEGACY_LAYOUT_NAMES[k]])) } })
+  }
 }
 
 /**
@@ -171,34 +200,53 @@ function setTicketLayouts(db: Db): void {
   setSetting(db, 'ticketLayoutsSet', true)
 }
 
-/** The boxes at the top for tickets made from a preset: the minimum, with the preset's parts added to the ticket instead */
-export function presetLayout(preset: TicketPreset): Partial<TicketLayout> {
-  return {
-    titleLabel: preset.titleLabel ?? 'Title',
-    titlePlaceholder: preset.titlePlaceholder ?? 'What is it? (e.g. Dell laptop, iPhone 13)',
-    summaryLabel: preset.summaryLabel ?? 'What they need',
-    summaryPlaceholder: preset.summaryPlaceholder ?? 'What’s wrong, or what they’re asking for',
-    pickupLabel: preset.pickupLabel ?? 'Pickup',
-    showPickup: false,
-    showLines: false,
-    showPhotos: false,
-    showEmails: false,
-    showWarranty: false,
-    parts: presetParts(preset)
-  }
-}
-
 /**
- * Once: the built-in presets become ticket templates (they can be edited, renamed or deleted like any other), and
- * new tickets start from "Quick ticket", the minimum (requested 2026-11-14: "I don't want this to be a static ticket").
+ * Once: the presets for everyone become ticket templates (they can be edited, renamed or deleted like any other),
+ * and new tickets start from "Quick ticket", the minimum (requested 2026-11-14: "I don't want this to be a static
+ * ticket"). The setup adds the presets for what you do (use-cases.ts).
  */
 export function ensureTicketPresets(db: Db): void {
   if (getSetting(db, 'ticketPresetsCreated')) return
   let quick: string | null = null
-  for (const preset of TICKET_PRESETS) {
+  for (const preset of TICKET_PRESETS.filter((p) => !p.uses)) {
     const t = createTemplate(db, { name: preset.name, kind: 'ticket', icon: preset.icon, content: presetDoc(preset), layout: presetLayout(preset) })
     if (preset.id === 'quick') quick = t.id
   }
   if (quick) setSetting(db, DEFAULT_KEY, quick)
   setSetting(db, 'ticketPresetsCreated', true)
+}
+
+
+/** The template new tickets start from */
+export function setDefaultTemplateId(db: Db, id: string): void {
+  setSetting(db, DEFAULT_KEY, id)
+}
+
+/**
+ * Tests only (PLANNR_SEED_LEGACY): a fresh data folder set up the way 1.0 left a new install (repair starter, the
+ * 1.0 presets with their wording), so older end-to-end tests keep testing what they were written for. The legacy
+ * pinning then treats it as an install from before 1.1.
+ */
+export function seedLegacyInstall(db: Db): void {
+  if (getSetting(db, 'starterTemplateCreated')) return
+  createTemplate(db, { name: REPAIR_INTAKE_TEMPLATE.name, content: REPAIR_INTAKE, layout: REPAIR_TICKET_LAYOUT })
+  const own10: Record<string, Partial<TicketPreset>> = {
+    build: { titlePlaceholder: 'What’s being built or ordered' },
+    delivery: { titleLabel: 'Order', titlePlaceholder: 'What they ordered', summaryLabel: 'Notes', summaryPlaceholder: 'Anything special about it', pickupLabel: 'Delivery' }
+  }
+  let quick = ''
+  for (const id of ['quick', 'shop', 'remote', 'housecall', 'tuneup', 'security', 'setup', 'build', 'delivery', 'appointment']) {
+    const p = TICKET_PRESETS.find((x) => x.id === id)!
+    const t = createTemplate(db, { name: p.name, kind: 'ticket', icon: p.icon, content: presetDoc(p), layout: { ...presetLayout(p), receivedLabel: 'Received', ...presetLayout10({ sections: [], ...own10[id] }) } })
+    if (id === 'quick') quick = t.id
+  }
+  setSetting(db, DEFAULT_KEY, quick)
+  setSetting(db, 'starterTemplateCreated', true)
+  setSetting(db, 'ticketPresetsCreated', true)
+  setSetting(db, 'ticketLayoutsSet', true)
+  for (const name of ['Meeting notes', 'Checklist', 'Repair guide', 'Supplier', 'Inventory', 'Weekly plan', 'Daily log']) {
+    const n = NOTE_LIBRARY.find((x) => x.name === name)!
+    createTemplate(db, { name, icon: n.icon, content: n.content, kind: 'note' })
+  }
+  setSetting(db, 'starterNoteTemplatesCreated', true)
 }

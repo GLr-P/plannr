@@ -166,7 +166,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
       ]).run() },
   { label: 'Ticket dates', hint: 'The ticket’s two dates (the second goes on the calendar)', icon: <CalendarRange />, keywords: 'dates received pickup delivery due calendar', ticketOnly: true, run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([
-        { type: 'paragraph', content: [linkedField('ticket.receivedOn', 'Received', 'date'), { type: 'text', text: ' ' }, linkedField('ticket.pickupOn', 'Pickup', 'date'), { type: 'text', text: ' ' }] }
+        { type: 'paragraph', content: [linkedField('ticket.receivedOn', 'Start date', 'date'), { type: 'text', text: ' ' }, linkedField('ticket.pickupOn', 'Due date', 'date'), { type: 'text', text: ' ' }] }
       ]).run() },
   { label: 'Form field', hint: 'Fill-in box (for templates)', icon: <FormInput />, keywords: 'field input form box template fill', run: (e, r) =>
       e.chain().focus().deleteRange(r).insertContent([{ type: 'formField', attrs: { label: '', kind: 'text' } }, { type: 'text', text: ' ' }]).run() },

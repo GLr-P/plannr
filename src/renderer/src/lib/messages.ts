@@ -18,7 +18,7 @@ export const PLACEHOLDERS: [string, string][] = [
   ['{status}', 'Status'],
   ['{total}', 'Ticket total'],
   ['{owing}', 'Amount still owing'],
-  ['{pickup}', 'Pickup date'],
+  ['{pickup}', 'Due date'],
   ['{business}', 'Your business name'],
   ['{phone}', 'Your phone number']
 ]
@@ -26,27 +26,27 @@ export const PLACEHOLDERS: [string, string][] = [
 export const DEFAULT_MESSAGES: MessageTemplate[] = [
   {
     id: 'ready',
-    name: 'Ready for pickup',
-    subject: 'Your {device} is ready ({ticket})',
-    body: 'Hi {first_name},\n\nGood news: your {device} is ready for pickup. The total is {total}{owing_line}.\n\nThanks,\n{business}\n{phone}'
+    name: 'It’s ready',
+    subject: '{device} is ready ({ticket})',
+    body: 'Hi {first_name},\n\nGood news: {device} is ready. The total is {total}{owing_line}.\n\nThanks,\n{business}\n{phone}'
   },
   {
     id: 'quote',
     name: 'Quote ready',
-    subject: 'Quote for your {device} ({ticket})',
-    body: 'Hi {first_name},\n\nWe’ve looked at your {device}. The repair will be {total}. Let us know if you’d like us to go ahead.\n\nThanks,\n{business}\n{phone}'
+    subject: 'Quote: {device} ({ticket})',
+    body: 'Hi {first_name},\n\nHere’s the quote for {device}: {total}. Let us know if you’d like us to go ahead.\n\nThanks,\n{business}\n{phone}'
   },
   {
     id: 'parts',
-    name: 'Waiting on parts',
-    subject: 'Update on your {device} ({ticket})',
-    body: 'Hi {first_name},\n\nQuick update: we’re waiting on a part for your {device}. We’ll let you know as soon as it arrives.\n\nThanks,\n{business}'
+    name: 'Quick update',
+    subject: 'Update: {device} ({ticket})',
+    body: 'Hi {first_name},\n\nQuick update on {device}: we’re waiting on something before we can finish. We’ll let you know as soon as it’s ready.\n\nThanks,\n{business}'
   },
   {
     id: 'thanks',
     name: 'Thanks',
     subject: 'Thanks for choosing {business}',
-    body: 'Hi {first_name},\n\nThanks for trusting us with your {device}. If anything isn’t right, just reply to this message.\n\n{business}\n{phone}'
+    body: 'Hi {first_name},\n\nThanks for choosing us for {device}. If anything isn’t right, just reply to this message.\n\n{business}\n{phone}'
   }
 ]
 

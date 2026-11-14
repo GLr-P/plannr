@@ -272,7 +272,16 @@ export interface StatusDef {
   ready: boolean
 }
 export const STATUS_COLORS = ['gray', 'blue', 'purple', 'orange', 'yellow', 'green', 'teal', 'red', 'pink'] as const
+/** The statuses you start with: general words (2026-11-14, "the program should assume you could be anything") */
 export const DEFAULT_STATUSES: StatusDef[] = [
+  { id: 'intake', label: 'New', color: 'blue', done: false, ready: false },
+  { id: 'diagnosing', label: 'In progress', color: 'purple', done: false, ready: false },
+  { id: 'waiting_parts', label: 'Waiting', color: 'orange', done: false, ready: false },
+  { id: 'ready', label: 'Ready', color: 'green', done: false, ready: true },
+  { id: 'picked_up', label: 'Done', color: 'gray', done: true, ready: false }
+]
+/** The repair statuses (the standard ones before 1.1; the repair setup still uses them). Same ids as the standard ones. */
+export const REPAIR_STATUSES: StatusDef[] = [
   { id: 'intake', label: 'Intake', color: 'blue', done: false, ready: false },
   { id: 'diagnosing', label: 'Diagnosing', color: 'purple', done: false, ready: false },
   { id: 'waiting_parts', label: 'Waiting on parts', color: 'orange', done: false, ready: false },
@@ -613,11 +622,11 @@ export const PRINT_STYLES = [
 
 export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   showTitle: true,
-  titleLabel: 'Title',
-  titlePlaceholder: 'What is it?',
+  titleLabel: 'Name',
+  titlePlaceholder: 'Give it a name',
   showSummary: true,
   summaryLabel: 'Details',
-  summaryPlaceholder: 'A short description',
+  summaryPlaceholder: 'What it’s about',
   showCustomer: true,
   showCustomerPhone: true,
   showCustomerEmail: true,
@@ -630,9 +639,9 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   priceLabel: 'Price',
   warrantyLabel: 'Warranty',
   showReceived: true,
-  receivedLabel: 'Received',
+  receivedLabel: 'Start date',
   showPickup: true,
-  pickupLabel: 'Pickup',
+  pickupLabel: 'Due date',
   showPrice: true,
   showLines: true,
   showPhotos: true,
@@ -641,6 +650,16 @@ export const DEFAULT_TICKET_LAYOUT: TicketLayout = {
   parts: [],
   printStyle: 'modern',
   printAccent: '#000000'
+}
+
+/** The box names every template got by default before 1.1; installs from then keep them (see pinLegacyWording) */
+export const LEGACY_LAYOUT_NAMES: Partial<TicketLayout> = {
+  titleLabel: 'Title',
+  titlePlaceholder: 'What is it?',
+  summaryLabel: 'Details',
+  summaryPlaceholder: 'A short description',
+  receivedLabel: 'Received',
+  pickupLabel: 'Pickup'
 }
 
 /** The starter "Repair intake" template's wording (and tickets from before layouts existed) */
@@ -1877,6 +1896,21 @@ export interface PrintJob extends PrintSetup {
 
 // ---------- Updates ----------
 
+/** The Troubleshootr inbox: scan reports sent from the diagnostic tool, collected into tickets and notes */
+export interface TroubleshootrStatus {
+  /** Sync is on (the inbox works through the sync service) */
+  syncOn: boolean
+  connected: boolean
+  /** Paste this into Troubleshootr (Send tab), once; null while not connected */
+  link: string | null
+  /** Another synced PC holds the inbox (its name); connecting here moves it */
+  elsewhere: string | null
+  lastCheckAt: number | null
+  /** What the last checks brought in, newest first */
+  recent: { kind: 'ticket' | 'note'; id: string; title: string; created: boolean; at: number }[]
+  error: string | null
+}
+
 export interface SyncStatus {
   enabled: boolean
   /** The sync server's address, while on */
@@ -2301,6 +2335,14 @@ export interface PlannrApi {
     /** Stop syncing on this device (nothing is deleted) */
     disconnect(): Promise<SyncStatus>
   }
+  troubleshootr: {
+    status(): Promise<TroubleshootrStatus>
+    /** Turns the inbox on with new keys (an earlier link stops working) */
+    connect(): Promise<TroubleshootrStatus>
+    disconnect(): Promise<TroubleshootrStatus>
+    /** Collects waiting reports now */
+    checkNow(): Promise<TroubleshootrStatus>
+  }
   updates: {
     status(): Promise<UpdateStatus>
     check(): Promise<UpdateStatus>
@@ -2439,6 +2481,7 @@ export const API_SHAPE = {
   print: ['ticket', 'pdf', 'send', 'savePdf'],
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
+  troubleshootr: ['status', 'connect', 'disconnect', 'checkNow'],
   updates: ['status', 'check', 'install'],
   app: ['info', 'openDataFolder', 'copyRich', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification', 'getTimeZone', 'setTimeZone']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }

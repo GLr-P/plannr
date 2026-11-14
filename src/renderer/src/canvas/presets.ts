@@ -35,7 +35,7 @@ export const titleItem = (y: number): DocJSON => field({ x: M, y, w: FULL, h: 62
 
 export const dateItems = (y: number): DocJSON[] => [
   field({ x: M, y, w: HALF, h: 62 }, { label: 'Received', link: 'ticket.receivedOn', kind: 'date' }),
-  field({ x: M + HALF + 16, y, w: HALF, h: 62 }, { label: 'Pickup', link: 'ticket.pickupOn', kind: 'date' })
+  field({ x: M + HALF + 16, y, w: HALF, h: 62 }, { label: 'Due date', link: 'ticket.pickupOn', kind: 'date' })
 ]
 
 export function imageItem(y: number, src: string, alt: string, ratio: number): DocJSON {

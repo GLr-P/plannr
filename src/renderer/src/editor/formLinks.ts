@@ -13,7 +13,7 @@ export const FIELD_LINKS = [
   { id: 'ticket.device', label: 'Ticket title', kind: 'text' },
   { id: 'ticket.issue', label: 'Ticket summary', kind: 'text' },
   { id: 'ticket.receivedOn', label: 'Received date', kind: 'date' },
-  { id: 'ticket.pickupOn', label: 'Pickup date', kind: 'date' },
+  { id: 'ticket.pickupOn', label: 'Due date', kind: 'date' },
   { id: 'ticket.number', label: 'Ticket number', kind: 'text', readOnly: true },
   { id: 'ticket.price', label: 'Ticket price', kind: 'text', readOnly: true }
 ] as const

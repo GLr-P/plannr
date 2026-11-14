@@ -51,6 +51,24 @@ import {
   Wifi,
   Wrench,
   Zap,
+  AlertTriangle,
+  BookOpen,
+  CalendarCheck,
+  CalendarDays,
+  CheckSquare,
+  Hammer,
+  Image,
+  MessageSquare,
+  Palette,
+  Paperclip,
+  RefreshCw,
+  Ruler,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  ThumbsUp,
+  Utensils,
   type LucideIcon
 } from 'lucide-react'
 
@@ -106,7 +124,25 @@ export const ICONS: Record<string, LucideIcon> = {
   Archive,
   Tag,
   Coffee,
-  Gift
+  Gift,
+  AlertTriangle,
+  BookOpen,
+  CalendarCheck,
+  CalendarDays,
+  CheckSquare,
+  Hammer,
+  Image,
+  MessageSquare,
+  Palette,
+  Paperclip,
+  RefreshCw,
+  Ruler,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  ThumbsUp,
+  Utensils
 }
 
 /** Colour palette ids; the actual colours are CSS variables (--c-<id>) with light and dark variants. */

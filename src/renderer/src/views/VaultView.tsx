@@ -110,7 +110,7 @@ function PasscodeFields({
   )
 }
 
-function SetupScreen({ onDone }: { onDone: (recoveryKey: string) => void }) {
+export function SetupScreen({ onDone }: { onDone: (recoveryKey: string) => void }) {
   const [pass, setPass] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
@@ -155,7 +155,7 @@ function SetupScreen({ onDone }: { onDone: (recoveryKey: string) => void }) {
   )
 }
 
-function RecoveryKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: () => void }) {
+export function RecoveryKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: () => void }) {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
   return (

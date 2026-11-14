@@ -252,7 +252,7 @@ export function exportAll(db: Db, dataDir: string, outDir: string): ExportResult
   writeFileSync(
     join(folder, 'Tickets.csv'),
     csv(
-      ['Ticket', 'Customer', 'Device', 'Issue', 'Status', 'Received', 'Pickup', 'Price', 'Paid', 'Details'],
+      ['Ticket', 'Customer', 'Title', 'Details', 'Status', 'Start date', 'Due date', 'Price', 'Paid', 'Details'],
       q<{ number: number; name: string | null; device: string; issue: string; status: string; received_on: string | null; pickup_on: string | null; price_cents: number | null; paid: number; content_text: string }>(
         `SELECT t.*, c.name, (SELECT COALESCE(SUM(amount_cents), 0) FROM transactions p WHERE p.ticket_id = t.id AND p.type = 'income' AND p.deleted_at IS NULL) AS paid
          FROM tickets t LEFT JOIN customers c ON c.id = t.customer_id WHERE t.deleted_at IS NULL ORDER BY t.number`

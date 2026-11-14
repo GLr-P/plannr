@@ -3,60 +3,51 @@ import { useUi } from '../store/ui'
 import { saveDisplay } from '../store/display'
 import { useSections } from '../store/sections'
 import { useCustomerLayout } from '../store/customerLayout'
-import { displayPrefs, type DocJSON } from '../../../shared/api'
-import { sectionPreset } from '../../../shared/ticket-sections'
+import { DEFAULT_STATUSES, displayPrefs } from '../../../shared/api'
+import { presetDoc, presetLayout, TAGGED_SECTIONS, ticketPreset, TICKET_PRESETS, untouched10, type TicketPreset } from '../../../shared/ticket-sections'
 import { planFor } from '../../../shared/use-cases'
 
 /**
- * Tailors Plannr to what it's used for (first-launch setup): the menu, names for tickets and customers, statuses,
- * sections and a starting preset (made the default), customer fields. Running it again with other choices updates
- * the same things; presets already made aren't made twice.
+ * Tailors Plannr to what it's used for (the setup walkthrough): the menu, names for tickets and customers, statuses,
+ * which sections + Add shows, the presets and note templates for that work (made once, never twice), where new tickets
+ * start, and customer fields. Running it again with other choices updates the same things; nothing you made is removed.
  */
 export async function applyUseCases(ids: string[]): Promise<void> {
   const plan = planFor(ids)
   await api.settings.set('useCases', ids)
   useUi.getState().setPref('navHidden', plan.menuHidden.join(','))
-  const b = plan.business
-  if (!b) return
 
+  const p = plan.primary
   const names = displayPrefs().navNames ?? {}
   await saveDisplay({
-    navNames: { ...names, tickets: b.names?.tickets ?? '', customers: b.names?.customers ?? '' },
-    ...(b.statuses ? { statuses: b.statuses } : {})
+    navNames: { ...names, tickets: p?.names?.tickets && p.names.tickets !== 'Tickets' ? p.names.tickets : '', customers: p?.names?.customers && p.names.customers !== 'Customers' ? p.names.customers : '' },
+    statuses: p?.statuses ?? DEFAULT_STATUSES
   })
 
-  // Sections made for this work, and the built-in ones it doesn't need hidden from + Add
+  // Sections that don't fit are hidden from + Add (a previous choice's are decided again; ones you hid stay hidden)
   const sections = useSections.getState()
   await sections.load()
   const lib = useSections.getState().lib
-  const ownIds = new Set(plan.sections.map((s) => s.id))
-  await sections.save({
-    custom: [...lib.custom.filter((c) => !ownIds.has(c.id)), ...plan.sections],
-    // Tech sections a previous choice hid come back unless this choice hides them; other hidden ones stay hidden
-    hidden: [...new Set([...lib.hidden.filter((h) => !TECHISH.has(h)), ...plan.hideSections])]
-  })
+  await sections.save({ ...lib, hidden: [...new Set([...lib.hidden.filter((h) => !TAGGED_SECTIONS.has(h)), ...plan.hideSections])] })
 
-  // A starting preset, made the default for new tickets
-  if (b.preset) {
-    const templates = await api.templates.list('ticket')
-    let id = templates.find((t) => t.name === b.preset!.name)?.id
-    if (!id) {
-      const blocks: DocJSON[] = []
-      for (const sid of b.preset.sections) {
-        const own = plan.sections.find((s) => s.id === sid)
-        const builtIn = sectionPreset(sid)
-        if (own) blocks.push({ type: 'ticketSection', attrs: { preset: own.id, title: own.title }, content: own.content })
-        else if (builtIn && !builtIn.part) blocks.push({ type: 'ticketSection', attrs: { preset: builtIn.id, title: builtIn.title }, content: builtIn.content?.() ?? [{ type: 'paragraph' }] })
-      }
-      const created = await api.templates.create({ name: b.preset.name, kind: 'ticket', icon: b.preset.icon, content: { type: 'doc', content: [...blocks, { type: 'paragraph' }] }, layout: b.preset.layout })
-      id = created.id
+  // Presets for this work, made once; the general ones lose 1.0's repair wording if you never changed them
+  const templates = await api.templates.list('ticket')
+  const byName = new Map(templates.map((t) => [t.name, t.id]))
+  for (const preset of plan.presets) if (!byName.has(preset.name)) byName.set(preset.name, (await makePreset(preset)).id)
+  if (!ids.includes('repair')) {
+    for (const preset of TICKET_PRESETS.filter((x) => !x.uses)) {
+      const id = byName.get(preset.name)
+      const t = id ? await api.templates.get(id) : null
+      if (t && untouched10(t.layout)) await api.templates.update(t.id, { layout: { ...t.layout, ...presetLayout(preset) } })
     }
-    await api.settings.set('defaultTemplateId', id)
-  } else {
-    // Repair or "something else": the standard Quick ticket
-    const quick = (await api.templates.list('ticket')).find((t) => t.name === 'Quick ticket')
-    if (quick) await api.settings.set('defaultTemplateId', quick.id)
   }
+  const start = ticketPreset(p?.startPreset ?? 'quick') ?? ticketPreset('quick')!
+  const startId = byName.get(start.name) ?? byName.get('Quick ticket')
+  if (startId) await api.settings.set('defaultTemplateId', startId)
+
+  // Note templates for this work, made once
+  const notes = new Set((await api.templates.list('note')).map((t) => t.name))
+  for (const t of plan.noteTemplates) if (!notes.has(t.name)) await api.templates.create({ name: t.name, kind: 'note', icon: t.icon, content: t.content })
 
   // Customer fields this work tends to need
   if (plan.customerFields.length) {
@@ -68,5 +59,6 @@ export async function applyUseCases(ids: string[]): Promise<void> {
   }
 }
 
-/** Sections a previous choice may have hidden; a new choice decides again */
-const TECHISH = new Set(['passcode', 'device', 'specs', 'condition', 'backup', 'diagnosis', 'parts', 'checklist', 'software', 'accounts', 'network', 'remote', 'housecall'])
+/** A preset as a ticket template */
+export const makePreset = (preset: TicketPreset): Promise<{ id: string }> =>
+  api.templates.create({ name: preset.name, kind: 'ticket', icon: preset.icon, content: presetDoc(preset), layout: presetLayout(preset) })

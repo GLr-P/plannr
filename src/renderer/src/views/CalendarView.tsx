@@ -625,7 +625,7 @@ function TicketTray({ refreshKey }: { refreshKey: number }) {
 
   return (
     <aside className="ticket-tray" aria-label="Open tickets">
-      <div className="tray-hint">Drag a ticket onto a day to set its pickup.</div>
+      <div className="tray-hint">Drag a ticket onto a day to set its due date.</div>
       <div className="filter-field tray-search">
         <Search />
         <input value={query} placeholder="Find a ticket…" onChange={(e) => setQuery(e.target.value)} aria-label="Find a ticket" />
@@ -646,7 +646,7 @@ function TicketTray({ refreshKey }: { refreshKey: number }) {
           >
             <div className="tray-item-top">
               <span className="mono">{formatTicketNumber(t.number)}</span>
-              {t.pickupOn && <span className="tray-pickup">Pickup {formatDay(t.pickupOn)}</span>}
+              {t.pickupOn && <span className="tray-pickup">Due {formatDay(t.pickupOn)}</span>}
             </div>
             <div className="tray-item-main">{t.customerName || 'No customer'}</div>
             <div className="tray-item-sub">{t.device || 'Untitled'}</div>
