@@ -96,12 +96,11 @@ describe('line items and inventory', () => {
       invoiceNote: 'Thank you!',
       invoiceDueDays: 15
     }
-    const customer = { id: 'c', name: 'Randy', phone: '', email: '', address: '11655 Example Way\nRichmond BC', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }
+    const customer = { id: 'c', name: 'Randy', phone: '', email: '', address: '11655 Example Way', company: 'Example Refinishers Ltd', city: 'Richmond', region: 'British Columbia', postalCode: 'V6V 2M1', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }
     const html = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer, payments: [], business, logo: null, items: items.listItems(db, t.id) }, '2026-09-05')
     expect(html).toContain('INVOICE')
     expect(html).toContain('GST Registration No.')
     expect(html).toContain('Bill to')
-    expect(html).toContain('11655 Example Way<br>Richmond BC')
     expect(html).toContain('Terms: Net 15')
     expect(html).toContain('Invoice date: Sep 5, 2026')
     expect(html).toContain('Due date: Sep 20, 2026')
@@ -111,8 +110,11 @@ describe('line items and inventory', () => {
     expect(html).toContain('Pay by cash or e-transfer to pay@example.com')
     expect(html).toContain('<p class="inv-note">Thank you!</p>')
     expect(html).not.toContain('Note to customer')
-    // Only known customer details: no phone/email lines here, and no Bill to at all without a customer
-    expect(html).toContain('<h4>Bill to</h4><div class="big"><div>Randy</div><div>11655 Example Way<br>Richmond BC</div></div></div>')
+    // Business, street, "Town, Province", postal code; only known details (no phone/email lines here)
+    expect(html).toContain('<h4>Bill to</h4><div class="big"><div>Randy</div><div>Example Refinishers Ltd</div><div>11655 Example Way</div><div>Richmond, British Columbia</div><div>V6V 2M1</div></div></div>')
+    const noTown = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer: { ...customer, company: '', city: '', region: '' }, payments: [], business, logo: null, items: [] }, '2026-09-05')
+    expect(noTown).toContain('<div>Randy</div><div>11655 Example Way</div><div>V6V 2M1</div></div>')
+    // And no Bill to at all without a customer
     const anonymous = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer: null, payments: [], business, logo: null, items: items.listItems(db, t.id) }, '2026-09-05')
     expect(anonymous).not.toContain('Bill to')
     expect(anonymous).toContain('inv-band solo')

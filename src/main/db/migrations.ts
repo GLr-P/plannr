@@ -531,5 +531,12 @@ export const migrations: string[] = [
   DROP TRIGGER IF EXISTS sync_settings_ins;
   DROP TRIGGER IF EXISTS sync_settings_upd;
   ${settingsTriggersSql()}
+  `,
+
+  /* 30: customers get a business name, town, province/state and postal code (synced with the rest of the row) */ `
+  ALTER TABLE customers ADD COLUMN company TEXT NOT NULL DEFAULT '';
+  ALTER TABLE customers ADD COLUMN city TEXT NOT NULL DEFAULT '';
+  ALTER TABLE customers ADD COLUMN region TEXT NOT NULL DEFAULT '';
+  ALTER TABLE customers ADD COLUMN postal_code TEXT NOT NULL DEFAULT '';
   `
 ]

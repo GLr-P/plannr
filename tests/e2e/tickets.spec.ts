@@ -134,7 +134,11 @@ test('customer page shows details and repair history; new ticket from there keep
   await row.click()
 
   await expect(page.getByLabel('Customer name')).toHaveValue('Jane Doe')
-  await page.getByLabel('Address').fill('12 Main St, Springfield')
+  await page.getByLabel('Address').fill('12 Main St')
+  await page.getByLabel('Business', { exact: true }).fill('Doe Landscaping')
+  await page.getByLabel('Town').fill('Springfield')
+  await page.getByLabel('Province').fill('BC')
+  await page.getByLabel('Postal code').fill('V0H 1V1')
   await expect(page.locator('.history-row')).toHaveCount(1)
   await expect(page.locator('.history-row')).toContainText('T-0001')
   await saved()
@@ -228,6 +232,7 @@ test('business details print on the intake slip and receipt; the passcode is lef
   const slip = await printed('Intake slip')
   expect(slip).toContain('Nano Tech Services')
   expect(slip).toContain('Jane Doe')
+  expect(slip).toContain('<div>Doe Landscaping</div><div>12 Main St</div><div>Springfield, BC</div><div>V0H 1V1</div>')
   expect(slip).toContain('Scuffed corners')
   expect(slip).not.toContain('1234') // passcodes never go on paper
 

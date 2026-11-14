@@ -128,10 +128,20 @@ function header(b: BusinessInfo, logo: string | null): string {
   </header>`
 }
 
+/** The customer's postal address as printed lines: business, street, "Town, Province", postal code (only what's filled in). */
+export function addressLines(c: Customer | null): string[] {
+  if (!c) return []
+  const town = [c.city, c.region]
+    .map((v) => (v ?? '').trim())
+    .filter(Boolean)
+    .join(', ')
+  return [c.company, c.address, town, c.postalCode].map((v) => (v ?? '').trim()).filter(Boolean)
+}
+
 function customerBlock(t: Ticket, c: Customer | null): string {
   const name = c?.name || t.customerName
   if (!name) return ''
-  const rows = [c?.phone || t.customerPhone, c?.email || t.customerEmail, c?.address].filter(Boolean).map((v) => `<div>${lines(v!)}</div>`)
+  const rows = [...addressLines(c), c?.phone || t.customerPhone, c?.email || t.customerEmail].filter(Boolean).map((v) => `<div>${lines(v!)}</div>`)
   return `<section><h3>Customer</h3><div class="strong">${esc(name)}</div>${rows.join('')}</section>`
 }
 
@@ -381,7 +391,7 @@ export function invoiceHtml(d: PrintData, today = localToday()): string {
   const contact = [b.email, b.phone, b.website].filter(Boolean).map((v) => `<div>${esc(v)}</div>`).join('')
   // Only what's known about the customer: no empty lines or placeholders
   const billTo = (c?.name || t.customerName || '').trim()
-  const billRows = [c?.address, c?.phone || t.customerPhone, c?.email || t.customerEmail]
+  const billRows = [...addressLines(c), c?.phone || t.customerPhone, c?.email || t.customerEmail]
     .map((v) => (v ?? '').trim())
     .filter(Boolean)
     .map((v) => `<div>${lines(v)}</div>`)

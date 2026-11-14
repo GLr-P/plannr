@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { Building2, Mail, MapPin, Phone } from 'lucide-react'
 import { formatTicketNumber, type Customer, type CustomerInput, type TicketSummary } from '../../../shared/api'
 import { api } from '../api'
 import { useData } from '../store/data'
@@ -93,6 +93,12 @@ function CustomerPage({ customer }: { customer: Customer }) {
         <div className="props one-col">
           <label className="prop">
             <span className="prop-label">
+              <Building2 /> Business
+            </span>
+            <input className="prop-input" value={c.company} placeholder="Add business name (if a business)" onChange={(e) => set({ company: e.target.value })} aria-label="Business" />
+          </label>
+          <label className="prop">
+            <span className="prop-label">
               <Phone /> Phone
             </span>
             <input className="prop-input" value={c.phone} placeholder="Add phone" onChange={(e) => set({ phone: e.target.value })} aria-label="Phone" />
@@ -107,7 +113,25 @@ function CustomerPage({ customer }: { customer: Customer }) {
             <span className="prop-label">
               <MapPin /> Address
             </span>
-            <input className="prop-input" value={c.address} placeholder="Add address" onChange={(e) => set({ address: e.target.value })} aria-label="Address" />
+            <input className="prop-input" value={c.address} placeholder="Add street address" onChange={(e) => set({ address: e.target.value })} aria-label="Address" />
+          </label>
+          <label className="prop">
+            <span className="prop-label">
+              <MapPin /> Town
+            </span>
+            <input className="prop-input" value={c.city} placeholder="Add town or city" onChange={(e) => set({ city: e.target.value })} aria-label="Town" />
+          </label>
+          <label className="prop">
+            <span className="prop-label">
+              <MapPin /> Province
+            </span>
+            <input className="prop-input" value={c.region} placeholder="Add province or state" onChange={(e) => set({ region: e.target.value })} aria-label="Province" />
+          </label>
+          <label className="prop">
+            <span className="prop-label">
+              <MapPin /> Postal code
+            </span>
+            <input className="prop-input" value={c.postalCode} placeholder="Add postal code" onChange={(e) => set({ postalCode: e.target.value })} aria-label="Postal code" />
           </label>
         </div>
 

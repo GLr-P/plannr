@@ -147,6 +147,10 @@ export interface CustomerInput {
   phone?: string
   email?: string
   address?: string
+  company?: string
+  city?: string
+  region?: string
+  postalCode?: string
   notes?: string
 }
 
@@ -155,7 +159,15 @@ export interface Customer {
   name: string
   phone: string
   email: string
+  /** Street address */
   address: string
+  /** Business name, when the customer is a business */
+  company: string
+  /** Town or city */
+  city: string
+  /** Province or state */
+  region: string
+  postalCode: string
   notes: string
   createdAt: number
   updatedAt: number

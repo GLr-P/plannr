@@ -6,7 +6,7 @@ import { reindexCustomer } from './customers'
 import { reindexTicket } from './tickets'
 
 /** Bump when what gets indexed changes; the index is then rebuilt once on next start. */
-export const SEARCH_INDEX_VERSION = 3
+export const SEARCH_INDEX_VERSION = 4
 
 /** Refills the full-text index from the real tables (it's derived data, safe to rebuild any time). */
 export function rebuildSearchIndex(db: Db): void {

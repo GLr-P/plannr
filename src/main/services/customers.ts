@@ -11,6 +11,10 @@ interface CustomerRow {
   phone: string
   email: string
   address: string
+  company: string
+  city: string
+  region: string
+  postal_code: string
   notes: string
   created_at: number
   updated_at: number
@@ -25,6 +29,10 @@ const toCustomer = (r: CustomerRow): Customer => ({
   phone: r.phone,
   email: r.email,
   address: r.address,
+  company: r.company ?? '',
+  city: r.city ?? '',
+  region: r.region ?? '',
+  postalCode: r.postal_code ?? '',
   notes: r.notes,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
@@ -36,7 +44,7 @@ export const customerName = (name: string): string => name.trim() || 'Unnamed cu
 export function reindexCustomer(db: Db, id: string): void {
   const r = db.prepare('SELECT * FROM customers WHERE id = ?').get(id) as CustomerRow | undefined
   if (!r || r.deleted_at !== null) return unindexEntity(db, id)
-  const body = [r.phone, r.email, r.address, r.notes].filter(Boolean).join(' · ')
+  const body = [r.company, r.phone, r.email, r.address, r.city, r.postal_code, r.notes].filter(Boolean).join(' · ')
   indexEntity(db, 'customer', id, customerName(r.name), body, r.updated_at, digitsOnly(r.phone))
 }
 
@@ -44,15 +52,15 @@ export function reindexCustomer(db: Db, id: string): void {
  * SQL conditions matching every word of `query` against name/email/address/phone.
  * Phone matching ignores formatting: "5551234" matches "(555) 123-4…".
  */
-function queryConditions(query: string | undefined, cols: { name: string; email: string; address: string; digits: string }): {
+function queryConditions(query: string | undefined, cols: { name: string; email: string; address: string; company: string; digits: string }): {
   sql: string[]
   params: string[]
 } {
   const sql: string[] = []
   const params: string[] = []
   for (const word of (query ?? '').trim().split(/\s+/).filter(Boolean)) {
-    const ors = [`${cols.name} LIKE ? ESCAPE '\\'`, `${cols.email} LIKE ? ESCAPE '\\'`, `${cols.address} LIKE ? ESCAPE '\\'`]
-    params.push(likeTerm(word), likeTerm(word), likeTerm(word))
+    const ors = [`${cols.name} LIKE ? ESCAPE '\\'`, `${cols.email} LIKE ? ESCAPE '\\'`, `${cols.address} LIKE ? ESCAPE '\\'`, `${cols.company} LIKE ? ESCAPE '\\'`]
+    params.push(likeTerm(word), likeTerm(word), likeTerm(word), likeTerm(word))
     const digits = digitsOnly(word)
     if (digits.length >= 3) {
       ors.push(`${cols.digits} LIKE ?`)
@@ -64,7 +72,7 @@ function queryConditions(query: string | undefined, cols: { name: string; email:
 }
 
 export function listCustomers(db: Db, opts: { query?: string; limit?: number } = {}): CustomerSummary[] {
-  const q = queryConditions(opts.query, { name: 'c.name', email: 'c.email', address: 'c.address', digits: 'c.phone_digits' })
+  const q = queryConditions(opts.query, { name: 'c.name', email: 'c.email', address: 'c.address', company: 'c.company', digits: 'c.phone_digits' })
   const where = ['c.deleted_at IS NULL', ...q.sql].join(' AND ')
   const limit = Math.min(Math.max(opts.limit ?? 500, 1), 2000)
   const rows = db
@@ -92,9 +100,9 @@ export function createCustomer(db: Db, input: CustomerInput = {}): Customer {
   tx(db, () => {
     const phone = clean(input.phone, 50)
     db.prepare(
-      `INSERT INTO customers (id, name, phone, phone_digits, email, address, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, clean(input.name, 200), phone, digitsOnly(phone), clean(input.email, 200), clean(input.address), clean(input.notes, 20000), t, t)
+      `INSERT INTO customers (id, name, phone, phone_digits, email, address, company, city, region, postal_code, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, clean(input.name, 200), phone, digitsOnly(phone), clean(input.email, 200), clean(input.address), clean(input.company, 200), clean(input.city, 100), clean(input.region, 100), clean(input.postalCode, 20), clean(input.notes, 20000), t, t)
     reindexCustomer(db, id)
   })
   return getCustomer(db, id)!
@@ -116,6 +124,10 @@ export function updateCustomer(db: Db, id: string, patch: CustomerInput): Custom
     }
     if (patch.email !== undefined) set('email', patch.email.slice(0, 200))
     if (patch.address !== undefined) set('address', patch.address.slice(0, 500))
+    if (patch.company !== undefined) set('company', patch.company.slice(0, 200))
+    if (patch.city !== undefined) set('city', patch.city.slice(0, 100))
+    if (patch.region !== undefined) set('region', patch.region.slice(0, 100))
+    if (patch.postalCode !== undefined) set('postal_code', patch.postalCode.slice(0, 20))
     if (patch.notes !== undefined) set('notes', patch.notes.slice(0, 20000))
     sets.push('updated_at = ?')
     params.push(now(), id)

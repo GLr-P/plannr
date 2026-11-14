@@ -47,7 +47,7 @@ const canvas: DocJSON = {
 }
 const data = (content: DocJSON) => ({
   ticket: ticket(content),
-  customer: { id: 'c1', name: 'Rosa Lima', phone: '555-0123', email: '', address: '9 Elm St', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null },
+  customer: { id: 'c1', name: 'Rosa Lima', phone: '555-0123', email: '', address: '9 Elm St', company: '', city: '', region: '', postalCode: '', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null },
   fileData: () => null,
   photos: [],
   linesHtml: '',

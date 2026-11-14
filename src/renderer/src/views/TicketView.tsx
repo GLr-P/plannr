@@ -150,7 +150,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const mounted = useRef(true)
   const setLinkedCustomer = (patch: CustomerInput): void => {
     if (customerIdRef.current) return setCustomerField(patch)
-    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
+    setCustomer((c) => ({ ...(c ?? { id: '', name: '', phone: '', email: '', address: '', company: '', city: '', region: '', postalCode: '', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }), ...patch }))
     pendingCustomer.current = { ...pendingCustomer.current, ...patch }
     if (Object.keys(patch).some((k) => k !== 'name')) createDraftCustomer()
   }
