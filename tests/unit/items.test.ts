@@ -80,6 +80,37 @@ describe('line items and inventory', () => {
     expect(quote).toContain('GST (5%)')
     expect(quote).toContain('$73.50') // (80 − 10) + 5%
     const pay = { id: 'p', date: '2026-10-05', type: 'income' as const, amountCents: 5000, description: '', category: '', method: 'Cash', ticketId: t.id, ticketLabel: '', recurringId: null, taxExempt: false, qboInvoice: '', updatedAt: 0 }
-    expect(invoiceHtml({ ...data, payments: [pay] })).toContain('Balance owing: $23.50')
+    expect(invoiceHtml({ ...data, payments: [pay] })).toContain('<td>Balance due</td><td class="r">$23.50</td>')
+  })
+
+  it('invoice is laid out like a QuickBooks invoice: details band, numbered lines, tax column, notes and totals', () => {
+    const t = tickets.createTicket(db, {})
+    items.addItem(db, t.id, { kind: 'labour', description: 'Remote tech support', unitCents: 15000 })
+    const business = {
+      ...DEFAULT_BUSINESS,
+      name: 'Example Repairs',
+      taxName: 'GST',
+      taxRate: 5,
+      taxNumber: '123456789 RT0001',
+      paymentInstructions: 'Pay by cash or e-transfer to pay@example.com',
+      invoiceNote: 'Thank you!',
+      invoiceDueDays: 15
+    }
+    const customer = { id: 'c', name: 'Randy', phone: '', email: '', address: '11655 Example Way\nRichmond BC', notes: '', createdAt: 0, updatedAt: 0, deletedAt: null }
+    const html = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer, payments: [], business, logo: null, items: items.listItems(db, t.id) }, '2026-09-05')
+    expect(html).toContain('INVOICE')
+    expect(html).toContain('GST Registration No.')
+    expect(html).toContain('Bill to')
+    expect(html).toContain('11655 Example Way<br>Richmond BC')
+    expect(html).toContain('Terms: Net 15')
+    expect(html).toContain('Invoice date: Sep 5, 2026')
+    expect(html).toContain('Due date: Sep 20, 2026')
+    expect(html).toMatch(/<td class="n">1\.<\/td><td class="what">Remote tech support<\/td><td class="r">1<\/td><td class="r">\$150\.00<\/td><td class="r">\$150\.00<\/td><td class="r">GST<\/td>/)
+    expect(html).toContain('GST @ 5% on $150.00')
+    expect(html).toContain('<td>Total</td><td class="r">$157.50</td>')
+    expect(html).toContain('Pay by cash or e-transfer to pay@example.com')
+    expect(html).toContain('Note to customer')
+    // A colour that isn't a plain hex code never reaches the CSS
+    expect(invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer, payments: [], business: { ...business, invoiceColor: 'red;}</style><script>' }, logo: null, items: [] })).not.toContain('<script>')
   })
 })

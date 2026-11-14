@@ -50,7 +50,7 @@ export function BusinessSettings() {
         <h3>
           Business details {saved && <span className="small muted saved-flash">Saved</span>}
         </h3>
-        <p className="muted">Printed on intake slips, receipts and device labels (Print on a ticket).</p>
+        <p className="muted">Printed on intake slips, receipts, invoices and device labels (Print on a ticket).</p>
         <div className="business-grid">
           <div className="mfield wide logo-field">
             Logo
@@ -107,6 +107,22 @@ export function BusinessSettings() {
           </label>
           {text('intakeTerms', 'Terms on the intake slip', { area: true, wide: true, placeholder: 'e.g. Devices left over 60 days after we call may be recycled. We are not responsible for data loss.' })}
           {text('receiptNote', 'Note at the bottom of receipts', { area: true, wide: true })}
+          <label className="mfield">
+            Invoices are due
+            <select value={String(info.invoiceDueDays ?? 0)} onChange={(e) => void save({ invoiceDueDays: Number(e.target.value) })} aria-label="Invoices are due">
+              {[0, 7, 15, 30, 45, 60].map((d) => (
+                <option key={d} value={d}>
+                  {d ? `In ${d} days (Net ${d})` : 'On receipt'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="mfield">
+            Invoice colour
+            <input type="color" value={info.invoiceColor || '#2e7d32'} onChange={(e) => setInfo({ ...info, invoiceColor: e.target.value })} onBlur={(e) => void save({ invoiceColor: e.target.value })} aria-label="Invoice colour" />
+          </label>
+          {text('paymentInstructions', 'How to pay (on invoices)', { area: true, wide: true, placeholder: 'e.g. Payment by cash or e-transfer to you@example.com (auto-deposit).' })}
+          {text('invoiceNote', 'Note to customer (on invoices)', { area: true, wide: true, placeholder: 'Leave empty to use the receipt note' })}
         </div>
       </div>
     </section>

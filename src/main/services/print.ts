@@ -30,7 +30,11 @@ export const DEFAULT_BUSINESS: BusinessInfo = {
   receiptNote: 'Thank you for your business!',
   pricesIncludeTax: false,
   logoFileId: null,
-  labelSize: '62x29mm'
+  labelSize: '62x29mm',
+  invoiceDueDays: 0,
+  paymentInstructions: '',
+  invoiceNote: '',
+  invoiceColor: '#2e7d32'
 }
 
 export const getBusiness = (db: Db): BusinessInfo => ({ ...DEFAULT_BUSINESS, ...((getSetting(db, 'business') as Partial<BusinessInfo> | null) ?? {}) })
@@ -290,22 +294,136 @@ export function quoteHtml(d: PrintData): string {
   )
 }
 
-export function invoiceHtml(d: PrintData): string {
+/** Today on this PC's clock, YYYY-MM-DD (not UTC, which is already tomorrow on a Pacific evening). */
+const localToday = (): string => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const addDays = (iso: string, n: number): string => {
+  const [y, m, d] = iso.split('-').map(Number)
+  const x = new Date(y, m - 1, d + n)
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+}
+export const DEFAULT_INVOICE_COLOR = '#2e7d32'
+const safeColor = (c: string | undefined): string => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : DEFAULT_INVOICE_COLOR)
+export const invoiceTerms = (days: number): string => (days > 0 ? `Net ${days}` : 'Due on receipt')
+
+const INVOICE_STYLE = `
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 12px/1.5 "Segoe UI", system-ui, sans-serif; color: #333; margin: 0; }
+  .inv { max-width: 760px; margin: 0 auto; }
+  .inv-top { display: flex; align-items: flex-start; gap: 32px; padding: 8px 4px 20px; }
+  .inv-title { color: var(--accent); font-size: 21px; font-weight: 700; letter-spacing: .08em; margin: 0 0 4px; }
+  .inv-from { font-size: 11.5px; line-height: 1.55; }
+  .inv-from b { color: #222; }
+  .inv-contact { font-size: 11.5px; line-height: 1.55; padding-top: 34px; }
+  .inv-logo { margin-left: auto; max-height: 110px; max-width: 200px; object-fit: contain; }
+  .inv-band { background: var(--tint); padding: 20px 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .inv-band h4 { font-size: 11px; color: #333; margin: 0 0 4px; font-weight: 700; }
+  .inv-band .big { font-size: 13px; line-height: 1.6; }
+  .inv-details { border-left: 1px dashed #c8d0c8; padding-left: 24px; }
+  table.inv-lines { width: 100%; border-collapse: collapse; margin-top: 22px; }
+  .inv-lines th { font-weight: 400; font-size: 12.5px; color: #222; text-align: left; padding: 8px 6px; border-bottom: 1px solid #ccc; }
+  .inv-lines td { padding: 12px 6px; vertical-align: top; border-bottom: 1px solid #ddd; }
+  .inv-lines .n { width: 26px; color: #555; }
+  .inv-lines .r { text-align: right; white-space: nowrap; }
+  .inv-lines .what { font-weight: 600; color: #333; }
+  .inv-foot { display: grid; grid-template-columns: 1fr 300px; gap: 40px; margin-top: 4px; }
+  .inv-notes { padding: 24px 0 0 32px; font-size: 11.5px; line-height: 1.55; }
+  .inv-notes h5 { font-size: 16px; font-weight: 400; color: #333; margin: 18px 0 6px; }
+  .inv-notes p { margin: 0; white-space: pre-line; }
+  table.inv-sums { width: 100%; border-collapse: collapse; }
+  .inv-sums td { padding: 9px 6px; }
+  .inv-sums td.r { text-align: right; white-space: nowrap; }
+  .inv-sums tr.total td { border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; padding: 12px 6px; font-weight: 700; }
+  .inv-sums tr.total td.r { font-size: 18px; }
+  .inv-sums tr.due td { font-weight: 700; }
+  .muted { color: #666; }
+  section, tr { break-inside: avoid; }
+`
+
+/** A QuickBooks-style invoice: title and business on top, a tinted "Bill to / Invoice details" band, numbered lines with a tax column, notes on the left and totals on the right. */
+export function invoiceHtml(d: PrintData, today = localToday()): string {
   const t = d.ticket
-  const { html, total } = linesTable(d)
+  const b = d.business
+  const c = d.customer
+  const items = d.items ?? []
+  const totals = ticketTotals(items, { taxRate: b.taxRate, pricesIncludeTax: b.pricesIncludeTax, exempt: t.taxExempt })
+  const taxed = !t.taxExempt && b.taxRate > 0
+  const taxName = esc(b.taxName || 'Tax')
+  const jobName = [t.device, t.issue].filter(Boolean).join(' — ')
+  const rows = items.length
+    ? items.map((l, i) => {
+        const discount = l.kind === 'discount'
+        const what = discount ? `Discount${l.description ? `: ${l.description}` : ''}` : l.description || KIND_LABEL[l.kind] || 'Item'
+        return `<tr><td class="n">${i + 1}.</td><td class="what">${esc(what)}</td><td class="r">${discount ? '' : l.qty}</td><td class="r">${discount ? '' : money(l.unitCents)}</td><td class="r">${discount ? '−' : ''}${money(lineTotal(l))}</td><td class="r">${taxed && !discount ? taxName : ''}</td></tr>`
+      })
+    : [`<tr><td class="n">1.</td><td class="what">${lines(jobName || `Ticket ${formatTicketNumber(t.number)}`)}</td><td class="r">1</td><td class="r">${money(t.priceCents ?? 0)}</td><td class="r">${money(t.priceCents ?? 0)}</td><td class="r"></td></tr>`]
+  const total = items.length ? totals.total : (t.priceCents ?? 0)
+  const net = Math.max(0, totals.subtotal - totals.discount)
+  const sums = items.length
+    ? [
+        `<tr><td>Subtotal</td><td class="r">${money(totals.subtotal)}</td></tr>`,
+        totals.discount ? `<tr><td>Discount</td><td class="r">−${money(totals.discount)}</td></tr>` : '',
+        totals.tax ? `<tr><td>${taxName} @ ${b.taxRate}% ${b.pricesIncludeTax ? `(included)` : `on ${money(net)}`}</td><td class="r">${money(totals.tax)}</td></tr>` : '',
+        t.taxExempt ? '<tr><td class="muted">No tax</td><td></td></tr>' : ''
+      ].join('')
+    : ''
   const paid = d.payments.reduce((s, p) => s + p.amountCents, 0)
   const owing = Math.max(0, total - paid)
-  return page(
-    `Invoice ${formatTicketNumber(t.number)}`,
-    `${header(d.business, d.logo)}
-    <h1>Invoice ${formatTicketNumber(t.number)}</h1>
-    <div class="muted">${esc(day(new Date().toISOString().slice(0, 10)))}${t.device ? ` · ${esc(t.device)}` : ''}</div>
-    <div class="cols">${customerBlock(t, d.customer)}</div>
-    ${html}
-    ${d.payments.length ? `<section><h3>Payments</h3><table>${d.payments.map((p) => `<tr><td>${esc(day(p.date))} · ${esc(p.method || 'Payment')}</td><td class="num">${money(p.amountCents)}</td></tr>`).join('')}</table></section>` : ''}
-    <p class="strong">${owing ? `Balance owing: ${money(owing)}` : 'Paid in full. Thank you!'}</p>
-    ${d.business.receiptNote ? `<div class="foot">${lines(d.business.receiptNote)}</div>` : ''}`
-  )
+  const payments = d.payments.map((p) => `<tr><td class="muted">Paid ${esc(day(p.date))}${p.method ? ` · ${esc(p.method)}` : ''}</td><td class="r muted">−${money(p.amountCents)}</td></tr>`).join('')
+  const due = d.payments.length ? `<tr class="due"><td>${owing ? 'Balance due' : 'Paid in full'}</td><td class="r">${money(owing)}</td></tr>` : ''
+  const days = Math.max(0, Math.round(Number(b.invoiceDueDays) || 0))
+  const note = b.invoiceNote || b.receiptNote
+  const contact = [b.email, b.phone, b.website].filter(Boolean).map((v) => `<div>${esc(v)}</div>`).join('')
+  const billTo = c?.name || t.customerName
+  const billRows = [c?.address, c?.phone || t.customerPhone, c?.email || t.customerEmail].filter(Boolean).map((v) => `<div>${lines(v!)}</div>`).join('')
+  const color = safeColor(b.invoiceColor)
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${esc(formatTicketNumber(t.number))}</title><style>${PAGE_RULE}${INVOICE_STYLE}
+    :root { --accent: ${color}; --tint: color-mix(in srgb, ${color} 9%, white); }</style></head><body><div class="inv">
+    <div class="inv-top">
+      <div class="inv-from">
+        <div class="inv-title">INVOICE</div>
+        <b>${esc(b.name || 'Your business')}</b>
+        ${b.address ? `<div>${lines(b.address)}</div>` : ''}
+        ${b.taxNumber ? `<div>${taxName} Registration No.</div><div>${esc(b.taxNumber)}</div>` : ''}
+      </div>
+      ${contact ? `<div class="inv-contact">${contact}</div>` : ''}
+      ${d.logo ? `<img class="inv-logo" src="${d.logo}" alt="">` : ''}
+    </div>
+    <section class="inv-band">
+      <div>
+        <h4>Bill to</h4>
+        <div class="big">${billTo ? `<div>${esc(billTo)}</div>${billRows}` : '<div class="muted">—</div>'}</div>
+      </div>
+      <div class="inv-details">
+        <h4>Invoice details</h4>
+        <div class="big">
+          <div>Invoice no.: ${esc(formatTicketNumber(t.number))}</div>
+          <div>Terms: ${esc(invoiceTerms(days))}</div>
+          <div>Invoice date: ${esc(day(today))}</div>
+          <div>Due date: ${esc(day(addDays(today, days)))}</div>
+          ${jobName && items.length ? `<div>For: ${esc(jobName)}</div>` : ''}
+        </div>
+      </div>
+    </section>
+    <table class="inv-lines">
+      <thead><tr><th class="n">#</th><th>Product or service</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th><th class="r">Tax</th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    <div class="inv-foot">
+      <div class="inv-notes">
+        ${b.paymentInstructions ? `<p>${esc(b.paymentInstructions)}</p>` : ''}
+        ${note ? `<h5>Note to customer</h5><p>${esc(note)}</p>` : ''}
+      </div>
+      <table class="inv-sums">
+        ${sums}
+        <tr class="total"><td>Total</td><td class="r">${money(total)}</td></tr>
+        ${payments}${due}
+      </table>
+    </div>
+  </div></body></html>`
 }
 
 export function printHtml(kind: PrintKind, data: PrintData): string {

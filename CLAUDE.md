@@ -31,7 +31,7 @@ npm run typecheck   # tsc for main/preload (node), renderer (web) and e2e config
 npm test            # Vitest unit tests (tests/unit), pure Node, no Electron
 npm run test:e2e    # build (PC app + phone web app), then Playwright drives the real Electron app (tests/e2e)
 npm run build:web   # the phone web app → out/web (served by the sync service; see server/README.md)
-npm run check       # all of the above; run before calling work done
+npm run check       # all of the above (~3–15 min, opens windows): only for wide changes or when asked
 npx vitest run -t "search"          # single unit test by name
 npx playwright test -g "drag"       # single e2e test (run `npm run build` first; e2e uses out/)
 npm run dist        # build + Windows installer → release/Plannr-Setup-<version>.exe (set CSC_IDENTITY_AUTO_DISCOVERY=false; unset ELECTRON_RUN_AS_NODE)
@@ -47,7 +47,7 @@ E2E tests run serially in one app session with an isolated temp data dir (`PLANN
 ## Releasing (public repo GLr-P/plannr)
 
 - Commit emails use `241555371+GLr-P@users.noreply.github.com` (set in this repo's git config); never commit the owner's personal email or real customer data. Website screenshots come from the demo-data script (tests/marketing).
-- To release: bump `version` in package.json, run `npm run check`, run `npm run dist` (with `CSC_IDENTITY_AUTO_DISCOVERY=false` and `ELECTRON_RUN_AS_NODE` unset), push, then `"C:\Program Files\GitHub CLI\gh.exe" release create vX.Y.Z release/Plannr-Setup-X.Y.Z.exe --title ... --notes-file ...`.
+- To release: bump `version` in package.json, run the quick checks (typecheck, `npx vitest run`, only the e2e specs the change touches; the owner wants releases fast, 2026-11-13: full `npm run check` only for wide changes or when asked), run `npm run dist` (with `CSC_IDENTITY_AUTO_DISCOVERY=false` and `ELECTRON_RUN_AS_NODE` unset), push, then `"C:\Program Files\GitHub CLI\gh.exe" release create vX.Y.Z release/Plannr-Setup-X.Y.Z.exe --title ... --notes-file ...`.
 - **Releases are unsigned, by the owner's choice (2026-10-09).** SignPath declined the project; the owner turned Smart App Control off on this PC, so unsigned builds run here. The README and website tell other users to click past SmartScreen, or that Smart App Control blocks Plannr. Don't reintroduce signing without asking.
 - VS Code sets ELECTRON_RUN_AS_NODE in PowerShell too: remove it before Start-Process on Plannr.exe, or it runs as plain Node ("bad option" errors).
 - If `npm run dist` fails with EPERM renaming `release/win-unpacked.tmp` (a scanner locks the fresh Electron unzip), run `npx electron-builder --win --config.electronDist=node_modules/electron/dist` after the build.

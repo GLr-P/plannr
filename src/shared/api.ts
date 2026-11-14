@@ -1654,6 +1654,14 @@ export interface BusinessInfo {
   receiptNote: string
   logoFileId: string | null
   labelSize: '62x29mm' | '2.25x1.25in' | '4x6in'
+  /** Invoices are due this many days after the invoice date (0 = due on receipt) */
+  invoiceDueDays: number
+  /** How to pay, printed on invoices (e.g. e-transfer address) */
+  paymentInstructions: string
+  /** "Note to customer" on invoices (empty: the receipt note) */
+  invoiceNote: string
+  /** Colour of the invoice title and band, #rrggbb */
+  invoiceColor: string
 }
 
 export type PrintKind = 'intake' | 'receipt' | 'label' | 'quote' | 'invoice' | 'form'

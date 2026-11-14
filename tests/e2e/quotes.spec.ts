@@ -80,8 +80,10 @@ test('print a quote and an invoice', async () => {
   expect(quote).toContain('Part: iPhone 13 screen')
   expect(quote).toContain('Labour: Install and test')
   expect(quote).toContain('$198.45')
-  const invoice = await printed('Invoice', '<h1>Invoice')
-  expect(invoice).toContain('Balance owing: $198.45')
+  const invoice = await printed('Invoice', 'class="inv-title">INVOICE')
+  expect(invoice).toContain('<td class="what">iPhone 13 screen</td>')
+  expect(invoice).toContain('GST @ 5% on $189.00')
+  expect(invoice).toContain('<td>Total</td><td class="r">$198.45</td>')
 
   await nav('Inventory').click()
   await expect(page.locator('.part-row').first().getByLabel('In stock')).toHaveValue('2')
