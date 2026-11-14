@@ -323,6 +323,8 @@ const INVOICE_STYLE = `
   .inv-band h4 { font-size: 11px; color: #333; margin: 0 0 4px; font-weight: 700; }
   .inv-band .big { font-size: 13px; line-height: 1.6; }
   .inv-details { border-left: 1px dashed #c8d0c8; padding-left: 24px; }
+  .inv-band.solo { grid-template-columns: 1fr; }
+  .inv-band.solo .inv-details { border-left: 0; padding-left: 0; }
   table.inv-lines { width: 100%; border-collapse: collapse; margin-top: 22px; }
   .inv-lines th { font-weight: 400; font-size: 12.5px; color: #222; text-align: left; padding: 8px 6px; border-bottom: 1px solid #ccc; }
   .inv-lines td { padding: 12px 6px; vertical-align: top; border-bottom: 1px solid #ddd; }
@@ -331,8 +333,8 @@ const INVOICE_STYLE = `
   .inv-lines .what { font-weight: 600; color: #333; }
   .inv-foot { display: grid; grid-template-columns: 1fr 300px; gap: 40px; margin-top: 4px; }
   .inv-notes { padding: 24px 0 0 32px; font-size: 11.5px; line-height: 1.55; }
-  .inv-notes h5 { font-size: 16px; font-weight: 400; color: #333; margin: 18px 0 6px; }
   .inv-notes p { margin: 0; white-space: pre-line; }
+  .inv-notes p + .inv-note { margin-top: 18px; }
   table.inv-sums { width: 100%; border-collapse: collapse; }
   .inv-sums td { padding: 9px 6px; }
   .inv-sums td.r { text-align: right; white-space: nowrap; }
@@ -377,8 +379,13 @@ export function invoiceHtml(d: PrintData, today = localToday()): string {
   const days = Math.max(0, Math.round(Number(b.invoiceDueDays) || 0))
   const note = b.invoiceNote || b.receiptNote
   const contact = [b.email, b.phone, b.website].filter(Boolean).map((v) => `<div>${esc(v)}</div>`).join('')
-  const billTo = c?.name || t.customerName
-  const billRows = [c?.address, c?.phone || t.customerPhone, c?.email || t.customerEmail].filter(Boolean).map((v) => `<div>${lines(v!)}</div>`).join('')
+  // Only what's known about the customer: no empty lines or placeholders
+  const billTo = (c?.name || t.customerName || '').trim()
+  const billRows = [c?.address, c?.phone || t.customerPhone, c?.email || t.customerEmail]
+    .map((v) => (v ?? '').trim())
+    .filter(Boolean)
+    .map((v) => `<div>${lines(v)}</div>`)
+    .join('')
   const color = safeColor(b.invoiceColor)
   return `<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${esc(formatTicketNumber(t.number))}</title><style>${PAGE_RULE}${INVOICE_STYLE}
     :root { --accent: ${color}; --tint: color-mix(in srgb, ${color} 9%, white); }</style></head><body><div class="inv">
@@ -392,11 +399,8 @@ export function invoiceHtml(d: PrintData, today = localToday()): string {
       ${contact ? `<div class="inv-contact">${contact}</div>` : ''}
       ${d.logo ? `<img class="inv-logo" src="${d.logo}" alt="">` : ''}
     </div>
-    <section class="inv-band">
-      <div>
-        <h4>Bill to</h4>
-        <div class="big">${billTo ? `<div>${esc(billTo)}</div>${billRows}` : '<div class="muted">—</div>'}</div>
-      </div>
+    <section class="inv-band${billTo || billRows ? '' : ' solo'}">
+      ${billTo || billRows ? `<div><h4>Bill to</h4><div class="big">${billTo ? `<div>${esc(billTo)}</div>` : ''}${billRows}</div></div>` : ''}
       <div class="inv-details">
         <h4>Invoice details</h4>
         <div class="big">
@@ -415,7 +419,7 @@ export function invoiceHtml(d: PrintData, today = localToday()): string {
     <div class="inv-foot">
       <div class="inv-notes">
         ${b.paymentInstructions ? `<p>${esc(b.paymentInstructions)}</p>` : ''}
-        ${note ? `<h5>Note to customer</h5><p>${esc(note)}</p>` : ''}
+        ${note ? `<p class="inv-note">${esc(note)}</p>` : ''}
       </div>
       <table class="inv-sums">
         ${sums}

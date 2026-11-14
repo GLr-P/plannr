@@ -109,7 +109,13 @@ describe('line items and inventory', () => {
     expect(html).toContain('GST @ 5% on $150.00')
     expect(html).toContain('<td>Total</td><td class="r">$157.50</td>')
     expect(html).toContain('Pay by cash or e-transfer to pay@example.com')
-    expect(html).toContain('Note to customer')
+    expect(html).toContain('<p class="inv-note">Thank you!</p>')
+    expect(html).not.toContain('Note to customer')
+    // Only known customer details: no phone/email lines here, and no Bill to at all without a customer
+    expect(html).toContain('<h4>Bill to</h4><div class="big"><div>Randy</div><div>11655 Example Way<br>Richmond BC</div></div></div>')
+    const anonymous = invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer: null, payments: [], business, logo: null, items: items.listItems(db, t.id) }, '2026-09-05')
+    expect(anonymous).not.toContain('Bill to')
+    expect(anonymous).toContain('inv-band solo')
     // A colour that isn't a plain hex code never reaches the CSS
     expect(invoiceHtml({ ticket: tickets.getTicket(db, t.id)!, customer, payments: [], business: { ...business, invoiceColor: 'red;}</style><script>' }, logo: null, items: [] })).not.toContain('<script>')
   })
