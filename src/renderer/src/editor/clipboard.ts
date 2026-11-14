@@ -4,6 +4,8 @@ import { Slice } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import { copiedSlice, copyHtml, copyText, type CopiedSlice } from '../../../shared/rich-copy'
 import { api } from '../api'
+import { pasteIntoToggle, toggleTitleAt } from './toggle-paste'
+import { imageFiles, otherFiles } from './upload'
 
 /**
  * Copy and cut give other programs formatting they understand and tidy plain text (shared/rich-copy.ts); pasting a
@@ -28,19 +30,32 @@ function copy(view: EditorView, event: ClipboardEvent, cut: boolean): boolean {
   return true
 }
 
-function paste(view: EditorView, event: ClipboardEvent): boolean {
+/** A Plannr copy on the clipboard, rebuilt exactly (null if there's none or this editor can't hold it) */
+function plannrSlice(view: EditorView, event: ClipboardEvent): Slice | null {
   const html = event.clipboardData?.getData('text/html')
   const copied = html ? copiedSlice(html) : null
-  if (!copied || view.state.selection.$from.parent.type.spec.code) return false
+  if (!copied) return null
   let slice: Slice
   try {
     slice = Slice.fromJSON(view.state.schema, copied)
   } catch {
-    return false // something this editor can't hold (e.g. an @-link in the vault): paste the formatted HTML instead
+    return null // something this editor can't hold (e.g. an @-link in the vault): paste the formatted HTML instead
   }
   view.someProp('transformPasted', (f) => {
     slice = f(slice, view, false)
   })
+  return slice
+}
+
+/** `parsed` is ProseMirror's own reading of the clipboard (formatted HTML or plain text) */
+function paste(view: EditorView, event: ClipboardEvent, parsed: Slice): boolean {
+  if (view.state.selection.$from.parent.type.spec.code) return false
+  const slice = plannrSlice(view, event)
+  if (toggleTitleAt(view.state) !== null) {
+    if (imageFiles(event.clipboardData?.files).length || otherFiles(event.clipboardData?.files).length) return false // upload.ts puts them in the body
+    return pasteIntoToggle(view, slice ?? parsed)
+  }
+  if (!slice) return false
   view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
   return true
 }
@@ -57,7 +72,7 @@ export const RichClipboard = Extension.create({
             copy: (view, event) => copy(view, event, false),
             cut: (view, event) => copy(view, event, true)
           },
-          handlePaste: (view, event) => paste(view, event)
+          handlePaste: (view, event, slice) => paste(view, event, slice)
         }
       })
     ]

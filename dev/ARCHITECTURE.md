@@ -91,6 +91,7 @@ Data lives in `%APPDATA%\Plannr\data` (`plannr.db` and `attachments/`).
 
 - `editor.commands.focus()` is deferred by one frame. When moving focus programmatically before the user types, call `editor.view.focus()` first.
 - Toggles (`details`, with `persist: true`, so the `open` attr is saved): a closed toggle's body is `hidden`. Setting the open attr and moving the selection into the body in one transaction leaves the browser cursor in the title. Dispatch the open first, then the selection (see `enterToggleBody` in `extensions.tsx`).
+- A toggle's title holds only text: pasting blocks there splits the toggle. Pastes and picture inserts aimed at a title go through `editor/toggle-paste.ts` (one line into the title, the rest into the body).
 - After inserting a block image, move the cursor to a paragraph after it (`upload.ts`). Leaving the image node selected makes the next paste replace it.
 - TipTap's base CSS forces `img.ProseMirror-separator` to display with `!important`. These spacers surround inline node views, so overriding their layout (as `.ff-textarea` does in `business.css`) needs `!important` too.
 - `editor.setEditable(x)` emits an `update` event by default. Pass `false` as the second argument, and only save on `transaction.docChanged`; otherwise just opening a note re-saves it and bumps `updated_at`.

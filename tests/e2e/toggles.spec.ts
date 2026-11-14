@@ -116,3 +116,59 @@ test('"/Photo dropdown" makes a Photos toggle and puts the picked photos inside'
   await saved()
   await shot(page, 't3-photo-dropdown')
 })
+
+/** Fires a paste carrying these clipboard types at the editor */
+async function pasteData(types: Record<string, string>): Promise<void> {
+  await page.evaluate((t) => {
+    const dt = new DataTransfer()
+    for (const [k, v] of Object.entries(t)) dt.setData(k, v)
+    document.querySelector('.prose')!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }))
+  }, types)
+}
+
+/** What Plannr puts on the clipboard when the current selection is copied */
+const copyData = (): Promise<Record<string, string>> =>
+  page.evaluate(() => {
+    const dt = new DataTransfer()
+    document.querySelector('.prose')!.dispatchEvent(new ClipboardEvent('copy', { clipboardData: dt, bubbles: true, cancelable: true }))
+    return Object.fromEntries(dt.types.map((k) => [k, dt.getData(k)]))
+  })
+
+test('pasting onto a toggle title keeps the toggle whole', async () => {
+  await page.keyboard.press('Control+n')
+  await expect(page.getByLabel('Title')).toBeFocused()
+  await page.keyboard.type('Paste test')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/toggle')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Parts')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Screen')
+  const summary = () => toggle().locator('summary').first()
+
+  // One line of text goes into the title
+  await summary().click()
+  await page.keyboard.press('End')
+  await pasteData({ 'text/plain': ' ordered' })
+  await expect(summary()).toHaveText('Parts ordered')
+
+  // Several lines go at the top of the toggle's body
+  await pasteData({ 'text/plain': 'Battery\nCharging port' })
+  await expect(summary()).toHaveText('Parts ordered')
+  await expect(body().locator('p')).toHaveText(['Battery', 'Charging port', 'Screen'])
+
+  // A copied toggle pasted onto the title lands inside the body, not split across the page
+  await summary().click()
+  await page.keyboard.press('Control+a')
+  const copied = await copyData()
+  expect(copied['text/html']).toContain('data-plannr-copy')
+  await summary().click()
+  await page.keyboard.press('End')
+  await pasteData(copied)
+  await expect(summary()).toHaveText('Parts ordered')
+  await expect(page.locator('.prose > [data-type="details"]')).toHaveCount(1)
+  await expect(body().first().locator('[data-type="details"]')).toHaveCount(1)
+  await expect(body().first()).toContainText('Screen')
+  await saved()
+  await shot(page, 't4-paste-title')
+})

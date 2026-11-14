@@ -2,6 +2,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { StoredFile } from '../../../shared/api'
 import { api } from '../api'
+import { openToggle, toggleBodyStart, toggleTitleAt } from './toggle-paste'
 
 export async function storeFile(file: File): Promise<StoredFile> {
   const data = new Uint8Array(await file.arrayBuffer())
@@ -27,6 +28,12 @@ export function otherFiles(list: FileList | null | undefined): File[] {
  * the next paste replace it.
  */
 function insertBlock(view: EditorView, type: 'image' | 'fileAttachment', attrs: Record<string, unknown>, from: number, to: number): void {
+  // A toggle's title can't hold a picture: it goes at the top of the toggle's body instead (opened if closed)
+  const toggle = toggleTitleAt(view.state, from, to)
+  if (toggle !== null) {
+    openToggle(view, toggle)
+    from = to = toggleBodyStart(view.state.doc, toggle)
+  }
   const { schema } = view.state
   const node = schema.nodes[type].create(attrs)
   const src = attrs.src
