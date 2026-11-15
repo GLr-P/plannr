@@ -230,12 +230,12 @@ test('business details print on the intake slip and receipt; the passcode is lef
     await expect.poll(() => (existsSync(out) ? readFileSync(out, 'utf8') : '')).toContain(kind === 'Receipt' ? '<h1>Receipt</h1>' : kind === 'Label' ? '@page { size: 62mm 29mm' : 'Ticket T-0001')
     // The print preview shows the pages first
     await expect(page.locator('.pp-page canvas').first()).toBeVisible()
-    if (kind === 'Intake slip') await shot(page, 'b11a-print-preview')
+    if (kind === 'Customer slip') await shot(page, 'b11a-print-preview')
     await page.getByRole('button', { name: 'Close preview' }).click()
     return readFileSync(out, 'utf8')
   }
 
-  const slip = await printed('Intake slip')
+  const slip = await printed('Customer slip')
   expect(slip).toContain('Nano Tech Services')
   expect(slip).toContain('Jane Doe')
   expect(slip).toContain('<div>Doe Landscaping</div><div>12 Main St</div><div>Springfield, BC</div><div>V0H 1V1</div>')

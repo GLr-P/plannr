@@ -15,7 +15,8 @@ import { backupDue, restoreSnapshot, runBackup } from './services/backup'
 import { getSetting, setSetting } from './services/settings'
 import { mkdirSync as ensureDir } from 'node:fs'
 import { resolveFilePath } from './services/files'
-import { ensureStarterTemplate, ensureTicketLayouts } from './services/templates'
+import { ensureStarterTemplate, ensureTicketLayouts, seedLegacyInstall } from './services/templates'
+import { pinLegacyWording } from './legacy-wording'
 import { ensureStarterNoteTemplates } from './services/note-templates'
 import { loadDisplayPrefs, pinLegacyPrefix } from './display'
 import { ensureOnboardingState } from './services/onboarding'
@@ -190,6 +191,8 @@ if (!app.requestSingleInstanceLock()) {
     pinLegacyPrefix(db)
     loadDisplayPrefs(db)
     ensureOnboardingState(db)
+    if (process.env.PLANNR_SEED_LEGACY === '1' && process.env.PLANNR_DATA_DIR) seedLegacyInstall(db) // tests written for 1.0
+    pinLegacyWording(db) // before the starter templates: their flag tells an earlier install from a new one
     ensureStarterTemplate(db)
     ensureTicketLayouts(db)
     startSharedSecrets(db) // keys and sign-ins follow you to your other PCs

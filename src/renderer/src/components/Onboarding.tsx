@@ -375,7 +375,6 @@ export function Onboarding() {
                   )}
                 </div>
                 <h3 className="onboard-sub">Statuses</h3>
-                <p className="small muted">The first one is where new {many.toLowerCase()} start. “Finished” ones close it; “ready” ones are waiting on someone.</p>
                 <StatusEditor />
               </>
             )}

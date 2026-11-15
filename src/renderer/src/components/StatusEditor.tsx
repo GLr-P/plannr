@@ -87,7 +87,7 @@ export function StatusEditor() {
                 <input type="checkbox" checked={s.done} onChange={(e) => void patch(s.id, { done: e.target.checked })} /> Finished
               </label>
               <label>
-                <input type="checkbox" checked={s.ready} onChange={(e) => void patch(s.id, { ready: e.target.checked })} /> Waiting on the customer
+                <input type="checkbox" checked={s.ready} onChange={(e) => void patch(s.id, { ready: e.target.checked })} /> Waiting on someone
               </label>
             </div>
             {removing?.id === s.id && (

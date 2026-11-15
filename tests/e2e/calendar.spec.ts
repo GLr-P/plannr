@@ -52,12 +52,12 @@ test.afterAll(async () => {
 test('a pickup date set on the ticket shows on the calendar', async () => {
   await nav('Tickets').click()
   await page.locator('.ticket-row', { hasText: 'Jane Doe' }).click()
-  await page.getByLabel('Pickup date').fill(D15)
+  await page.getByLabel('Due date').fill(D15)
   await expect(page.locator('.save-status')).toHaveAttribute('data-status', 'saved')
-  await expect(page.locator('.backlinks', { hasText: 'On the calendar' })).toContainText('Jane Doe pickup')
+  await expect(page.locator('.backlinks', { hasText: 'On the calendar' })).toContainText('Jane Doe due date')
 
   await nav('Calendar').click()
-  await expect(dayCell(D15).locator('.fc-event')).toContainText('Jane Doe pickup')
+  await expect(dayCell(D15).locator('.fc-event')).toContainText('Jane Doe due date')
   await shot(page, 'c1-month')
 })
 
@@ -68,7 +68,7 @@ test('dragging a ticket from the tray onto a day sets its pickup, and the text c
 
   await expect(popover()).toBeVisible()
   const title = page.getByLabel('Event title')
-  await expect(title).toHaveValue('Bob Smith pickup')
+  await expect(title).toHaveValue('Bob Smith due date')
   await expect(popover().locator('.popover-link')).toContainText('T-0002 · Dell XPS (Bob Smith)')
   await title.fill('Bob picks up laptop')
   await expect(popover().locator('.popover-foot')).toContainText('Saved')
@@ -76,7 +76,7 @@ test('dragging a ticket from the tray onto a day sets its pickup, and the text c
   await expect(popover()).toHaveCount(0)
   await expect(dayCell(D20).locator('.fc-event')).toContainText('Bob picks up laptop')
   expect(await pickupOf(bobTicket)).toBe(D20)
-  await expect(item).toContainText('Pickup') // tray shows the new pickup
+  await expect(item).toContainText('Due') // tray shows the new date
 })
 
 test('dragging a note from the sidebar creates a linked event', async () => {
@@ -90,7 +90,7 @@ test('dragging a note from the sidebar creates a linked event', async () => {
 test('clicking an event shows why it is linked and opens the ticket', async () => {
   await dayCell(D15).locator('.fc-event').click()
   await expect(popover().locator('.popover-link')).toContainText('T-0001 · iPhone 13 (Jane Doe)')
-  await expect(popover().getByLabel('This is the ticket’s pickup date')).toBeChecked()
+  await expect(popover().getByLabel('This is the ticket’s due date')).toBeChecked()
   const dayBefore = popover().getByRole('button', { name: 'Day before (9 AM)' })
   await expect(dayBefore).toHaveAttribute('aria-pressed', 'true')
   await dayBefore.click()
@@ -115,7 +115,7 @@ test('dragging an event to another day moves the ticket pickup too', async () =>
   await page.mouse.down()
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
   await page.mouse.up()
-  await expect(dayCell(D16).locator('.fc-event')).toContainText('Jane Doe pickup')
+  await expect(dayCell(D16).locator('.fc-event')).toContainText('Jane Doe due date')
   await expect.poll(() => pickupOf(janeTicket)).toBe(D16)
 })
 
@@ -172,7 +172,7 @@ test('settings and events survive a restart', async () => {
   await nav('Settings').click()
   await expect(page.getByRole('switch', { name: 'Keep running in the tray' })).toHaveAttribute('aria-checked', 'false')
   await nav('Calendar').click()
-  await expect(dayCell(D16).locator('.fc-event')).toContainText('Jane Doe pickup')
+  await expect(dayCell(D16).locator('.fc-event')).toContainText('Jane Doe due date')
   await expect(dayCell(D10).locator('.fc-event', { hasText: 'Order screens' })).toBeVisible() // the 10th may also be today, with another event
   await expect(dayCell(D22).locator('.fc-event')).toContainText('Supplier visit')
 })

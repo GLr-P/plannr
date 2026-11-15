@@ -59,7 +59,7 @@ test('parts: photos and a pickup date appear when added, and go away when remove
   await expect(page.getByLabel('Pickup date')).toBeVisible()
   await openAdd()
   await page.keyboard.type('pickup')
-  await expect(page.locator('.add-ticket-row.on', { hasText: 'Pickup / due date' })).toContainText('Remove')
+  await expect(page.locator('.add-ticket-row.on', { hasText: 'Due date' })).toContainText('Remove')
   await page.keyboard.press('Enter')
   await expect(page.getByLabel('Pickup date')).toHaveCount(0)
 })

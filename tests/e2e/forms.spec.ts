@@ -122,7 +122,7 @@ test('build a flower shop order form from fill-in fields', async () => {
   // Worked out from the prices, with 12% tax
   await addField({ label: 'Total (with tax)', type: 'Calculated', formula: '({Flowers price} + {Delivery fee}) * 1.12', width: 'Half', labelPos: 'Above' })
   await page.keyboard.press('Enter')
-  await addField({ link: 'Pickup date', label: 'Ready by', width: 'Half' })
+  await addField({ link: 'Due date', label: 'Ready by', width: 'Half' })
   await saved()
 
   // Settings menu: compact, with the new options
@@ -191,7 +191,7 @@ test('take an order: linked fields fill in the customer, choices light up', asyn
   await field('Paid').locator('input').check()
   // Linked to the ticket's pickup date
   await field('Ready by').locator('input').fill('2026-10-09')
-  await expect(prop('Pickup date')).toHaveValue('2026-10-09')
+  await expect(prop('Due date')).toHaveValue('2026-10-09')
   await saved()
   await page.locator('.main').evaluate((el) => el.scrollTo(0, 420))
   await shot(page, 'f3-order-filled')
@@ -267,7 +267,7 @@ test('the template decides the top of its tickets: names, and which parts show',
   expect(mayas).toHaveLength(1)
 
   // The calendar entry uses the template's name for the date
-  await prop('Pickup date').fill('2026-10-20')
+  await prop('Delivery date').fill('2026-10-20')
   await saved()
   const ticketId = await page.evaluate(() => window.plannr.tickets.list({ query: 'Birthday bouquet' }).then((t) => t[0].id))
   const events = await page.evaluate((id) => window.plannr.calendar.forLink(id), ticketId)

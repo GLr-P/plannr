@@ -123,7 +123,7 @@ test('messages: setting Ready offers to message the customer; the template is fi
   await page.locator('.ticket-row').first().click()
   await page.getByLabel('Status').selectOption('ready')
   const toast = page.locator('.app-toast')
-  await expect(toast).toContainText('Let the customer know?')
+  await expect(toast).toContainText('Let them know?')
   await toast.getByRole('button', { name: 'Message' }).click()
   const dialog = page.getByRole('dialog', { name: 'Message: Ready for pickup' })
   await expect(dialog.getByLabel('Subject')).toHaveValue('Your iPhone 13 is ready (T-0001)')

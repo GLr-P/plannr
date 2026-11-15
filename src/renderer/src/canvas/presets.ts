@@ -34,7 +34,7 @@ export const customerItems = (y: number): DocJSON[] => [
 export const titleItem = (y: number): DocJSON => field({ x: M, y, w: FULL, h: 62 }, { label: 'Ticket title', link: 'ticket.device' })
 
 export const dateItems = (y: number): DocJSON[] => [
-  field({ x: M, y, w: HALF, h: 62 }, { label: 'Received', link: 'ticket.receivedOn', kind: 'date' }),
+  field({ x: M, y, w: HALF, h: 62 }, { label: 'Start date', link: 'ticket.receivedOn', kind: 'date' }),
   field({ x: M + HALF + 16, y, w: HALF, h: 62 }, { label: 'Due date', link: 'ticket.pickupOn', kind: 'date' })
 ]
 

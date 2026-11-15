@@ -29,6 +29,8 @@ import { useMessageDialog } from '../components/MessageDialog'
 import type { PrintKind } from '../../../shared/api'
 import { openPrint } from '../components/PrintPreview'
 
+/** What a date box is called for screen readers: its own name ("Pickup" → "Pickup date", "Due date" stays) */
+const dateLabel = (label: string): string => (/date/i.test(label) ? label : `${label} date`)
 const PRINT_NAME: Record<PrintKind, string> = { form: 'Form', intake: 'Customer slip', quote: 'Quote', invoice: 'Invoice', receipt: 'Receipt', label: 'Label' }
 import { CustomerPicker, ClearButton } from '../components/CustomerPicker'
 import { PhotoGallery } from '../components/PhotoGallery'
@@ -695,7 +697,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   value={fields.receivedOn ?? ''}
                   readOnly={trashed}
                   onChange={(e) => set({ receivedOn: e.target.value || null }, true)}
-                  aria-label="Received date"
+                  aria-label={dateLabel(layout.receivedLabel)}
                 />
               </div>
             )}
@@ -721,7 +723,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
                   value={fields.pickupOn ?? ''}
                   readOnly={trashed}
                   onChange={(e) => set({ pickupOn: e.target.value || null }, true)}
-                  aria-label="Due date"
+                  aria-label={dateLabel(layout.pickupLabel)}
                   title={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? `Before ${layout.receivedLabel.toLowerCase()}` : undefined}
                   data-warn={fields.pickupOn && fields.receivedOn && fields.pickupOn < fields.receivedOn ? 'true' : undefined}
                 />

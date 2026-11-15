@@ -221,3 +221,13 @@ test('website screenshots', async () => {
 
   await app.close()
 })
+
+test('setup walkthrough screenshot', async () => {
+  const { app, page } = await launch(mkdtempSync(join(tmpdir(), 'plannr-shots-setup-')), { PLANNR_ONBOARDING: '1' })
+  await page.setViewportSize({ width: 1320, height: 820 })
+  const tour = page.getByRole('dialog', { name: 'Welcome to Plannr' })
+  await tour.getByRole('button', { name: 'Get started' }).click()
+  for (const use of ['Personal & home', 'Design & creative work', 'Shop & orders']) await tour.getByRole('checkbox', { name: use }).click()
+  await page.screenshot({ path: join(out, 'setup.png') })
+  await app.close()
+})

@@ -162,7 +162,7 @@ export function EventPopover({
       {ev.linkType === 'ticket' && (
         <label className="check">
           <input type="checkbox" checked={ev.kind === 'pickup'} onChange={(e) => change({ kind: e.target.checked ? 'pickup' : 'event' }, true)} />
-          This is the ticket’s pickup date
+          This is the ticket’s due date
         </label>
       )}
 
