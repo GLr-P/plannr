@@ -1895,22 +1895,6 @@ export interface PrintJob extends PrintSetup {
 }
 
 // ---------- Updates ----------
-
-/** The Troubleshootr inbox: scan reports sent from the diagnostic tool, collected into tickets and notes */
-export interface TroubleshootrStatus {
-  /** Sync is on (the inbox works through the sync service) */
-  syncOn: boolean
-  connected: boolean
-  /** Paste this into Troubleshootr (Send tab), once; null while not connected */
-  link: string | null
-  /** Another synced PC holds the inbox (its name); connecting here moves it */
-  elsewhere: string | null
-  lastCheckAt: number | null
-  /** What the last checks brought in, newest first */
-  recent: { kind: 'ticket' | 'note'; id: string; title: string; created: boolean; at: number }[]
-  error: string | null
-}
-
 export interface SyncStatus {
   enabled: boolean
   /** The sync server's address, while on */
@@ -2335,14 +2319,6 @@ export interface PlannrApi {
     /** Stop syncing on this device (nothing is deleted) */
     disconnect(): Promise<SyncStatus>
   }
-  troubleshootr: {
-    status(): Promise<TroubleshootrStatus>
-    /** Turns the inbox on with new keys (an earlier link stops working) */
-    connect(): Promise<TroubleshootrStatus>
-    disconnect(): Promise<TroubleshootrStatus>
-    /** Collects waiting reports now */
-    checkNow(): Promise<TroubleshootrStatus>
-  }
   updates: {
     status(): Promise<UpdateStatus>
     check(): Promise<UpdateStatus>
@@ -2481,7 +2457,6 @@ export const API_SHAPE = {
   print: ['ticket', 'pdf', 'send', 'savePdf'],
   data: ['exportAll', 'importContacts', 'openFolder'],
   sync: ['status', 'setup', 'join', 'link', 'syncNow', 'disconnect'],
-  troubleshootr: ['status', 'connect', 'disconnect', 'checkNow'],
   updates: ['status', 'check', 'install'],
   app: ['info', 'openDataFolder', 'copyRich', 'setTheme', 'openCapture', 'closeCapture', 'captureSaved', 'setCaptureShortcut', 'getCaptureShortcut', 'setZoom', 'getZoom', 'getOpenAtLogin', 'setOpenAtLogin', 'testNotification', 'getTimeZone', 'setTimeZone']
 } as const satisfies { [K in keyof PlannrApi]: readonly (keyof PlannrApi[K])[] }
