@@ -12,6 +12,7 @@ import { collectReports, connectTroubleshootr, deviceTitle, disconnectTroublesho
 import { dropToken, fromB64url, newDropKeys, openInfo, openReport, sealReport, type DropKeys } from '../../src/shared/drop-crypto'
 import { deriveSyncKeys, newSyncKey, sha256Hex } from '../../src/shared/sync-crypto'
 import { fakeServer } from '../support/d1'
+import { checkDue } from '../../src/main/troubleshootr-sync'
 import { formatTicketNumber } from '../../src/shared/api'
 
 let srv: ReturnType<typeof fakeServer>
@@ -196,5 +197,16 @@ describe('Troubleshootr inbox', () => {
     expect(deviceTitle({ manufacturer: 'Dell Inc.', model: 'XPS 13 9310' })).toBe('Dell XPS 13 9310')
     expect(deviceTitle({ manufacturer: 'LENOVO', model: 'Lenovo ThinkPad T14' })).toBe('Lenovo ThinkPad T14')
     expect(deviceTitle({ name: 'WORKSHOP-PC' })).toBe('WORKSHOP-PC')
+  })
+})
+
+describe('how soon Plannr looks for reports', () => {
+  it('every 20 s while the window is open, every 5 min from the tray', () => {
+    const t = 1_000_000_000
+    expect(checkDue(t, t - 19_000, true)).toBe(false)
+    expect(checkDue(t, t - 20_000, true)).toBe(true)
+    expect(checkDue(t, t - 60_000, false)).toBe(false)
+    expect(checkDue(t, t - 5 * 60_000, false)).toBe(true)
+    expect(checkDue(t, 0, false)).toBe(true) // right after start
   })
 })

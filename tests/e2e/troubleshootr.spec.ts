@@ -14,7 +14,7 @@ let a: { app: ElectronApplication; page: Page }
 
 test.beforeAll(async () => {
   server = await serveHttp(srv)
-  a = await launch(dir)
+  a = await launch(dir, { PLANNR_TROUBLESHOOTR_POLL: '1' }) // the real 20 s check, not only the button
 })
 test.afterAll(async () => {
   await a?.app.close()
@@ -115,4 +115,25 @@ test('a scan added to the ticket that is open shows up, and typing afterwards ke
   expect(saved).toContain('fileAttachment')
   await page.locator('.file-chip').scrollIntoViewIfNeeded()
   await shot(page, 'tr4-open-ticket')
+})
+
+// Owner, 2026-11-17: "nope", looking about 30 s after sending (Plannr then checked every 5 minutes). With the window
+// open it now checks every 20 s, so a scan shows up without pressing anything.
+test('a sent scan shows up on its own within about 20 seconds while Plannr is open', async () => {
+  const { page } = a
+  const open = await page.evaluate(() => window.plannr.tickets.create({}).then((t) => window.plannr.tickets.update(t.id, { device: 'Waiting PC' }).then(() => t)))
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
+  await page.locator('.ticket-row', { hasText: 'Waiting PC' }).click()
+  await page.evaluate(() => window.plannr.troubleshootr.checkNow()) // starts the 20 s clock now
+  const link = (await page.evaluate(() => window.plannr.troubleshootr.status())).link!
+  const [space, secret, publicKey] = link.split('#troubleshootr=')[1].split('.')
+  const sent = Date.now()
+  const res = await fetch(`${server.url}/api/s/${space}/inbox`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await dropToken(secret)}` },
+    body: await sealReport(publicKey, report({ mode: 'ticket', ticketNumber: open.number }))
+  })
+  expect(res.status).toBe(200)
+  await expect(page.getByText('[Critical] Disk 0 has unreadable sectors: Reallocated sectors: 312.')).toBeVisible({ timeout: 30_000 })
+  console.log(`arrived after ${Math.round((Date.now() - sent) / 1000)} s`)
 })

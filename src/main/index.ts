@@ -268,11 +268,21 @@ if (!app.requestSingleInstanceLock()) {
     })
     void sync.start()
     // Scan reports sent from Troubleshootr (the diagnostic tool), once connected in Settings → Sync & devices.
-    const troubleshootr = new TroubleshootrSync(db, dataDir, sync, hostname(), () => {
-      getWindow()?.webContents.send('data-changed')
-      void sync.run().catch(() => undefined)
-    })
-    if (!isTest) troubleshootr.start()
+    const troubleshootr = new TroubleshootrSync(
+      db,
+      dataDir,
+      sync,
+      hostname(),
+      () => {
+        getWindow()?.webContents.send('data-changed')
+        void sync.run().catch(() => undefined)
+      },
+      () => {
+        const win = getWindow()
+        return !!win && !win.isDestroyed() && win.isVisible() && !win.isMinimized()
+      }
+    )
+    if (!isTest || process.env.PLANNR_TROUBLESHOOTR_POLL) troubleshootr.start()
     app.on('browser-window-focus', () => {
       sync.poke()
       troubleshootr.poke()
