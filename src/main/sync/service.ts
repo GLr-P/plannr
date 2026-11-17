@@ -4,7 +4,7 @@ import type { Db } from '../db'
 import { newId } from '../db'
 import { getSetting, setSetting } from '../services/settings'
 import { SyncEngine, type BlobKind, type BlobStore, type SyncTransport } from './engine'
-import { joinLink, keyFingerprint, newSyncKey, parseJoinLink, validSyncKey, type LinkProfile } from '../../shared/sync-crypto'
+import { deriveSyncKeys, joinLink, keyFingerprint, newSyncKey, parseJoinLink, validSyncKey, type LinkProfile } from '../../shared/sync-crypto'
 import { afterPull } from './upkeep'
 import type { SyncStatus } from '../../shared/api'
 
@@ -138,6 +138,14 @@ export class SyncService {
     const engine = new SyncEngine(this.db, httpTransport(server, () => token, this.platform.fetch), fileBlobs(this.dataDir), this.deviceId())
     token = (await engine.init(key)).token
     return engine
+  }
+
+  /** The sync server, this space and its token, for other features that talk to the same service (the Troubleshootr inbox) */
+  async credentials(): Promise<{ server: string; space: string; token: string; fetch: Fetcher } | null> {
+    const c = this.config()
+    if (!c) return null
+    const keys = await deriveSyncKeys(c.key)
+    return { server: c.server, space: keys.space, token: keys.token, fetch: this.platform.fetch }
   }
 
   /** Downloads a public page through the sync server (how the phone gets the news) */

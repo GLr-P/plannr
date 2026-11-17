@@ -4,6 +4,7 @@ import qrcode from 'qrcode-generator'
 import type { SyncStatus } from '../../../shared/api'
 import { api } from '../api'
 import { relativeTime } from '../lib/format'
+import { TroubleshootrSettings } from './TroubleshootrSettings'
 
 const cleanError = (e: unknown): string => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e))
 
@@ -267,6 +268,8 @@ export function SyncSettings() {
           )}
         </div>
       </section>
+
+      {!web && <TroubleshootrSettings />}
     </>
   )
 }

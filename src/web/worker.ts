@@ -189,6 +189,13 @@ function createWebApi(db: Db): { api: PlannrApi; web: WebExtras; sync: SyncServi
       syncNow: async () => sync.syncNow(),
       disconnect: async () => sync.disconnect()
     },
+    troubleshootr: {
+      // The inbox's private key lives on the PC that connected it; the phone sees the tickets and notes once synced.
+      status: async () => ({ syncOn: false, connected: false, link: null, elsewhere: null, lastCheckAt: null, recent: [], error: null }),
+      connect: offline,
+      disconnect: offline,
+      checkNow: offline
+    },
     updates: { status: async () => updates, check: async () => updates, install: async () => updates },
     profiles: {
       list: async () => ({ active: 'main', profiles: [{ id: 'main', name: 'Main', color: '#3b82f6' }] }),

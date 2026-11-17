@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import type { D1Database, D1Prepared, Env } from '../../server/src/worker'
-import worker, { SCHEMA } from '../../server/src/worker'
+import worker from '../../server/src/worker'
+import { SCHEMA } from '../../server/src/schema'
 
 /** Cloudflare D1, imitated with node:sqlite, so the real sync service code runs in tests. */
 export function fakeD1(): D1Database {

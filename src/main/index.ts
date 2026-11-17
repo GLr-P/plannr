@@ -3,6 +3,7 @@ import { VaultSession } from './vault-session'
 import { GoogleSync } from './google-sync'
 import { QuickBooksSync } from './quickbooks-sync'
 import { mkdirSync, rmSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { openDb, type Db } from './db'
@@ -27,6 +28,7 @@ import { adoptLoginItem, appUserModelId, createTray, ensureStartMenuShortcut, re
 import { Updater } from './updater'
 import { registerCaptureShortcut } from './capture'
 import { SyncService } from './sync/service'
+import { TroubleshootrSync } from './troubleshootr-sync'
 import { getSecret, putSecret } from './secrets'
 import { startSharedSecrets } from './shared-secrets'
 import { ProfileManager } from './profile-manager'
@@ -265,7 +267,16 @@ if (!app.requestSingleInstanceLock()) {
       putKey: (key) => putSecret(db, 'sync.key', key)
     })
     void sync.start()
-    app.on('browser-window-focus', () => sync.poke())
+    // Scan reports sent from Troubleshootr (the diagnostic tool), once connected in Settings → Sync & devices.
+    const troubleshootr = new TroubleshootrSync(db, dataDir, sync, hostname(), () => {
+      getWindow()?.webContents.send('data-changed')
+      void sync.run().catch(() => undefined)
+    })
+    if (!isTest) troubleshootr.start()
+    app.on('browser-window-focus', () => {
+      sync.poke()
+      troubleshootr.poke()
+    })
     let refreshTray = (): void => undefined
     registerIpc(
       createApi(db, dataDir, getWindow, vaultSession, {
@@ -275,6 +286,7 @@ if (!app.requestSingleInstanceLock()) {
         qboSync,
         updater,
         sync,
+        troubleshootr,
         theme: effectiveTheme,
         profiles: {
           list: async () => profiles.state(),

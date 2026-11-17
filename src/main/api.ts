@@ -21,6 +21,7 @@ import type { QuickBooksSync } from './quickbooks-sync'
 import type { GoogleSync } from './google-sync'
 import type { Updater } from './updater'
 import type { SyncService } from './sync/service'
+import type { TroubleshootrSync } from './troubleshootr-sync'
 import { DEFAULT_CAPTURE_SHORTCUT, hideCapture, openCapture, registerCaptureShortcut } from './capture'
 import { resolveFilePath } from './services/files'
 import { getSetting, setSetting } from './services/settings'
@@ -41,6 +42,7 @@ export interface ApiHooks {
   qboSync: QuickBooksSync
   updater: Updater
   sync: SyncService
+  troubleshootr: TroubleshootrSync
   /** Current light/dark theme (for the quick capture box) */
   theme: () => 'light' | 'dark'
   backupDir: () => string
@@ -420,6 +422,12 @@ export function createApi(db: Db, dataDir: string, getWindow: () => BrowserWindo
       },
       syncNow: async () => hooks.sync.syncNow(),
       disconnect: async () => hooks.sync.disconnect()
+    },
+    troubleshootr: {
+      status: async () => hooks.troubleshootr.status(),
+      connect: async () => hooks.troubleshootr.connect(),
+      disconnect: async () => hooks.troubleshootr.disconnect(),
+      checkNow: async () => hooks.troubleshootr.checkNow()
     },
     profiles: hooks.profiles,
     updates: {

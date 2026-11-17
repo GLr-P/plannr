@@ -1,0 +1,7 @@
+{
+  "secret": "BfrNxQRMhQWNpdtLQ6MxAEpd7BWAyNypbKS4DDgfZ38",
+  "privateJwk": "{\"key_ops\":[\"deriveBits\"],\"ext\":true,\"kty\":\"EC\",\"x\":\"D0wjQQ4openQg5_jlYuJQ2ZYGu6S7fXR7pZRpbbj7Hg\",\"y\":\"gceTEMVigN3XQT5OoDnMIMW-bx-ic40ozKlqcIzDm74\",\"crv\":\"P-256\",\"d\":\"9B128Z1QbeqhXRcWiTV3Ru-VeS6yiVaKlPmFo5S7CMg\"}",
+  "publicKey": "BA9MI0EOKKXp0IOf45WLiUNmWBruku310e6WUaW24-x4gceTEMVigN3XQT5OoDnMIMW-bx-ic40ozKlqcIzDm74",
+  "token": "d8926c3f2867b06d20d55bdb996c5abde1200e048db9f77aa34ee490020a28de",
+  "note": "TEST KEYS ONLY: used by the tests in Troubleshootr and Plannr to check the two match byte for byte."
+}

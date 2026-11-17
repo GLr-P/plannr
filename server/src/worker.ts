@@ -10,9 +10,16 @@
  *   GET  /api/ics?u=                     a public holiday calendar from Google (the phone app can't fetch it itself)
  *   GET  /api/s/<space>/fetch?u=         a public web page or feed for a signed-in device (news on the phone)
  *   POST /api/s/<space>/fetch?u=         the same for an allow-listed API that only answers POST (where to watch)
+ *   Troubleshootr inbox (shared/drop-crypto.ts): a second, write-only token per space for the diagnostic tool
+ *   GET/PUT/DELETE /api/s/:space/drop    (space token) which PC holds the inbox; { tokenHash, device } turns it on (or off),
+ *                                        dropping reports sealed to the previous key (nobody can open those any more)
+ *   POST /api/s/:space/inbox             (inbox token) a sealed report, up to 20 MB
+ *   GET  /api/s/:space/inbox[/:id]       (space token) list the waiting reports / download one; DELETE removes one
+ *   PUT  /api/s/:space/dropinfo          (space token) the sealed open-tickets list; GET it with the inbox token
  *
  * Anything else is served from the static assets (the phone web app), when they're bound.
  */
+import { SCHEMA } from './schema'
 
 export interface D1Result<T> {
   results: T[]
@@ -31,6 +38,7 @@ export interface R2Bucket {
   put(key: string, value: ArrayBuffer | Uint8Array): Promise<unknown>
   get(key: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer> } | null>
   head(key: string): Promise<unknown | null>
+  delete(key: string): Promise<void>
 }
 export interface Env {
   DB: D1Database
@@ -40,19 +48,12 @@ export interface Env {
   OWNER_SECRET?: string
 }
 
-export const SCHEMA = `
-CREATE TABLE IF NOT EXISTS spaces (id TEXT PRIMARY KEY, auth_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS changes (
-  space TEXT NOT NULL, tbl TEXT NOT NULL, rid TEXT NOT NULL,
-  ts INTEGER NOT NULL, device TEXT NOT NULL, seq INTEGER NOT NULL, data TEXT NOT NULL,
-  PRIMARY KEY (space, tbl, rid)
-);
-CREATE INDEX IF NOT EXISTS changes_seq ON changes (space, seq);
-CREATE TABLE IF NOT EXISTS blobs (space TEXT NOT NULL, id TEXT NOT NULL, part INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (space, id, part));
-`
+// The tables live in schema.ts.
 
 const MAX_PUSH = 40 // D1 allows 50 queries per request on the free plan
 const PART = 1_500_000 // D1 rows are at most 2 MB
+const MAX_REPORT = 20_000_000
+const MAX_WAITING = 50 // reports waiting in one inbox, so a lost link can't fill the storage
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...CORS } })
 /** Hosts the fetch helper may send a request body to */
@@ -110,11 +111,28 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
     return json({ ok: true })
   }
 
-  const m = /^\/api\/s\/([A-Za-z0-9_-]+)\/(hello|push|pull|blob|fetch)(?:\/([A-Za-z0-9_.-]+))?$/.exec(url.pathname)
+  const m = /^\/api\/s\/([A-Za-z0-9_-]+)\/(hello|push|pull|blob|fetch|drop|inbox|dropinfo)(?:\/([A-Za-z0-9_.-]+))?$/.exec(url.pathname)
   if (!m) return json({ error: 'Not found' }, 404)
   const [, space, action, blobId] = m
-  // Every device proves it has the space's key: the token is derived from it, and only its hash is stored here.
   const token = (request.headers.get('Authorization') ?? '').replace(/^Bearer /, '')
+
+  // Troubleshootr's side of the inbox: its own token, which can only add reports and read the open-tickets list.
+  if ((action === 'inbox' && request.method === 'POST' && !blobId) || (action === 'dropinfo' && request.method === 'GET')) {
+    const drop = await env.DB.prepare('SELECT token_hash, info FROM drops WHERE space = ?').bind(space).first<{ token_hash: string; info: string | null }>()
+    if (!drop || !token || (await sha256Hex(token)) !== drop.token_hash) return json({ error: 'Not allowed' }, 401)
+    if (action === 'dropinfo') return json({ info: drop.info })
+    const waiting = await env.DB.prepare('SELECT COUNT(*) AS n FROM inbox WHERE space = ?').bind(space).first<{ n: number }>()
+    if ((waiting?.n ?? 0) >= MAX_WAITING) return json({ error: 'The Plannr inbox is full; open Plannr so it can collect the reports' }, 429)
+    const bytes = new Uint8Array(await request.arrayBuffer())
+    if (!bytes.length) return json({ error: 'Empty report' }, 400)
+    if (bytes.length > MAX_REPORT) return json({ error: 'Too big' }, 413)
+    const id = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => b.toString(16).padStart(2, '0')).join('')
+    await putBytes(env, space, `inbox-${id}`, bytes)
+    await env.DB.prepare('INSERT INTO inbox (space, id, size, created_at) VALUES (?, ?, ?, ?)').bind(space, id, bytes.length, Date.now()).run()
+    return json({ ok: true, id })
+  }
+
+  // Every device proves it has the space's key: the token is derived from it, and only its hash is stored here.
   const row = await env.DB.prepare('SELECT auth_hash FROM spaces WHERE id = ?').bind(space).first<{ auth_hash: string }>()
   if (!row || !token || (await sha256Hex(token)) !== row.auth_hash) return json({ error: 'Not allowed' }, 401)
 
@@ -138,6 +156,45 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
     const body = await res.arrayBuffer()
     if (body.byteLength > 3_000_000) return json({ error: 'Too big' }, 413)
     return new Response(body, { status: res.ok ? 200 : 502, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'private, max-age=300', ...CORS } })
+  }
+
+  if (action === 'drop') {
+    if (request.method === 'GET') {
+      const drop = await env.DB.prepare('SELECT token_hash AS tokenHash, device, updated_at AS updatedAt FROM drops WHERE space = ?').bind(space).first()
+      return json(drop ?? { tokenHash: null })
+    }
+    if (request.method === 'DELETE') {
+      await purgeInbox(env, space)
+      await env.DB.prepare('DELETE FROM drops WHERE space = ?').bind(space).run()
+      return json({ ok: true })
+    }
+    if (request.method !== 'PUT') return json({ error: 'Not found' }, 404)
+    const body = (await request.json()) as { tokenHash?: string; device?: string }
+    if (!body.tokenHash || !/^[0-9a-f]{64}$/.test(body.tokenHash)) return json({ error: 'Bad request' }, 400)
+    await purgeInbox(env, space)
+    await env.DB.prepare('INSERT INTO drops (space, token_hash, device, info, updated_at) VALUES (?, ?, ?, NULL, ?) ON CONFLICT (space) DO UPDATE SET token_hash = excluded.token_hash, device = excluded.device, info = NULL, updated_at = excluded.updated_at')
+      .bind(space, body.tokenHash, String(body.device ?? '').slice(0, 100), Date.now()).run()
+    return json({ ok: true })
+  }
+
+  if (action === 'dropinfo' && request.method === 'PUT') {
+    const info = await request.text()
+    if (info.length > 500_000) return json({ error: 'Too big' }, 413)
+    await env.DB.prepare('UPDATE drops SET info = ?, updated_at = ? WHERE space = ?').bind(info, Date.now(), space).run()
+    return json({ ok: true })
+  }
+
+  if (action === 'inbox') {
+    if (!blobId) {
+      const { results } = await env.DB.prepare('SELECT id, size, created_at AS createdAt FROM inbox WHERE space = ? ORDER BY created_at').bind(space).all<{ id: string; size: number; createdAt: number }>()
+      return json({ items: results })
+    }
+    if (request.method === 'DELETE') {
+      await deleteReport(env, space, blobId)
+      return json({ ok: true })
+    }
+    const bytes = await getBytes(env, space, `inbox-${blobId}`)
+    return bytes ? new Response(bytes as Uint8Array<ArrayBuffer>, { headers: { 'Content-Type': 'application/octet-stream', ...CORS } }) : json({ error: 'Not found' }, 404)
   }
 
   if (action === 'hello') {
@@ -201,4 +258,46 @@ async function api(request: Request, env: Env, url: URL): Promise<Response> {
     return new Response(out, { headers: { 'Content-Type': 'application/octet-stream', ...CORS } })
   }
   return json({ error: 'Not found' }, 404)
+}
+
+async function deleteReport(env: Env, space: string, id: string): Promise<void> {
+  if (env.FILES) await env.FILES.delete(`${space}/inbox-${id}`)
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM inbox WHERE space = ? AND id = ?').bind(space, id),
+    env.DB.prepare('DELETE FROM blobs WHERE space = ? AND id = ?').bind(space, `inbox-${id}`)
+  ])
+}
+
+/** Reports waiting for the old key: after a reconnect or disconnect, nobody can open them. */
+async function purgeInbox(env: Env, space: string): Promise<void> {
+  const { results } = await env.DB.prepare('SELECT id FROM inbox WHERE space = ?').bind(space).all<{ id: string }>()
+  for (const r of results) await deleteReport(env, space, r.id)
+}
+
+/** Stores bytes in R2 when bound, else in D1 in 1.5 MB parts. */
+async function putBytes(env: Env, space: string, id: string, bytes: Uint8Array): Promise<void> {
+  if (env.FILES) {
+    await env.FILES.put(`${space}/${id}`, bytes)
+    return
+  }
+  const parts: D1Prepared[] = [env.DB.prepare('DELETE FROM blobs WHERE space = ? AND id = ?').bind(space, id)]
+  for (let i = 0, n = 0; i < Math.max(1, bytes.length); i += PART, n++) parts.push(env.DB.prepare('INSERT INTO blobs (space, id, part, data) VALUES (?, ?, ?, ?)').bind(space, id, n, bytes.slice(i, i + PART)))
+  await env.DB.batch(parts)
+}
+
+async function getBytes(env: Env, space: string, id: string): Promise<Uint8Array | null> {
+  if (env.FILES) {
+    const obj = await env.FILES.get(`${space}/${id}`)
+    return obj ? new Uint8Array(await obj.arrayBuffer()) : null
+  }
+  const { results } = await env.DB.prepare('SELECT data FROM blobs WHERE space = ? AND id = ? ORDER BY part').bind(space, id).all<{ data: ArrayBuffer | Uint8Array | number[] }>()
+  if (!results.length) return null
+  const chunks = results.map((r) => (r.data instanceof Uint8Array ? r.data : new Uint8Array(r.data as ArrayBuffer)))
+  const out = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0))
+  let at = 0
+  for (const c of chunks) {
+    out.set(c, at)
+    at += c.length
+  }
+  return out
 }
