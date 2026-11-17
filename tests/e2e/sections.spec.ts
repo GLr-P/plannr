@@ -98,3 +98,20 @@ test('everything is still there after a restart, and search finds section text',
   await expect(sections().first().locator('input').nth(1)).toHaveValue('4540')
   await shot(page, 's4-after-restart')
 })
+
+test('"Use for new Quick ticket tickets" keeps every section, not just the parts (answers left out)', async () => {
+  await page.getByRole('button', { name: 'Customize' }).click()
+  await page.locator('.customize-banner').getByRole('button', { name: 'Use for new “Quick ticket” tickets' }).click()
+  await expect(page.locator('.toast', { hasText: 'will look like this one' })).toBeVisible()
+  // The ticket itself keeps everything
+  await expect.poll(sectionTitles).toEqual(['Passcode & logins', 'What I did', 'Remote session', 'Recommendations'])
+  await expect(sections().first().locator('input').nth(1)).toHaveValue('4540')
+  // A new Quick ticket has the same sections and parts, with nothing about the last customer in them
+  await nav('Tickets').click()
+  await page.locator('.main').getByRole('button', { name: 'New ticket', exact: true }).click()
+  await expect.poll(sectionTitles).toEqual(['Passcode & logins', 'What I did', 'Remote session', 'Recommendations'])
+  await expect(sections().first().locator('input').nth(1)).toHaveValue('')
+  await expect(page.locator('.prop', { hasText: 'Warranty' })).toBeVisible()
+  await saved()
+  await shot(page, 's5-quick-ticket-from-ticket')
+})

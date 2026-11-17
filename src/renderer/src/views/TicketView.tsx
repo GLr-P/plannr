@@ -49,7 +49,7 @@ import { singular } from '../lib/navOrder'
 import { ForPicker, MoreTickets } from '../components/TicketLinks'
 import { openPanel } from '../components/ContextMenu'
 import { AddToTicketPanel } from '../components/AddToTicket'
-import { blankCopy, sectionNode, sectionsIn, type SectionPreset } from '../../../shared/ticket-sections'
+import { sectionNode, sectionsIn, templateBody, type SectionPreset } from '../../../shared/ticket-sections'
 import { newSectionId, useSections } from '../store/sections'
 import type { TemplateSummary } from '../../../shared/api'
 import { isReadyStatus, ticketLayout, type TicketLayout, type TicketPart } from '../../../shared/api'
@@ -308,7 +308,10 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   }, [ticket.templateId])
   const useForTemplate = async (): Promise<void> => {
     if (!ticket.templateId) return
-    await api.templates.update(ticket.templateId, { layout: layoutForTemplate() })
+    // The sections in the body go with the boxes at the top (before 1.2 only the boxes and parts did)
+    const body = isCanvas(ticket.content) ? undefined : (editorRef.current?.getJSON() as DocJSON | undefined)
+    const current = body ? await api.templates.get(ticket.templateId) : null // its own lines of text (e.g. terms) stay
+    await api.templates.update(ticket.templateId, { layout: layoutForTemplate(), ...(body ? { content: templateBody(body, current?.content) } : {}) })
     await resetLayout()
     showToast(`New “${templateName}” tickets will look like this one`)
   }
@@ -317,7 +320,7 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
     const name = (presetName ?? '').trim()
     if (!name) return
     const body = editorRef.current?.getJSON() as DocJSON | undefined
-    const content: DocJSON = body?.content ? { type: 'doc', content: blankCopy(body.content) } : { type: 'doc', content: [{ type: 'paragraph' }] }
+    const content = templateBody(body)
     await api.templates.create({ name, kind: 'ticket', content, layout: layoutForTemplate() })
     setPresetName(null)
     showToast(`Saved “${name}”. It’s in + Add and the New ticket menu.`)

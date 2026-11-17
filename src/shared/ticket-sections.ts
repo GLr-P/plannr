@@ -372,13 +372,14 @@ export const presetParts = (preset: TicketPreset): TicketPart[] =>
  * A reusable copy of ticket content (for your own sections and presets): fill-in answers emptied, checklists
  * unticked, pictures, files and @-links left out, so nothing about one customer ends up in the next ticket.
  */
-export function blankCopy(nodes: DocJSON[]): DocJSON[] {
+export function blankCopy(nodes: DocJSON[], keep: Set<string> = new Set()): DocJSON[] {
   const drop = new Set(['image', 'fileAttachment', 'mention'])
   const hasField = (n: DocJSON): boolean => n.type === 'formField' || Boolean(n.content?.some(hasField))
   const walk = (n: DocJSON, parent: string): DocJSON | null => {
     if (drop.has(n.type)) return null
     // A line of notes in the ticket or a section is about that customer: emptied (fill-in boxes, headings, checklists stay)
-    if (n.type === 'paragraph' && (parent === 'doc' || parent === 'ticketSection') && !hasField(n)) return { type: 'paragraph' }
+    // (keep: lines the template already had, like terms, stay)
+    if (n.type === 'paragraph' && (parent === 'doc' || parent === 'ticketSection') && !hasField(n) && !keep.has(lineText(n))) return { type: 'paragraph' }
     const attrs = n.type === 'formField' ? { ...n.attrs, value: '' } : n.type === 'taskItem' ? { ...n.attrs, checked: false } : n.attrs
     const content = n.content?.map((c) => walk(c, n.type)).filter((c): c is DocJSON => c !== null)
     // A block that held only a picture is now empty: keep it valid
@@ -391,6 +392,29 @@ export function blankCopy(nodes: DocJSON[]): DocJSON[] {
       .map((n) => (n.content && n.type !== 'paragraph' ? { ...n, content: tidy(n.content) } : n))
       .filter((n, i, all) => !(n.type === 'paragraph' && !n.content?.length && all[i - 1]?.type === 'paragraph' && !all[i - 1].content?.length))
   return tidy(nodes.map((n) => walk(n, 'doc')).filter((c): c is DocJSON => c !== null))
+}
+
+/** A line's text (empty for a blank line) */
+const lineText = (n: DocJSON): string => (n.type === 'text' ? (n.text ?? '') : (n.content ?? []).map(lineText).join(''))
+
+/**
+ * A ticket's body as a template's content ("Use for new … tickets", "Save as a new preset"): every section and box
+ * kept, answers left out (blankCopy), and a line at the end to type on. Lines of text the template already had
+ * (`template`, e.g. terms) stay; other lines are that customer's notes.
+ */
+export function templateBody(doc: DocJSON | null | undefined, template?: DocJSON | null): DocJSON {
+  const keep = new Set<string>()
+  const collect = (n: DocJSON): void => {
+    if (n.type === 'paragraph') {
+      const t = lineText(n).trim()
+      if (t) keep.add(lineText(n))
+    } else n.content?.forEach(collect)
+  }
+  if (template) collect(template)
+  const content = blankCopy(doc?.content ?? [], keep)
+  const last = content[content.length - 1]
+  if (!last || last.type !== 'paragraph' || last.content?.length) content.push(p())
+  return { type: 'doc', content }
 }
 
 /** Which sections a ticket's document already has (by preset id) */
