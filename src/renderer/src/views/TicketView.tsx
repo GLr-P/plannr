@@ -57,6 +57,12 @@ import { isReadyStatus, ticketLayout, type TicketLayout, type TicketPart } from 
 export function TicketView({ id }: { id: string }) {
   const [ticket, setTicket] = useState<Ticket | null | undefined>(undefined)
   const reload = useCallback(() => api.tickets.get(id).then(setTicket), [id])
+  // Changed from outside while open (a scan from Troubleshootr, another device): the page starts over with that copy.
+  const [version, setVersion] = useState(0)
+  const onOutsideChange = useCallback((fresh: Ticket) => {
+    setTicket(fresh)
+    setVersion((v) => v + 1)
+  }, [])
   useEffect(() => {
     let cancelled = false
     setTicket(undefined)
@@ -76,7 +82,7 @@ export function TicketView({ id }: { id: string }) {
         </button>
       </div>
     )
-  return <TicketPage key={`${ticket.id}:${ticket.deletedAt}`} ticket={ticket} reload={reload} />
+  return <TicketPage key={`${ticket.id}:${ticket.deletedAt}:${version}`} ticket={ticket} reload={reload} onOutsideChange={onOutsideChange} />
 }
 
 type Fields = Omit<TicketUpdate, 'content' | 'taxExempt' | 'layout'>
@@ -84,7 +90,7 @@ type Fields = Omit<TicketUpdate, 'content' | 'taxExempt' | 'layout'>
 /** The ticket's body knows it's a ticket (the / menu offers Customer details and Ticket dates). */
 const TICKET_EDITOR = { ticket: true }
 
-function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<void> }) {
+function TicketPage({ ticket, reload, onOutsideChange }: { ticket: Ticket; reload: () => Promise<void>; onOutsideChange: (fresh: Ticket) => void }) {
   const [fields, setFields] = useState<Required<Fields>>({
     customerId: ticket.customerId,
     status: ticket.status,
@@ -227,6 +233,25 @@ function TicketPage({ ticket, reload }: { ticket: Ticket; reload: () => Promise<
   const [inDoc, setInDoc] = useState(() => sectionsIn(ticket.content)) // text sections on the ticket, by preset id
   const remoteChange = useData((s) => s.remote)
   useEffect(() => void useSections.getState().load(), [remoteChange]) // your sections (synced)
+  // This ticket changed outside this page (a Troubleshootr scan added to it, an edit on another device): reload it,
+  // or the editor's next save would write its older copy back over that change. Your own unsaved typing goes first.
+  const updatedAtRef = useRef(updatedAt)
+  updatedAtRef.current = updatedAt
+  const saveStatusRef = useRef(saver.status)
+  saveStatusRef.current = saver.status
+  const firstRemote = useRef(remoteChange)
+  useEffect(() => {
+    if (remoteChange === firstRemote.current) return
+    let cancelled = false
+    void (async () => {
+      if (saveStatusRef.current !== 'saved') return
+      const fresh = await api.tickets.get(ticket.id)
+      if (!cancelled && fresh && fresh.updatedAt > updatedAtRef.current && saveStatusRef.current === 'saved') onOutsideChange(fresh)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [remoteChange, ticket.id, onOutsideChange])
   const onContent = useCallback(
     (doc: DocJSON) => {
       saver.queue({ content: doc })

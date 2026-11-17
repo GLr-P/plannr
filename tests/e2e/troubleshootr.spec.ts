@@ -78,3 +78,41 @@ test('connect Troubleshootr, and a sent scan becomes a ticket with the report at
   await page.locator('.file-chip').scrollIntoViewIfNeeded()
   await shot(page, 'tr3-ticket')
 })
+
+// Owner, 2026-11-17: "dont see shit on my ticket". The scan was added to the ticket while it was open; the open page's
+// next save wrote its older copy back over it. The page now reloads when its ticket changes from outside.
+test('a scan added to the ticket that is open shows up, and typing afterwards keeps it', async () => {
+  const { page } = a
+  const open = await page.evaluate(() => window.plannr.tickets.create({}).then((t) => window.plannr.tickets.update(t.id, { device: 'Bench PC' }).then(() => t)))
+  await page.locator('.sidebar .nav-item', { hasText: 'Tickets' }).first().click()
+  await page.locator('.ticket-row', { hasText: 'Bench PC' }).click()
+  await page.locator('.editor .ProseMirror').click()
+  await page.keyboard.type('Customer says it is slow')
+  await expect(page.locator('.save-status')).toHaveAttribute('data-status', 'saved', { timeout: 5_000 })
+  await expect.poll(async () => JSON.stringify((await page.evaluate((id) => window.plannr.tickets.get(id), open.id))!.content)).toContain('it is slow')
+
+  const link = (await page.evaluate(() => window.plannr.troubleshootr.status())).link!
+  const [space, secret, publicKey] = link.split('#troubleshootr=')[1].split('.')
+  const res = await fetch(`${server.url}/api/s/${space}/inbox`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await dropToken(secret)}` },
+    body: await sealReport(publicKey, report({ mode: 'ticket', ticketNumber: open.number }))
+  })
+  expect(res.status).toBe(200)
+  await page.evaluate(() => window.plannr.troubleshootr.checkNow())
+
+  await expect(page.getByText('[Critical] Disk 0 has unreadable sectors: Reallocated sectors: 312.')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByText('Customer says it is slow')).toBeVisible()
+  // Typing after the scan arrived saves the scan too, instead of the page's older copy.
+  await page.locator('.editor .ProseMirror p', { hasText: 'Customer says it is slow' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' and loud')
+  await expect
+    .poll(async () => JSON.stringify((await page.evaluate((id) => window.plannr.tickets.get(id), open.id))!.content), { timeout: 10_000 })
+    .toContain('slow and loud')
+  const saved = JSON.stringify((await page.evaluate((id) => window.plannr.tickets.get(id), open.id))!.content)
+  expect(saved).toContain('Diagnostic scan')
+  expect(saved).toContain('fileAttachment')
+  await page.locator('.file-chip').scrollIntoViewIfNeeded()
+  await shot(page, 'tr4-open-ticket')
+})
